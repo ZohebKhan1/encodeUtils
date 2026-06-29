@@ -2,6 +2,7 @@
 ^AGENTS\\.md$
 ^coding_guidelines\\.md$
 ^encode_package_notes\\.md$
+^design$
 ^\\.gitignore$
 ^\\.github$
 ^renv$

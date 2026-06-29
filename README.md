@@ -26,6 +26,11 @@ The package will start with a lean, read-only public API:
 The implementation should stay R-native, straightforward, and auditable. Large
 downloads should be explicit, cache-aware, and size-aware.
 
+Detailed planning notes are in:
+
+- [design/user_workflows.md](design/user_workflows.md)
+- [encode_package_notes.md](encode_package_notes.md)
+
 ## Developer Setup
 
 This project uses `renv` for the local development environment. Package users
