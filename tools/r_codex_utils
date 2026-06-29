@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+canonical="/home/zoheb/github_projects/00_bioinformatics_rules/r_codex_utils/r_codex_utils"
+if [[ ! -x "$canonical" ]]; then
+  printf 'ERROR: canonical r_codex_utils is missing or not executable: %s\n' "$canonical" >&2
+  printf 'HINT: restore the canonical bundle in 00_bioinformatics_rules, then rerun the installer from the project root.\n' >&2
+  exit 127
+fi
+
+exec "$canonical" "$@"

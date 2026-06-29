@@ -1,0 +1,14 @@
+^renv\.lock$
+^AGENTS\\.md$
+^coding_guidelines\\.md$
+^encode_package_notes\\.md$
+^\\.gitignore$
+^\\.github$
+^renv$
+^renv\\.lock$
+^\\.Rprofile$
+^.*\\.Rproj$
+^tools$
+^tmp$
+^\\.codex$
+^.*\\.BiocCheck$
