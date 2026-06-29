@@ -413,7 +413,7 @@ publication, or methods section.
 Likely function:
 
 ```r
-encode_cite(files)
+encode_citation(files)
 ```
 
 Output should include:
@@ -427,10 +427,69 @@ Output should include:
 - Retrieval date.
 - A reminder to follow ENCODE citation guidance.
 
+Official ENCODE citation guidance is listed on the ENCODE website under:
+
+https://www.encodeproject.org/help/citing-encode/
+
+The function should distinguish between two related outputs:
+
+1. Dataset-use summary:
+   - the specific ENCSR experiment accessions used,
+   - the specific ENCFF file accessions used,
+   - the production lab(s),
+   - the ENCODE project/award where available,
+   - portal URLs,
+   - retrieval date,
+   - file metadata such as format, output type, assembly, and MD5 when
+     available.
+2. Publication guidance:
+   - a reminder to cite ENCODE Consortium publications,
+   - a reminder to acknowledge the ENCODE Consortium and production lab(s),
+   - a link to the current Citing ENCODE page.
+
+The package should not fabricate formal article citations for a dataset unless
+ENCODE metadata explicitly provide a publication/reference record for that
+object. Many experiment/file objects have useful accessions and provenance
+metadata but do not have a direct publication attached.
+
+Suggested output modes:
+
+```r
+encode_citation(files, format = "table")
+encode_citation(files, format = "text")
+encode_citation(files, format = "markdown")
+encode_citation(files, format = "bibtex")
+```
+
+Format behavior:
+
+- `format = "table"` should return a data frame suitable for a supplementary
+  table.
+- `format = "text"` should return a plain methods-style paragraph/list.
+- `format = "markdown"` should return a markdown-ready citation/accession block.
+- `format = "bibtex"` should be limited to ENCODE publication records we can
+  represent honestly. It should not invent BibTeX entries for ENCSR/ENCFF
+  accessions as though they were journal articles.
+- Default should probably be `format = "table"` because it is safest and easiest
+  to audit.
+
+Possible additional argument:
+
+```r
+style = c("summary", "methods", "supplement")
+```
+
+- `style = "summary"`: compact console summary.
+- `style = "methods"`: prose suitable for draft methods text.
+- `style = "supplement"`: one row per file accession with experiment metadata.
+
 Safety behavior:
 
 - Citation output should be derived from metadata, not invented prose.
 - Do not hide revoked/archived status if files are not released.
+- Always include accessions because ENCODE explicitly asks users to reference
+  ENCSR dataset accessions and ENCFF file accessions.
+- Include status so archived, revoked, or unreleased objects are visible.
 
 ## Workflow 9: Interactive Selection Later
 
