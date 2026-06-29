@@ -403,12 +403,25 @@ Design implication:
 - This function will help users build valid filters without memorizing ENCODE
   field names.
 
-## Workflow 8: Citation Summaries
+## Workflow 8: Dataset Attribution / Citation Summaries
 
 User goal:
 
-Prepare a concise summary of ENCODE datasets/files used in a report,
-publication, or methods section.
+Prepare a concise, auditable attribution summary for the exact ENCODE
+datasets/files used in a report, publication, or methods section.
+
+Primary purpose:
+
+- Tell the user where a specific dataset came from.
+- List the experiment accession, file accession(s), PI/lab, institution,
+  project/award, assay, biosample, and portal URLs.
+- Make it easy to create a supplemental table or methods paragraph that credits
+  the producing lab(s) and identifies every ENCODE object used.
+
+Secondary purpose:
+
+- Remind the user to follow ENCODE's broader citation guidance for Consortium
+  publications.
 
 Likely function:
 
@@ -418,26 +431,35 @@ encode_citation(files)
 
 Output should include:
 
-- Experiment accessions.
-- File accessions.
+- Experiment accessions, e.g. `ENCSR...`.
+- File accessions, e.g. `ENCFF...`.
+- ENCODE object IDs, e.g. `/experiments/.../` and `/files/.../`.
 - Assay titles.
 - Biosamples.
-- Lab/project.
+- Organism, when available.
+- Lab / PI.
+- Institution, when available from lab metadata.
+- Project and award.
+- File format, output type, assembly, and MD5 when available.
+- Object status.
 - ENCODE portal URLs.
 - Retrieval date.
-- A reminder to follow ENCODE citation guidance.
+- A short note linking to ENCODE citation guidance.
 
 Official ENCODE citation guidance is listed on the ENCODE website under:
 
 https://www.encodeproject.org/help/citing-encode/
 
-The function should distinguish between two related outputs:
+The function should distinguish between two related outputs, with dataset
+attribution as the main output:
 
-1. Dataset-use summary:
+1. Dataset attribution / use summary:
    - the specific ENCSR experiment accessions used,
    - the specific ENCFF file accessions used,
-   - the production lab(s),
+   - the production lab(s) and PI names where available,
+   - the institution(s) where available,
    - the ENCODE project/award where available,
+   - assay and biosample metadata,
    - portal URLs,
    - retrieval date,
    - file metadata such as format, output type, assembly, and MD5 when
@@ -464,9 +486,11 @@ encode_citation(files, format = "bibtex")
 Format behavior:
 
 - `format = "table"` should return a data frame suitable for a supplementary
-  table.
-- `format = "text"` should return a plain methods-style paragraph/list.
-- `format = "markdown"` should return a markdown-ready citation/accession block.
+  dataset/accession table.
+- `format = "text"` should return a plain methods-style paragraph/list naming
+  the accessions, PI/lab, institution, and ENCODE URLs.
+- `format = "markdown"` should return a markdown-ready dataset attribution
+  block.
 - `format = "bibtex"` should be limited to ENCODE publication records we can
   represent honestly. It should not invent BibTeX entries for ENCSR/ENCFF
   accessions as though they were journal articles.
@@ -479,9 +503,10 @@ Possible additional argument:
 style = c("summary", "methods", "supplement")
 ```
 
-- `style = "summary"`: compact console summary.
+- `style = "summary"`: compact console summary grouped by experiment.
 - `style = "methods"`: prose suitable for draft methods text.
-- `style = "supplement"`: one row per file accession with experiment metadata.
+- `style = "supplement"`: one row per file accession with experiment, lab, PI,
+  institution, and file metadata.
 
 Safety behavior:
 
