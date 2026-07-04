@@ -14,8 +14,6 @@ Fixture role:
 - `schema-file.json`: profile/schema response with required, enum, and link
   fields.
 - `matrix-small.json`: compact matrix endpoint response.
-- `report-small.tsv` and `report-empty.tsv`: TSV report success and malformed
-  table edge cases.
 
 The fixtures are representative and manually curated from ENCODE response
 shapes. They are not a substitute for opt-in live smoke tests. Keep fixtures

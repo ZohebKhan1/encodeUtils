@@ -60,12 +60,10 @@ reference:
       - encode_manifest
 
   - title: Additional helpers
-    desc: Retrieve one record, check availability, build custom metadata tables, or get ENCODE attribution separately.
+    desc: Retrieve one record, summarize available records, or create a separate download plan.
     contents:
       - encode_get
       - encode_matrix
-      - encode_report
-      - encode_cite
       - encode_preview_download
 
 articles:

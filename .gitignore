@@ -3,6 +3,7 @@
 .RData
 .Ruserdata
 .Renviron
+.Rprofile
 .DS_Store
 *.Rproj
 *.tar.gz
@@ -20,6 +21,8 @@ doc/
 tmp/
 site/
 data/
+renv/
+renv.lock
 
 /tools/
 /docs/

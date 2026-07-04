@@ -42,13 +42,4 @@ test_that("stored fixtures preserve the ENCODE response contracts tests rely on"
   expect_true("accession" %in% names(schema$properties))
   expect_true("dataset" %in% names(schema$properties))
   expect_true("enum" %in% names(schema$properties$file_format))
-
-  report <- utils::read.delim(
-    fixture_path("report-small.tsv"),
-    skip = 1,
-    check.names = FALSE,
-    stringsAsFactors = FALSE
-  )
-  expect_true(all(c("Accession", "Assay", "Status") %in% names(report)))
-  expect_gte(nrow(report), 1)
 })

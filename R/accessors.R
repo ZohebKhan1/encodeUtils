@@ -5,9 +5,8 @@
 #' function.
 #'
 #' @param x An object returned by `encode_search()`, `encode_get()`,
-#'   `encode_matrix()`, `encode_report()`, `encode_list_files()`,
-#'   `encode_select_files()`, `encode_preview_download()`, or
-#'   `encode_download()`.
+#'   `encode_matrix()`, `encode_list_files()`, `encode_select_files()`,
+#'   `encode_preview_download()`, or `encode_download()`.
 #' @param component For `encode_matrix()` results, which table to extract:
 #'   `"matrix"`, `"assays"`, or `"biosamples"`. Ignored for other result types.
 #'
@@ -26,15 +25,11 @@ encode_results <- function(x, component = c("matrix", "assays", "biosamples")) {
     return(x$summary)
   }
   if (inherits(x, "encode_matrix_result")) {
-    return(switch(
-      component,
+    return(switch(component,
       matrix = x$matrix,
       assays = x$assay_summary,
       biosamples = x$biosample_summary
     ))
-  }
-  if (inherits(x, "encode_report_result")) {
-    return(x$report)
   }
   if (inherits(x, "encode_schema_result")) {
     return(x$properties)
@@ -57,8 +52,7 @@ encode_results <- function(x, component = c("matrix", "assays", "biosamples")) {
 #' Extract the ENCODE query URL from a result object
 #'
 #' @param x An object returned by `encode_search()`, `encode_matrix()`,
-#'   `encode_report()`, `encode_list_files()`, `encode_select_files()`, or
-#'   `encode_download()`.
+#'   `encode_list_files()`, `encode_select_files()`, or `encode_download()`.
 #'
 #' @return A single URL string, or `NA_character_` when no query URL is
 #'   available.

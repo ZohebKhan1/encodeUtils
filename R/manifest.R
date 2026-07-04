@@ -4,9 +4,10 @@
 #' metadata, and optional R session information. Provide `path` to save the
 #' manifest as JSON.
 #'
-#' @param x ENCODE result object, file table, selected files, or download result.
-#' @param include_citation Whether to include ENCODE attribution metadata when
-#'   supported.
+#' @param x ENCODE accession(s), result object, file table, selected files, or
+#'   download result.
+#' @param include_attribution Whether to include ENCODE dataset and file
+#'   attribution metadata when supported.
 #' @param include_session Whether to include `utils::sessionInfo()`.
 #' @param path Optional destination JSON path. If supplied, the manifest is also
 #'   written to disk.
@@ -26,9 +27,8 @@
 #' path <- tempfile(fileext = ".json")
 #' manifest <- encode_manifest(files, include_session = FALSE, path = path)
 #' names(manifest)
-encode_manifest <- function(
-                            x,
-                            include_citation = TRUE,
+encode_manifest <- function(x,
+                            include_attribution = TRUE,
                             include_session = TRUE,
                             path = NULL,
                             pretty = TRUE) {
@@ -59,18 +59,26 @@ encode_manifest <- function(
     manifest$files <- as.data.frame(x, stringsAsFactors = FALSE)
   } else if (inherits(x, "encode_object")) {
     manifest$object <- x$summary
-  } else if (inherits(x, "encode_report_result")) {
-    manifest$report <- x$report
   } else if (inherits(x, "encode_matrix_result")) {
     manifest$matrix <- x$matrix
     manifest$assay_summary <- x$assay_summary
     manifest$biosample_summary <- x$biosample_summary
+  } else if (is.character(x)) {
+    manifest$accessions <- data.frame(
+      accession = vapply(x, encode_normalize_accession, character(1L)),
+      stringsAsFactors = FALSE
+    )
   }
 
-  if (isTRUE(include_citation)) {
-    manifest$citation <- tryCatch(
-      encode_cite(x, enrich = FALSE, quiet = TRUE),
-      error = function(cnd) NULL
+  if (isTRUE(include_attribution)) {
+    manifest$attribution <- tryCatch(
+      encode_attribution(x, enrich = FALSE, quiet = TRUE),
+      error = function(cnd) {
+        if (is.character(x)) {
+          cli::cli_abort(conditionMessage(cnd))
+        }
+        NULL
+      }
     )
   }
   if (isTRUE(include_session)) {

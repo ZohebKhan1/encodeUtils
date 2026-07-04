@@ -83,8 +83,6 @@ manifest <- encode_manifest(
 
 - `encode_get()` retrieves one ENCODE record by accession, path, or URL.
 - `encode_matrix()` summarizes ENCODE record counts by assay and biosample.
-- `encode_report()` returns a selected-field metadata table.
-- `encode_cite()` returns the ENCODE attribution table by itself.
 - `encode_preview_download()` is retained for older code that wants a separate plan object.
 
 ## References

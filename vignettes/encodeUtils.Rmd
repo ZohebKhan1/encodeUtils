@@ -167,26 +167,3 @@ manifest <- encode_manifest(
 
 names(manifest)
 ```
-
-# Additional metadata helpers
-
-`encode_report()` returns a table with user-selected ENCODE fields. It is useful
-when the compact tables do not include a field you need.
-
-```{r report}
-report <- encode_report(
-  fields = c("accession", "assay_title", "biosample_summary"),
-  type = "Experiment",
-  search = "mouse heart ChIP-seq",
-  limit = 10
-)
-
-encode_results(report)
-```
-
-`encode_cite()` returns the ENCODE attribution table by itself. Most workflows
-can use `encode_manifest()` instead.
-
-```{r cite}
-encode_cite(downloaded, enrich = "auto")
-```

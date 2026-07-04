@@ -403,45 +403,6 @@ test_that("encode_matrix flattens nested matrix counts", {
   testthat::expect_equal(result$biosample_summary$biosample_term_name[[1]], "heart")
 })
 
-test_that("encode_report builds bounded field tables and guards TSV reports", {
-  local_mock_options()
-  result <- httr2::with_mocked_responses(
-    function(req) mock_json_response(experiment_search_json),
-    encode_report(
-      fields = c("accession", "assay_title", "biosample_ontology.term_name"),
-      limit = 2,
-      quiet = TRUE
-    )
-  )
-
-  testthat::expect_s3_class(result, "encode_report_result")
-  testthat::expect_equal(names(result$report), c(
-    "accession", "assay_title", "biosample_ontology.term_name"
-  ))
-  testthat::expect_equal(result$report$accession[[1]], "ENCSR000AAA")
-  testthat::expect_error(
-    encode_report(fields = "accession", endpoint = "report", quiet = TRUE),
-    "allow_large"
-  )
-
-  tsv <- paste(
-    "2026-07-03\thttps://www.encodeproject.org/report/",
-    "Accession\tStatus",
-    "ENCSR000AAA\treleased",
-    sep = "\n"
-  )
-  tsv_result <- httr2::with_mocked_responses(
-    function(req) mock_text_response(tsv),
-    encode_report(
-      fields = c("accession", "status"),
-      endpoint = "report",
-      allow_large = TRUE,
-      quiet = TRUE
-    )
-  )
-  testthat::expect_equal(tsv_result$report$Accession[[1]], "ENCSR000AAA")
-})
-
 test_that("encode_list_files normalizes file metadata from experiments", {
   local_mock_options()
   files <- httr2::with_mocked_responses(
@@ -955,7 +916,7 @@ test_that("encode_get_schema returns property metadata", {
   testthat::expect_true("accession" %in% fields$property)
 })
 
-test_that("encode_cite creates auditable provenance outputs without fake BibTeX", {
+test_that("encode_manifest adds ENCODE attribution metadata", {
   files <- data.frame(
     file_accession = c("ENCFF000AAA", "ENCFF000AAB"),
     experiment_accession = c("ENCSR000AAA", "ENCSR000AAA"),
@@ -984,35 +945,20 @@ test_that("encode_cite creates auditable provenance outputs without fake BibTeX"
     stringsAsFactors = FALSE
   )
 
-  table <- encode_cite(files, enrich = FALSE)
-  text <- encode_cite(files, format = "text", enrich = FALSE)
-  methods_text <- encode_cite(files, format = "text", style = "methods", enrich = FALSE)
-  supplement_text <- encode_cite(files, format = "text", style = "supplement", enrich = FALSE)
-  markdown <- encode_cite(files, format = "markdown", enrich = FALSE)
-  methods_markdown <- encode_cite(files, format = "markdown", style = "methods", enrich = FALSE)
-  supplement_markdown <- encode_cite(files, format = "markdown", style = "supplement", enrich = FALSE)
-  testthat::expect_message(
-    bibtex <- encode_cite(files, format = "bibtex", enrich = FALSE),
-    "No BibTeX entries"
-  )
+  manifest <- encode_manifest(files, include_session = FALSE)
+  table <- manifest$attribution
 
-  testthat::expect_s3_class(table, "encode_citation_table")
+  testthat::expect_s3_class(table, "encode_attribution_table")
   testthat::expect_equal(table$dataset_accession[[1]], "ENCSR000AAA")
   testthat::expect_equal(table$dataset_type[[1]], "Experiment")
   testthat::expect_equal(table$experiment_accession[[1]], "ENCSR000AAA")
   testthat::expect_equal(nrow(table), 2)
   testthat::expect_match(table$dataset_url[[2]], "/experiments/ENCSR000AAA/", fixed = TRUE)
   testthat::expect_match(table$experiment_url[[2]], "/experiments/ENCSR000AAA/", fixed = TRUE)
-  testthat::expect_match(text, "ENCFF000AAA")
-  testthat::expect_match(methods_text, "retrieved from the ENCODE Portal")
-  testthat::expect_match(supplement_text[[1]], "experiment=ENCSR000AAA")
-  testthat::expect_true(any(grepl("methods attribution", methods_markdown)))
-  testthat::expect_true(any(grepl("\\| experiment \\| file \\|", supplement_markdown)))
-  testthat::expect_true(any(grepl("ENCODE attribution guidance", markdown)))
-  testthat::expect_length(bibtex, 0)
+  testthat::expect_match(table$attribution_guidance_url[[1]], "citing-encode", fixed = TRUE)
 })
 
-test_that("encode_cite can enrich file tables from parent experiments", {
+test_that("manifest attribution can enrich file tables from parent experiments", {
   local_mock_options()
   files <- data.frame(
     file_accession = "ENCFF000AAA",
@@ -1024,7 +970,7 @@ test_that("encode_cite can enrich file tables from parent experiments", {
 
   enriched <- httr2::with_mocked_responses(
     function(req) mock_json_response(experiment_search_json),
-    encode_cite(files, quiet = TRUE)
+    encode_attribution(files, quiet = TRUE)
   )
 
   testthat::expect_equal(enriched$lab[[1]], "Example Lab")
@@ -1033,7 +979,7 @@ test_that("encode_cite can enrich file tables from parent experiments", {
   testthat::expect_equal(enriched$organism[[1]], "Homo sapiens")
 })
 
-test_that("encode_cite handles annotation datasets and bounded auto enrichment", {
+test_that("manifest attribution handles annotation datasets and bounded auto enrichment", {
   annotation_files <- data.frame(
     file_accession = "ENCFF000ANN",
     dataset = "/annotations/ENCSR000ANN/",
@@ -1043,7 +989,7 @@ test_that("encode_cite handles annotation datasets and bounded auto enrichment",
     url = "https://www.encodeproject.org/files/ENCFF000ANN/",
     stringsAsFactors = FALSE
   )
-  annotation <- encode_cite(annotation_files, enrich = FALSE)
+  annotation <- encode_manifest(annotation_files, include_session = FALSE)$attribution
 
   testthat::expect_equal(annotation$dataset_accession[[1]], "ENCSR000ANN")
   testthat::expect_equal(annotation$dataset_type[[1]], "Annotation")
@@ -1058,8 +1004,8 @@ test_that("encode_cite handles annotation datasets and bounded auto enrichment",
     stringsAsFactors = FALSE
   )
   testthat::expect_message(
-    skipped <- encode_cite(many, max_enrich_datasets = 10, quiet = FALSE),
-    "Skipping citation enrichment"
+    skipped <- encode_attribution(many, max_enrich_datasets = 10, quiet = FALSE),
+    "Skipping attribution enrichment"
   )
   testthat::expect_equal(nrow(skipped), 11)
 })

@@ -170,10 +170,6 @@ test_that("result objects expose curated names and table accessors", {
     function(req) fixture_json_response("matrix-small.json"),
     encode_matrix(quiet = TRUE)
   )
-  report <- httr2::with_mocked_responses(
-    function(req) fixture_json_response("search-embedded-experiments.json"),
-    encode_report(fields = c("accession", "assay_title"), limit = 2, quiet = TRUE)
-  )
   schema <- httr2::with_mocked_responses(
     function(req) fixture_json_response("schema-file.json"),
     encode_get_schema("File", quiet = TRUE)
@@ -192,7 +188,6 @@ test_that("result objects expose curated names and table accessors", {
   expect_equal(names(search), c("results", "total_results", "query_url", "metadata", "requested_limit"))
   expect_equal(names(object), c("summary", "type", "accession", "query_url", "metadata"))
   expect_equal(names(matrix), c("matrix", "assay_summary", "biosample_summary", "total_results", "query_url"))
-  expect_equal(names(report), c("report", "endpoint", "query_url"))
   expect_equal(names(schema), c("properties", "title", "id", "query_url"))
   expect_equal(names(selected), c("files", "excluded", "criteria"))
   expect_equal(names(plan), c("files", "summary", "largest_files", "required_overrides"))
@@ -200,7 +195,6 @@ test_that("result objects expose curated names and table accessors", {
   expect_s3_class(encode_results(search), "data.frame")
   expect_s3_class(encode_results(object), "data.frame")
   expect_s3_class(encode_results(matrix, component = "biosamples"), "data.frame")
-  expect_s3_class(encode_results(report), "data.frame")
   expect_s3_class(encode_results(schema), "data.frame")
   expect_s3_class(encode_results(selected), "data.frame")
   expect_s3_class(encode_results(plan), "encode_file_table")

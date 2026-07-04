@@ -2,7 +2,7 @@
 
 NEW FEATURES
 
-    o Query ENCODE search, matrix, report, and object endpoints from R.
+    o Query ENCODE search, matrix, and object endpoints from R.
 
     o List file metadata for ENCODE experiments, including file accessions,
       formats, output types, assemblies, file sizes, checksums, download URLs,
@@ -41,5 +41,5 @@ USER-VISIBLE CHANGES
       unless allow_unknown_size = TRUE. Dry-runs and previews still report those
       files.
 
-    o encode_manifest() is the main provenance helper. encode_cite() is
-      available when the ENCODE attribution table is needed by itself.
+    o encode_manifest() records the query, selected files, downloads, and
+      ENCODE attribution metadata.

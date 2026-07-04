@@ -6,17 +6,18 @@
 \usage{
 encode_manifest(
   x,
-  include_citation = TRUE,
+  include_attribution = TRUE,
   include_session = TRUE,
   path = NULL,
   pretty = TRUE
 )
 }
 \arguments{
-\item{x}{ENCODE result object, file table, selected files, or download result.}
+\item{x}{ENCODE accession(s), result object, file table, selected files, or
+download result.}
 
-\item{include_citation}{Whether to include ENCODE attribution metadata when
-supported.}
+\item{include_attribution}{Whether to include ENCODE dataset and file
+attribution metadata when supported.}
 
 \item{include_session}{Whether to include `utils::sessionInfo()`.}
 

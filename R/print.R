@@ -16,11 +16,6 @@ names.encode_matrix_result <- function(x) {
 }
 
 #' @export
-names.encode_report_result <- function(x) {
-  c("report", "endpoint", "query_url")
-}
-
-#' @export
 names.encode_schema_result <- function(x) {
   c("properties", "title", "id", "query_url")
 }
@@ -82,18 +77,6 @@ print.encode_matrix_result <- function(x, ..., verbose = FALSE) {
   if (isTRUE(verbose)) {
     cli::cli_text("- URL: {x$query_url %||% x$url}")
     encode_print_table("Active filters", x$filters)
-  }
-  invisible(x)
-}
-
-#' @export
-print.encode_report_result <- function(x, ..., verbose = FALSE) {
-  cli::cli_text("ENCODE report")
-  cli::cli_text("Endpoint: {.val {x$endpoint}}")
-  cli::cli_text("Rows: {.val {nrow(x$report)}}")
-  encode_print_table("Report", x$report)
-  if (isTRUE(verbose)) {
-    cli::cli_text("URL: {x$url}")
   }
   invisible(x)
 }
