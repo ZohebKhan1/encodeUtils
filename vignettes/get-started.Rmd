@@ -1,0 +1,298 @@
+---
+title: "Get started"
+author: "Zoheb Khan"
+date: "`r Sys.Date()`"
+output:
+  BiocStyle::html_document:
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{Get started}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+# Overview
+
+`encodeUtils` is built around a deliberate ENCODE workflow:
+
+1. Search for experiments or files.
+2. Inspect the returned metadata.
+3. List files attached to the experiments you care about.
+4. Select the exact files you want.
+5. Preview the download size and destination paths.
+6. Run a dry-run before a real download.
+7. Save a manifest and citation table for reproducibility.
+
+The package is metadata-first. Searching, listing, selecting, previewing, and
+creating manifests do not download data files. A real transfer happens only when
+you call `encode_download()` with `dry_run = FALSE`.
+
+# Mental model
+
+ENCODE has many object types. The two most important for everyday use are:
+
+- **Experiment**: a dataset page on the ENCODE website. One experiment usually
+  has many files.
+- **File**: one downloadable data file inside an experiment, such as a FASTQ,
+  BED, bigWig, BAM, or quantification table.
+
+In most workflows you search for experiments first, then list the files attached
+to those experiments.
+
+```{r load-package}
+library(encodeUtils)
+```
+
+# Bulk RNA-seq
+
+This example searches for mouse heart total RNA-seq experiments, then narrows to
+gene-quantification TSV files.
+
+```{r rnaseq-search}
+rna_experiments <- encode_search(
+  type = "Experiment",
+  search = "mouse heart total RNA-seq",
+  status = "released",
+  limit = 10,
+  metadata = "full"
+)
+
+rna_experiments
+```
+
+Use `encode_results()` when you want the ordinary data frame.
+
+```{r rnaseq-results}
+encode_results(rna_experiments)
+```
+
+Now list file metadata for those experiments. This still does not download any
+files.
+
+```{r rnaseq-files}
+rna_files <- encode_list_files(
+  rna_experiments,
+  file_format = "tsv",
+  output_type = "gene quantifications",
+  assembly = "mm10",
+  metadata = "full"
+)
+
+rna_files
+```
+
+For a small test, choose file accessions from the printed table. Replace these
+IDs with files from your own result.
+
+```{r rnaseq-preview}
+rna_file_ids <- c("ENCFF260OJQ", "ENCFF090VKE")
+
+rna_plan <- encode_preview_download(
+  rna_files,
+  file_accession = rna_file_ids,
+  directory = tempdir()
+)
+
+rna_plan
+```
+
+Run a dry-run before a real transfer. A dry-run returns planned download rows but
+does not download the files.
+
+```{r rnaseq-dry-run}
+rna_dry_run <- encode_download(
+  rna_files,
+  file_accession = rna_file_ids,
+  directory = tempdir(),
+  dry_run = TRUE
+)
+
+encode_results(rna_dry_run)
+```
+
+When the plan is correct, remove `dry_run = TRUE` or set `dry_run = FALSE`.
+
+```{r rnaseq-download}
+rna_downloaded <- encode_download(
+  rna_files,
+  file_accession = rna_file_ids,
+  directory = "data/encode/rna-seq",
+  dry_run = FALSE
+)
+```
+
+# ATAC-seq
+
+ATAC-seq workflows usually start at experiments and then select peak files.
+
+```{r atac-search}
+atac_experiments <- encode_search(
+  type = "Experiment",
+  search = "mouse heart ATAC-seq",
+  status = "released",
+  limit = 10,
+  metadata = "full"
+)
+
+atac_experiments
+```
+
+List candidate peak files.
+
+```{r atac-files}
+atac_files <- encode_list_files(
+  atac_experiments,
+  file_format = "bed",
+  assembly = "mm10",
+  metadata = "full"
+)
+
+atac_files
+```
+
+Apply the ATAC-seq peak preset. The selection object keeps both selected files
+and excluded files, so the decision can be audited.
+
+```{r atac-select}
+atac_selected <- encode_select_files(
+  atac_files,
+  preset = "atacseq_peaks",
+  assembly = "mm10"
+)
+
+atac_selected
+encode_explain_selection(atac_selected)
+```
+
+Preview the download before transfer.
+
+```{r atac-preview}
+atac_plan <- encode_preview_download(
+  atac_selected,
+  directory = tempdir()
+)
+
+atac_plan
+```
+
+# ChIP-seq
+
+For ChIP-seq, the target and control information matter. The compact search
+table includes target information when ENCODE provides it.
+
+```{r chip-search}
+chip_experiments <- encode_search(
+  type = "Experiment",
+  search = "mouse heart H3K27ac ChIP-seq",
+  status = "released",
+  limit = 10,
+  metadata = "full"
+)
+
+chip_experiments
+```
+
+List peak files for the experiments.
+
+```{r chip-files}
+chip_peak_files <- encode_list_files(
+  chip_experiments,
+  file_format = "bed",
+  assembly = "mm10",
+  metadata = "full"
+)
+
+chip_peak_files
+```
+
+Select ChIP-seq peak files with the preset.
+
+```{r chip-select-peaks}
+chip_peaks <- encode_select_files(
+  chip_peak_files,
+  preset = "chipseq_idr_peaks",
+  assembly = "mm10"
+)
+
+chip_peaks
+encode_explain_selection(chip_peaks)
+```
+
+For signal tracks, list bigWig files and use the signal preset.
+
+```{r chip-signal}
+chip_signal_files <- encode_list_files(
+  chip_experiments,
+  file_format = "bigWig",
+  assembly = "mm10",
+  metadata = "full"
+)
+
+chip_signal <- encode_select_files(
+  chip_signal_files,
+  preset = "chipseq_signal_bigwig",
+  assembly = "mm10"
+)
+
+chip_signal
+```
+
+Preview before downloading.
+
+```{r chip-preview}
+chip_plan <- encode_preview_download(
+  chip_peaks,
+  directory = tempdir()
+)
+
+chip_plan
+```
+
+# Manifest and citation
+
+After selecting files, save enough information to reproduce the choice later.
+
+```{r manifest}
+manifest <- encode_manifest(
+  rna_dry_run,
+  include_session = FALSE
+)
+
+encode_write_manifest(
+  manifest,
+  path = file.path(tempdir(), "encode-rna-manifest.json")
+)
+```
+
+Create a citation/provenance table for the datasets and files used.
+
+```{r cite}
+encode_cite(
+  rna_dry_run,
+  enrich = "auto"
+)
+```
+
+# Practical notes
+
+- Use `limit = 10` or another small number while learning.
+- Use `encode_count()` only as a preflight for very broad queries.
+- Use `encode_preview_download()` before real downloads.
+- Use `file_accession = c("ENCFF...", "ENCFF...")` when you want specific
+  files from a table.
+- Use `tempdir()` for testing. Use a deliberate project directory for real work.
+
+# Session information
+
+```{r session-info, eval=TRUE}
+utils::sessionInfo()
+```

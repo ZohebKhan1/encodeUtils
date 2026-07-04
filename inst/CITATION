@@ -1,0 +1,13 @@
+citHeader("To cite encodeUtils in publications, use:")
+
+bibentry(
+  bibtype = "Manual",
+  title = "encodeUtils: Query and Retrieve ENCODE Portal Metadata and Files",
+  author = person(
+    given = "Zoheb",
+    family = "Khan"
+  ),
+  year = "2026",
+  note = "R package version 0.99.0",
+  url = "https://github.com/ZohebKhan1/encodeUtils"
+)

@@ -1,0 +1,290 @@
+---
+title: "encodeUtils"
+author: "Zoheb Khan"
+date: "`r Sys.Date()`"
+output:
+  BiocStyle::html_document:
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{1. encodeUtils}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse=TRUE, comment="#>")
+```
+
+```{r mock-data, include=FALSE}
+library(encodeUtils)
+
+json_response <- function(body) {
+    httr2::response(
+        200,
+        headers = "Content-Type: application/json",
+        body = charToRaw(body)
+    )
+}
+
+experiment_search_json <- paste0(
+    '{"@graph":[{"accession":"ENCSR000AAA",',
+    '"@id":"/experiments/ENCSR000AAA/",',
+    '"assay_title":"total RNA-seq","status":"released",',
+    '"biosample_summary":"Homo sapiens heart tissue"}],"total":1}'
+)
+
+count_json <- paste0(
+    '{"@graph":[],',
+    '"total":128,',
+    '"filters":[{"field":"type","term":"Experiment"},',
+    '{"field":"assay_title","term":"total RNA-seq"}]}'
+)
+
+experiment_object_json <- paste0(
+    '{"@type":["Experiment","Item"],"accession":"ENCSR000AAA",',
+    '"@id":"/experiments/ENCSR000AAA/",',
+    '"assay_title":"total RNA-seq","status":"released",',
+    '"biosample_summary":"Homo sapiens heart tissue"}'
+)
+
+file_search_json <- paste0(
+    '{"@graph":[{"accession":"ENCFF000AAA",',
+    '"@id":"/files/ENCFF000AAA/",',
+    '"dataset":"/experiments/ENCSR000AAA/",',
+    '"assay_title":"total RNA-seq",',
+    '"simple_biosample_summary":"heart tissue",',
+    '"file_format":"txt","output_type":"metadata",',
+    '"file_size":3,"md5sum":"900150983cd24fb0d6963f7d28e17f72",',
+    '"preferred_default":true,',
+    '"href":"/files/ENCFF000AAA/@@download/ENCFF000AAA.txt",',
+    '"status":"released"}],"total":1}'
+)
+
+matrix_json <- paste0(
+    '{"total":3,"filters":[],',
+    '"matrix":{"x":{"group_by":"assay_title",',
+    '"assay_title":{"buckets":[{"key":"total RNA-seq","doc_count":2},',
+    '{"key":"ChIP-seq","doc_count":1}]}},',
+    '"y":{"group_by":["biosample_ontology.classification",',
+    '"biosample_ontology.term_name"],',
+    '"biosample_ontology.classification":{"buckets":[{"key":"tissue",',
+    '"doc_count":3,"biosample_ontology.term_name":{"buckets":[{"key":"heart",',
+    '"doc_count":3,"assay_title":{"buckets":[{"key":"total RNA-seq",',
+    '"doc_count":2},{"key":"ChIP-seq","doc_count":1}]}}]}}]}}}}'
+)
+```
+
+# Overview
+
+`encodeUtils` is a small R interface for ENCODE Portal metadata and selected
+files. The package is organized around a deliberate workflow:
+
+1. Search or summarize ENCODE metadata.
+2. Inspect selected experiments or files.
+3. List file metadata before downloading anything.
+4. Summarize, select, and explain file decisions.
+5. Preview destination paths, size lower bounds, and required overrides.
+6. Download only selected files with size and checksum guardrails.
+7. Record manifests and citation/provenance tables.
+8. Read supported local files when that is safe.
+
+For broad exploratory queries, `encode_count()` is available as an optional
+safety preflight when you only need the live match count.
+
+The package is read-only with respect to ENCODE. It does not implement
+submission workflows.
+
+# Search
+
+This example searches a tiny page of released total RNA-seq experiments. The
+printed object is concise, and `encode_results()` extracts the compact table for
+downstream R work.
+
+```{r search}
+res <- httr2::with_mocked_responses(
+    function(req) json_response(experiment_search_json),
+    encode_search(
+        filters = list(assay_title = "total RNA-seq"),
+        limit = 3,
+        quiet = TRUE
+    )
+)
+
+encode_results(res)
+```
+
+# Optional Count Preflight
+
+Most workflows can start with `encode_search()` because it already reports the
+returned rows and live total. Use `encode_count()` for broad filters when you
+want to check query size without fetching metadata rows.
+
+```{r count}
+count <- httr2::with_mocked_responses(
+    function(req) json_response(count_json),
+    encode_count(
+        filters = list(assay_title = "total RNA-seq"),
+        quiet = TRUE
+    )
+)
+
+count
+```
+
+# Matrix Discovery
+
+`encode_matrix()` is a quick way to ask what ENCODE has before narrowing a
+search. It returns a long assay-by-biosample table plus assay and biosample
+summaries.
+
+```{r matrix}
+mat <- httr2::with_mocked_responses(
+    function(req) json_response(matrix_json),
+    encode_matrix(quiet = TRUE)
+)
+
+encode_results(mat, component = "assays")
+encode_results(mat, component = "biosamples")
+```
+
+# Inspect One Object
+
+```{r get}
+experiment <- httr2::with_mocked_responses(
+    function(req) json_response(experiment_object_json),
+    encode_get("ENCSR000AAA", quiet = TRUE)
+)
+encode_results(experiment)
+```
+
+# List Files Before Downloading
+
+`encode_list_files()` is metadata only. It reports file accessions, formats,
+sizes, MD5 checksums, replicate information, and download links.
+
+```{r files}
+files <- httr2::with_mocked_responses(
+    function(req) json_response(file_search_json),
+    encode_list_files(
+        "ENCSR000AAA",
+        file_format = "txt",
+        quiet = TRUE
+    )
+)
+
+encode_results(files)[, c("file_accession", "dataset_accession", "file_format", "file_size_pretty", "md5sum")]
+```
+
+# Summarize And Select Files
+
+`encode_summary()` gives a compact overview before download. `encode_select_files()`
+keeps both the selected files and an exclusion log so file decisions are
+traceable.
+
+```{r select-files}
+encode_summary(files)
+
+encode_select_files(preset = "metadata")
+
+selected <- encode_select_files(
+    files,
+    preset = "metadata",
+    prefer_default = TRUE,
+    explain = FALSE
+)
+
+selected$files
+selected$excluded
+encode_explain_selection(selected)
+```
+
+# Plan A Download
+
+Use `encode_preview_download()` before transfer to inspect destination paths,
+known total size, unknown-size files, MD5 availability, and any required
+overrides. `dry_run = TRUE` returns the same planned file paths in a table.
+
+```{r download}
+encode_preview_download(selected, directory = tempdir())
+
+encode_download(
+    selected,
+    directory = tempdir(),
+    dry_run = TRUE
+)
+```
+
+# Manifest
+
+`encode_manifest()` records package, query, selection, and file provenance in a
+plain R list. Use `encode_write_manifest()` when you want a JSON copy alongside
+downloaded files.
+
+```{r manifest}
+manifest <- encode_manifest(selected, include_session = FALSE)
+names(manifest)
+```
+
+# Attribution
+
+`encode_cite()` creates a provenance table for the specific ENCODE datasets and
+files used downstream. Use `enrich = "auto"` to enrich small file tables with
+parent experiment metadata, `enrich = TRUE` to force enrichment, or
+`enrich = FALSE` to avoid extra web requests.
+
+```{r cite}
+encode_cite(selected, enrich = FALSE)
+
+httr2::with_mocked_responses(
+    function(req) json_response(experiment_search_json),
+    encode_cite(selected, enrich = "auto", quiet = TRUE)
+)
+```
+
+# Common Selection Presets
+
+The preset names are aliases for explicit file-format and output-type
+preferences. They do not download or read files.
+
+```{r presets}
+example_files <- data.frame(
+    file_accession = c(
+        "ENCFF000RNA", "ENCFF000TPM", "ENCFF000PKS",
+        "ENCFF000SIG", "ENCFF000ATC", "ENCFF000FQ"
+    ),
+    experiment_accession = "ENCSR000AAA",
+    file_format = c("tsv", "tsv", "bed", "bigWig", "bed", "fastq"),
+    output_type = c(
+        "gene counts", "gene TPMs", "optimal IDR thresholded peaks",
+        "fold change over control", "IDR thresholded peaks", "reads"
+    ),
+    status = "released",
+    href = "https://example.org/file.txt"
+)
+
+encode_select_files(example_files, preset = "rna_gene_counts", explain = FALSE)$files$file_accession
+encode_select_files(example_files, preset = "rna_gene_tpm", explain = FALSE)$files$file_accession
+encode_select_files(example_files, preset = "chipseq_idr_peaks", explain = FALSE)$files$file_accession
+encode_select_files(example_files, preset = "chipseq_signal_bigwig", explain = FALSE)$files$file_accession
+encode_select_files(example_files, preset = "atacseq_peaks", explain = FALSE)$files$file_accession
+encode_select_files(example_files, preset = "raw_fastq", explain = FALSE)$files$file_accession
+```
+
+# Safe Local Reads
+
+`encode_read()` reads small local text and JSON files. For formats that are easy
+to misuse, such as FASTQ or full indexed signal files, it returns a lightweight
+object explaining why it did not read the file by default.
+
+```{r read}
+fastq_path <- tempfile(fileext = ".fastq")
+writeBin(charToRaw("placeholder"), fastq_path)
+encode_read(fastq_path)
+```
+
+# Session Information
+
+```{r session-info}
+utils::sessionInfo()
+```

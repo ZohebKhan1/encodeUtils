@@ -1,0 +1,78 @@
+{
+  "@graph": [
+    {
+      "@type": ["Experiment", "Item"],
+      "accession": "ENCSRREAL01",
+      "@id": "/experiments/ENCSRREAL01/",
+      "assay_title": "total RNA-seq",
+      "assay_term_name": "RNA-seq",
+      "biosample_summary": "Homo sapiens heart tissue",
+      "biosample_ontology": {
+        "classification": "tissue",
+        "term_name": "heart"
+      },
+      "organism": {
+        "scientific_name": "Homo sapiens"
+      },
+      "status": "released",
+      "date_released": "2026-01-26",
+      "lab": {
+        "title": "Example cardiovascular lab",
+        "institute_label": "Example University"
+      },
+      "award": {
+        "project": "ENCODE",
+        "name": "U01HGREAL"
+      },
+      "files": ["/files/ENCFFREAL001/", "/files/ENCFFREAL002/"]
+    },
+    {
+      "@type": ["Experiment", "Item"],
+      "accession": "ENCSRREAL02",
+      "@id": "/experiments/ENCSRREAL02/",
+      "assay_title": "ChIP-seq",
+      "assay_term_name": "ChIP-seq",
+      "biosample_summary": "Homo sapiens cardiac muscle cell",
+      "biosample_ontology": "/biosample-types/cell_line_EFO_0000000/",
+      "status": "released",
+      "lab": "/labs/example-cardiac/",
+      "award": "/awards/U01HGREAL/",
+      "files": []
+    }
+  ],
+  "total": 128,
+  "columns": {
+    "accession": {
+      "title": "Accession"
+    },
+    "assay_title": {
+      "title": "Assay"
+    }
+  },
+  "filters": [
+    {
+      "field": "type",
+      "term": "Experiment"
+    },
+    {
+      "field": "status",
+      "term": "released"
+    }
+  ],
+  "facets": [
+    {
+      "field": "assay_title",
+      "title": "Assay",
+      "terms": [
+        {
+          "key": "total RNA-seq",
+          "doc_count": 42
+        },
+        {
+          "key": "ChIP-seq",
+          "doc_count": 20
+        }
+      ]
+    }
+  ]
+}

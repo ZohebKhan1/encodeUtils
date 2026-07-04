@@ -1,4 +1,4 @@
 library(testthat)
-library(encodeapiutil)
+library(encodeUtils)
 
-test_check("encodeapiutil")
+test_check("encodeUtils")

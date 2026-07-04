@@ -15,7 +15,7 @@ renv/local/
 renv/python/
 .quarto/
 _book/
-docs/
 Meta/
 doc/
 tmp/
+site/

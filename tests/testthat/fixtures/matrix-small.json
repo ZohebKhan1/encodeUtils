@@ -1,0 +1,59 @@
+{
+  "total": 3,
+  "filters": [],
+  "matrix": {
+    "x": {
+      "group_by": "assay_title",
+      "label": "Assay",
+      "doc_count": 3,
+      "assay_title": {
+        "buckets": [
+          {
+            "key": "total RNA-seq",
+            "doc_count": 2
+          },
+          {
+            "key": "ChIP-seq",
+            "doc_count": 1
+          }
+        ]
+      }
+    },
+    "y": {
+      "group_by": [
+        "biosample_ontology.classification",
+        "biosample_ontology.term_name"
+      ],
+      "label": "Biosample",
+      "doc_count": 3,
+      "biosample_ontology.classification": {
+        "buckets": [
+          {
+            "key": "tissue",
+            "doc_count": 3,
+            "biosample_ontology.term_name": {
+              "buckets": [
+                {
+                  "key": "heart",
+                  "doc_count": 3,
+                  "assay_title": {
+                    "buckets": [
+                      {
+                        "key": "total RNA-seq",
+                        "doc_count": 2
+                      },
+                      {
+                        "key": "ChIP-seq",
+                        "doc_count": 1
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}

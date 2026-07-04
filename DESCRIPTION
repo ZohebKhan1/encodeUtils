@@ -1,12 +1,12 @@
-Package: encodeapiutil
+Package: encodeUtils
 Type: Package
 Title: Query and Retrieve ENCODE Portal Metadata and Files
 Version: 0.99.0
-Authors@R:
-    person(
-        "Zoheb", "Khan",
-        email="zohebkhan600@gmail.com",
-        role=c("aut", "cre")
+Authors@R: person(
+    given = "Zoheb",
+    family = "Khan",
+    email = "zohebkhan600@gmail.com",
+    role = c("aut", "cre")
     )
 Description: Provides a small R interface for querying the ENCODE Portal REST
     API, inspecting experiment and file metadata, and deliberately retrieving
@@ -16,22 +16,25 @@ Description: Provides a small R interface for querying the ENCODE Portal REST
     intended to be explicit, size-aware, cache-aware, and compatible with
     Bioconductor workflows.
 License: Artistic-2.0
-URL: https://github.com/ZohebKhan1/encode-api-util
-BugReports: https://github.com/ZohebKhan1/encode-api-util/issues
+URL: https://github.com/ZohebKhan1/encodeUtils, https://zohebkhan1.github.io/encodeUtils/
+BugReports: https://github.com/ZohebKhan1/encodeUtils/issues
 biocViews: DataImport, FunctionalGenomics, Sequencing
 Encoding: UTF-8
 Depends:
     R (>= 4.6.0)
 Imports:
-    BiocFileCache,
     cli,
     httr2,
     jsonlite,
+    stats,
+    tools,
     utils
 Suggests:
     BiocStyle,
+    Biostrings,
     knitr,
     rmarkdown,
+    rtracklayer,
     testthat (>= 3.0.0),
     withr
 VignetteBuilder: knitr
@@ -39,6 +42,7 @@ Config/testthat/edition: 3
 Config/Needs/development:
     BiocCheck,
     bookdown,
+    covr,
     devtools,
     pkgbuild,
     pkgload,
@@ -47,3 +51,9 @@ Config/Needs/development:
     roxygen2,
     styler,
     usethis
+Config/Needs/website:
+    pkgdown,
+    rmarkdown,
+    knitr,
+    BiocStyle
+Config/roxygen2/version: 8.0.0

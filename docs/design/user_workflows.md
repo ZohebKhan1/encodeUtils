@@ -2,6 +2,13 @@
 
 Date: 2026-06-28
 
+Update: 2026-07-03. The planned core workflow has been implemented under the
+package name `encodeUtils`. This document remains the product/workflow design
+reference for future refinement.
+
+Historical note: for the current audit and hardening priorities, use
+`docs/reviews/consolidated_audit_synthesis.md`.
+
 Purpose: define the workflows the package should make easy before writing the
 implementation. This document is planning material, not installed package
 documentation.
@@ -43,8 +50,7 @@ Connectivity behavior:
   requested URL, and a short ENCODE error description when available.
 - If ENCODE times out, report timeout separately from invalid user input.
 - Do not retry forever.
-- Use bounded retries only for transient failures such as timeout, 502, 503, or
-  504.
+- Use bounded retries only for transient failures such as timeout, 502, 503, or 504.
 - Keep retry count small by default, e.g. 2 or 3 total attempts.
 - Respect R's timeout option where possible and expose a package-level timeout
   argument later if needed.
@@ -269,7 +275,7 @@ Return table should include:
 Safety behavior:
 
 - This is metadata only.
-- The name should be `encode_list_files()` rather than `encode_files()` to avoid
+- The name should be `encode_list_files()` rather than `encode_list_files()` to avoid
   implying a download.
 - Show total file count and total possible download size if sizes are known.
 - Warn if selected files include very large formats such as FASTQ, BAM, or CRAM.
@@ -426,7 +432,7 @@ Secondary purpose:
 Likely function:
 
 ```r
-encode_citation(files)
+encode_cite(files)
 ```
 
 Output should include:
@@ -477,10 +483,10 @@ metadata but do not have a direct publication attached.
 Suggested output modes:
 
 ```r
-encode_citation(files, format = "table")
-encode_citation(files, format = "text")
-encode_citation(files, format = "markdown")
-encode_citation(files, format = "bibtex")
+encode_cite(files, format = "table")
+encode_cite(files, format = "text")
+encode_cite(files, format = "markdown")
+encode_cite(files, format = "bibtex")
 ```
 
 Format behavior:
@@ -624,24 +630,34 @@ Expected package behavior:
 
 ## First Implementation Sequence Suggested By Workflows
 
-1. Internal request layer:
-   URL builder, GET, JSON parser, timeout, retry, rate limiter, errors.
-2. `encode_search()`:
-   filter syntax, facets, compact result table, raw response.
-3. `encode_get()`:
-   one accession/path/URL and concise summary extractors.
-4. `encode_matrix()`:
-   availability counts and console summaries.
-5. `encode_list_files()`:
-   file metadata table and total size summary.
-6. `encode_download()`:
-   cache/directory policy, progress, size guardrail, checksum.
-7. `encode_get_schema()`:
-   schema table and field discovery.
-8. `encode_read()`:
-   conservative local file imports.
-9. `encode_cite()`:
-   citation summaries from selected metadata.
+Current implementation status:
 
-This order keeps the core robust before adding convenience wrappers or
-interactive behavior.
+1. Internal request layer:
+   implemented with URL normalization, GET requests, JSON/text/file retrieval,
+   timeout support, bounded retries, rate limiting, and ENCODE error parsing.
+2. `encode_search()`:
+   implemented with raw filters, negation normalization, facets, compact result
+   tables, raw response preservation, and print support.
+3. `encode_get()`:
+   implemented for one accession/path/URL with concise summary extractors.
+4. `encode_matrix()`:
+   implemented for availability counts and assay/biosample summaries.
+5. `encode_list_files()`:
+   implemented for normalized file metadata and total-size summaries.
+6. `encode_download()`:
+   implemented with cache/directory policy, dry-run planning, size guardrails,
+   no-overwrite default, temporary partial files, size verification, and MD5
+   verification.
+7. `encode_get_schema()`:
+   implemented for schema retrieval and property-table field discovery.
+8. `encode_read()`:
+   implemented for safe text/JSON reads plus optional Bioconductor import
+   packages when installed.
+9. `encode_cite()`:
+   implemented for accession-level dataset and file provenance summaries.
+10. Console helpers:
+    `encode_browse()`, `encode_select()`, and `encode_filter_results()` are
+    implemented as lightweight wrappers over the noninteractive core.
+
+The next refinements should be based on real user workflows and API edge cases,
+not on adding broad abstractions.

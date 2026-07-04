@@ -2,6 +2,13 @@
 
 Date: 2026-06-28
 
+Update: 2026-07-03. The package and repository target are now `encodeUtils`.
+The core workflow functions described below have been implemented in the package
+source. Some early naming notes remain as historical planning context.
+
+Historical note: for the current audit and hardening priorities, use
+`docs/reviews/consolidated_audit_synthesis.md`.
+
 ## Current User Goals
 
 - Build an R package that makes ENCODE data easy, efficient, and convenient to
@@ -18,15 +25,28 @@ Date: 2026-06-28
 
 ## Function Naming Questions
 
-The current candidate public functions are:
+The implemented public functions are:
 
 - `encode_search()` for ENCODE object search.
 - `encode_get()` for retrieving one accession, path, or object.
-- `encode_files()` for file metadata from experiments.
+- `encode_list_files()` for file metadata from experiments.
+- `encode_list_files()` as a compatibility alias for file metadata from experiments.
 - `encode_download()` for deliberate selected downloads.
 - `encode_read()` for safe supported local file loading.
-- `encode_schema()` for schema/profile inspection.
-- `encode_citation()` for dataset/file accession citation summaries.
+- `encode_get_schema()` for schema/profile inspection.
+- `encode_get_schema()` as a compatibility alias for schema/profile inspection.
+- `encode_cite()` and `encode_cite()` for dataset/file accession citation
+  summaries.
+- `encode_matrix()` for Matrix endpoint summaries.
+- `encode_report()` for selected-field metadata tables.
+- `encode_browse()`, `encode_select()`, and `encode_filter_results()` for
+  lightweight console browsing and filtering.
+
+`encode_cite()` / `encode_cite()` accepts ENCSR experiment accessions, ENCFF
+file accessions, ENCODE object URLs, tables returned by `encode_list_files()`,
+and tables returned by `encode_download()`. Its job is to return attribution and
+provenance summaries for the datasets and files used downstream, not to
+fabricate publication citations or download data by default.
 
 Open questions:
 
@@ -48,11 +68,11 @@ Working naming preference to discuss:
 - Prefer real verbs after the prefix where possible: `encode_search()`,
   `encode_get()`, `encode_download()`, `encode_read()`.
 - Rename noun-like functions if they prove unclear:
-  `encode_files()` could become `encode_list_files()` or
+  `encode_list_files()` could become `encode_list_files()` or
   `encode_get_files()`.
-  `encode_schema()` could become `encode_get_schema()` or
+  `encode_get_schema()` could become `encode_get_schema()` or
   `encode_pull_schema()`.
-  `encode_citation()` could become `encode_cite()` or
+  `encode_cite()` could become `encode_cite()` or
   `encode_format_citation()`.
 
 ## Search Page Target
@@ -141,7 +161,7 @@ Potential later functions:
 
 - `encode_browse()`
 - `encode_select()`
-- `encode_interactive_search()`
+- `encode_browse(..., select = TRUE)`
 - `encode_filter_results()`
 
 These should not be part of the first implementation unless the core functions
@@ -185,11 +205,11 @@ Current candidates:
 
 - `encode_search()`
 - `encode_get()`
-- `encode_list_files()` or `encode_files()`
+- `encode_list_files()` or `encode_list_files()`
 - `encode_download()`
 - `encode_read()` or `encode_load_data()`
 - `encode_get_schema()` or `encode_pull_schema()`
-- `encode_cite()` or `encode_citation()`
+- `encode_cite()` or `encode_cite()`
 - `encode_matrix()` or `encode_summarize_matrix()`
 - `encode_report()` for report-table style metadata.
 
@@ -547,7 +567,7 @@ Current preferred public names:
 
 Names to avoid or delay:
 
-- Avoid `encode_files()` if it is ambiguous about whether files are downloaded.
+- Avoid `encode_list_files()` if it is ambiguous about whether files are downloaded.
 - Avoid `encode_load_data()` as a first function if it mixes search, download,
   and read behavior. It may be useful later as a convenience wrapper.
 - Avoid `encode_pull_metadata()` if it is unclear whether it searches, gets one
@@ -631,19 +651,15 @@ composable functions around the same core:
 
 ## Package Setup Notes
 
-Added on 2026-06-28.
+Added on 2026-06-28. Updated on 2026-07-03.
 
-- Private GitHub repository / folder name requested by the user:
-  `encode-api-util`.
-- Current R package name in `DESCRIPTION`: `encodeapiutil`.
-- Reason: R package names cannot contain hyphens.
+- Current GitHub repository / folder target requested by the user:
+  `encodeUtils`.
+- Current R package name in `DESCRIPTION`: `encodeUtils`.
 - Bioconductor's package submission guidance says the repository/directory name
   and `Package:` field should match.
-- Therefore, before any Bioconductor submission, we need to decide whether to:
-  - rename the repository/folder to `encodeapiutil`, or
-  - choose a different valid R package name and matching repository name.
-- For the private planning/development repository, keep `encode-api-util` unless
-  the user chooses otherwise.
+- Therefore, the previous `encode-api-util` / `encodeapiutil` mismatch is being
+  resolved by using `encodeUtils` consistently.
 - `renv` is initialized for local development reproducibility.
 - The package build excludes `renv`, project notes, the project-local
   `tools/r_codex_utils` shim, and local RStudio files through `.Rbuildignore`.

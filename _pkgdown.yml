@@ -1,0 +1,54 @@
+url: https://zohebkhan1.github.io/encodeUtils/
+destination: site
+
+template:
+  bootstrap: 5
+  bootswatch: flatly
+
+navbar:
+  structure:
+    left: [intro, reference, articles, news]
+    right: [search, github]
+  components:
+    intro:
+      text: Get started
+      href: articles/get-started.html
+
+home:
+  title: Query, inspect, and safely download ENCODE data from R
+
+reference:
+  - title: Search and inspect ENCODE
+    desc: Find experiments, files, schemas, and one-record summaries.
+    contents:
+      - encode_search
+      - encode_get
+      - encode_matrix
+      - encode_report
+      - encode_count
+      - encode_results
+      - encode_summary
+
+  - title: Work with ENCODE files
+    desc: List, summarize, select, preview, download, and read files.
+    contents:
+      - encode_list_files
+      - encode_select_files
+      - encode_explain_selection
+      - encode_preview_download
+      - encode_download
+      - encode_read
+
+  - title: Reproducibility and attribution
+    desc: Record provenance, citation tables, and reusable manifests.
+    contents:
+      - encode_cite
+      - encode_manifest
+      - encode_write_manifest
+
+articles:
+  - title: Start here
+    navbar: ~
+    contents:
+      - get-started
+      - encodeUtils

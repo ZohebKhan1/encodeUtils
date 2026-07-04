@@ -1,0 +1,25 @@
+{
+  "@type": ["Experiment", "Item"],
+  "accession": "ENCSRREAL01",
+  "@id": "/experiments/ENCSRREAL01/",
+  "assay_title": "total RNA-seq",
+  "assay_term_name": "RNA-seq",
+  "biosample_summary": "Homo sapiens heart tissue",
+  "biosample_ontology": {
+    "classification": "tissue",
+    "term_name": "heart"
+  },
+  "organism": {
+    "scientific_name": "Homo sapiens"
+  },
+  "status": "released",
+  "lab": {
+    "title": "Example cardiovascular lab",
+    "institute_label": "Example University"
+  },
+  "award": {
+    "project": "ENCODE",
+    "name": "U01HGREAL"
+  },
+  "files": ["/files/ENCFFREAL001/", "/files/ENCFFREAL002/"]
+}

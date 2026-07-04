@@ -1,0 +1,83 @@
+{
+  "@graph": [
+    {
+      "@type": ["File", "Item"],
+      "accession": "ENCFFREAL001",
+      "@id": "/files/ENCFFREAL001/",
+      "dataset": {
+        "@id": "/experiments/ENCSRREAL01/",
+        "@type": ["Experiment", "Dataset"],
+        "accession": "ENCSRREAL01"
+      },
+      "assay_title": "total RNA-seq",
+      "assay_term_name": "RNA-seq",
+      "simple_biosample_summary": "heart tissue",
+      "file_format": "fastq",
+      "file_type": "fastq",
+      "output_type": "reads",
+      "output_category": "raw data",
+      "assembly": "GRCh38",
+      "file_size": 12345,
+      "md5sum": "900150983cd24fb0d6963f7d28e17f72",
+      "status": "released",
+      "date_released": "2026-01-26",
+      "href": "/files/ENCFFREAL001/@@download/ENCFFREAL001.fastq.gz",
+      "biological_replicates": [1],
+      "technical_replicates": ["1_1"],
+      "paired_end": "1",
+      "paired_with": "/files/ENCFFREAL002/",
+      "preferred_default": null,
+      "analyses": ["/analyses/ENCANREAL01/"],
+      "lab": {
+        "title": "Example cardiovascular lab",
+        "institute_label": "Example University"
+      },
+      "award": {
+        "project": "ENCODE",
+        "name": "U01HGREAL"
+      },
+      "biosample_ontology": {
+        "classification": "primary cell",
+        "term_name": "cardiac muscle cell",
+        "organism": {
+          "scientific_name": "Homo sapiens"
+        }
+      }
+    },
+    {
+      "@type": ["File", "Item"],
+      "accession": "ENCFFREAL002",
+      "@id": "/files/ENCFFREAL002/",
+      "dataset": "/experiments/ENCSRREAL01/",
+      "assay_title": "total RNA-seq",
+      "file_format": "tsv",
+      "file_type": "tsv",
+      "output_type": "gene counts",
+      "output_category": "quantification",
+      "assembly": "GRCh38",
+      "file_size": 321,
+      "status": "released",
+      "href": "/files/ENCFFREAL002/@@download/ENCFFREAL002.tsv",
+      "preferred_default": true
+    },
+    {
+      "@type": ["File", "Item"],
+      "accession": "ENCFFANN001",
+      "@id": "/files/ENCFFANN001/",
+      "dataset": "/annotations/ENCSRANN001/",
+      "file_format": "bed",
+      "file_type": "bed",
+      "output_type": "annotation",
+      "status": "released",
+      "href": "/files/ENCFFANN001/@@download/ENCFFANN001.bed"
+    }
+  ],
+  "total": 3,
+  "filters": [
+    {
+      "field": "type",
+      "term": "File"
+    }
+  ],
+  "facets": []
+}

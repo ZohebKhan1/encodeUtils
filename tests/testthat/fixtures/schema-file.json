@@ -1,0 +1,30 @@
+{
+  "title": "File",
+  "type": "object",
+  "id": "/profiles/file.json",
+  "required": ["accession", "dataset", "file_format"],
+  "properties": {
+    "accession": {
+      "type": "string",
+      "title": "Accession",
+      "description": "ENCODE file accession"
+    },
+    "dataset": {
+      "linkTo": "Dataset",
+      "title": "Dataset",
+      "description": "Parent dataset"
+    },
+    "file_format": {
+      "type": "string",
+      "title": "File format",
+      "enum": ["fastq", "tsv", "bed", "bigWig"]
+    },
+    "biological_replicates": {
+      "type": "array",
+      "title": "Biological replicates",
+      "items": {
+        "type": "integer"
+      }
+    }
+  }
+}
