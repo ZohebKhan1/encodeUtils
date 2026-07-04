@@ -56,7 +56,12 @@ a {
   margin-bottom: 0;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   color: mix($encode-ink, $encode-primary, 88%);
   font-weight: 700;
   letter-spacing: 0;
@@ -72,7 +77,9 @@ h3 {
   margin-top: 2rem;
 }
 
-h2, h3, h4 {
+h2,
+h3,
+h4 {
   margin-bottom: 0.9rem;
 }
 

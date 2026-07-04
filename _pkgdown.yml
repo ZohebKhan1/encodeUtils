@@ -24,9 +24,9 @@ template:
     btn-border-radius: "0.3rem"
     grid-gutter-width: "3rem"
     pkgdown-nav-height: "78px"
-    base_font: {google: "Roboto"}
-    heading_font: {google: "Roboto"}
-    code_font: {google: "Source Code Pro"}
+    base_font: { google: "Roboto" }
+    heading_font: { google: "Roboto" }
+    code_font: { google: "Source Code Pro" }
 
 navbar:
   structure:
