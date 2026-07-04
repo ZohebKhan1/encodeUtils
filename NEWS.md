@@ -33,6 +33,9 @@ USER-VISIBLE CHANGES
     o Search and file-list outputs print compact tables by default. Use
       encode_results() to extract the underlying data frame.
 
+    o The README includes ENCODE database overview figures for common RNA-seq,
+      ChIP-seq, and ATAC-seq experiment metadata.
+
     o encode_search() and encode_get() default to metadata = "full" so common
       lab, organism, biosample, target, control, and release-date fields are
       available in printed tables.

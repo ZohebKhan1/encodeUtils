@@ -7,6 +7,25 @@ The package is read-only. It searches ENCODE, lists file metadata, checks
 downloads, downloads selected files, reads supported local files, and records
 provenance. It does not submit or modify ENCODE records.
 
+## ENCODE Overview
+
+These summaries show released ENCODE Experiment records for common sequencing
+workflows.
+
+<img src="man/figures/encode-dataset-coverage.svg" width="720" alt="Released ENCODE RNA-seq, ChIP-seq, and ATAC-seq experiment counts.">
+
+<img src="man/figures/encode-assay-subtypes.svg" width="720" alt="Common ENCODE RNA-seq, ChIP-seq, and ATAC-seq assay subtypes.">
+
+<img src="man/figures/encode-metadata-breakdown.svg" width="760" alt="ENCODE experiment breakdown by species, organ or tissue, and life stage.">
+
+<img src="man/figures/encode-histone-chip-targets.svg" width="720" alt="Histone ChIP-seq target counts by histone mark.">
+
+Regenerate the figures with:
+
+```r
+source("scripts/plot_encode_database_summary.R")
+```
+
 ## Installation
 
 ```r
