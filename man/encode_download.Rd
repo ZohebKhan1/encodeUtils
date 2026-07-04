@@ -15,6 +15,14 @@ encode_download(
   allow_unknown_size = FALSE,
   overwrite = FALSE,
   dry_run = FALSE,
+  read = FALSE,
+  read_max_size = "100MB",
+  read_format = NULL,
+  read_region = NULL,
+  read_allow_large = FALSE,
+  read_unsupported = c("return_path", "error"),
+  assign = FALSE,
+  envir = parent.frame(),
   prefer_cloud = FALSE,
   verify = c("md5", "size"),
   quiet = FALSE
@@ -49,6 +57,30 @@ report the unknown-size count.}
 
 \item{dry_run}{If `TRUE`, return the planned download table without
 downloading.}
+
+\item{read}{If `TRUE`, read downloaded files into R after a successful
+transfer. This is intended for small tabular files and supported local
+genomic formats.}
+
+\item{read_max_size}{Maximum file size to read into memory when
+`read = TRUE`.}
+
+\item{read_format}{Optional file format override used when `read = TRUE`.
+Leave as `NULL` to use ENCODE file metadata or the file extension.}
+
+\item{read_region}{Optional genomic range passed to `encode_read()` for
+indexed genomic formats.}
+
+\item{read_allow_large}{Whether `read = TRUE` may fully import indexed files
+such as bigWig or bigBed without `read_region`.}
+
+\item{read_unsupported}{What to do when a downloaded file cannot be read
+directly: return a path object or throw an error.}
+
+\item{assign}{If `TRUE`, assign loaded file objects and experiment groups
+into `envir`. The default is `FALSE` so scripts stay explicit.}
+
+\item{envir}{Environment used when `assign = TRUE`.}
 
 \item{prefer_cloud}{Whether to prefer ENCODE cloud URLs when available.}
 
@@ -86,6 +118,6 @@ encode_download(files, n = 1, directory = tempdir(), dry_run = TRUE, quiet = TRU
 # Live ENCODE example:
 # files <- encode_list_files("ENCSR284QGB", file_format = "fastq")
 # selected <- encode_select_files(files, preset = "raw_fastq")
-# encode_preview_download(selected, directory = "data/encode")
-# encode_download(selected, directory = "data/encode")
+# encode_download(selected, directory = "data/encode", dry_run = TRUE)
+# downloaded <- encode_download(selected, directory = "data/encode")
 }

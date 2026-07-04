@@ -88,7 +88,9 @@ test_that("encode_read validates table input and format overrides", {
 
   read_table <- encode_read(table_input, format = "tsv")
   expect_equal(read_table$gene[[1]], "MYC")
-  expect_error(encode_read(rbind(table_input, table_input), format = "tsv"), "exactly one row")
+  read_many <- encode_read(rbind(table_input, table_input), format = "tsv")
+  expect_s3_class(read_many, "encode_loaded_files")
+  expect_equal(length(read_many$data), 2L)
   missing_local_path <- data.frame(path = tsv_path)
   class(missing_local_path) <- c("encode_download_result", "data.frame")
   expect_error(encode_read(missing_local_path), "local_path")

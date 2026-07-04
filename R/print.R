@@ -36,6 +36,11 @@ names.encode_download_plan <- function(x) {
 }
 
 #' @export
+names.encode_loaded_files <- function(x) {
+  c("files", "metadata", "data", "matrices", "by_experiment")
+}
+
+#' @export
 print.encode_search_result <- function(x, ..., verbose = FALSE) {
   cli::cli_text("ENCODE search")
   cli::cli_text("- total matches: {.val {x$total}}")
@@ -156,6 +161,25 @@ print.encode_download_plan <- function(x, ..., verbose = FALSE) {
     cli::cli_text("- checksums available: {.val {x$summary$checksums_available}}")
     cli::cli_text("- destination directories: {.val {x$summary$destination_count}}")
     encode_print_table("Files", encode_display_columns(x$files, encode_file_display_columns()))
+  }
+  invisible(x)
+}
+
+#' @export
+print.encode_loaded_files <- function(x, ..., verbose = FALSE) {
+  cli::cli_text("ENCODE loaded files")
+  cli::cli_text("- files: {.val {nrow(x$files)}}")
+  cli::cli_text("- file objects: {.val {length(x$data)}}")
+  cli::cli_text("- matrices: {.val {length(x$matrices)}}")
+  cli::cli_text("- experiments: {.val {length(x$by_experiment)}}")
+  encode_print_table("Metadata", encode_display_columns(x$metadata, encode_file_display_columns()))
+  if (isTRUE(verbose)) {
+    objects <- data.frame(
+      name = names(x$data),
+      class = vapply(x$data, function(value) paste(class(value), collapse = ", "), character(1L)),
+      stringsAsFactors = FALSE
+    )
+    encode_print_table("Loaded objects", objects, n = length(objects$name))
   }
   invisible(x)
 }

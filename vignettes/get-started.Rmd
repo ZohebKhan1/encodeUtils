@@ -271,28 +271,11 @@ doc_table(
 )
 ```
 
-Preview two specific files before transfer.
-
-```{r rnaseq-preview}
-rna_file_ids <- c("ENCFF090VKE", "ENCFF260OJQ")
-
-rna_plan <- encode_preview_download(
-  rna_files,
-  file_accession = rna_file_ids,
-  directory = tempdir(),
-  quiet = TRUE
-)
-```
-
-```{r rnaseq-preview-table, echo=FALSE}
-doc_table(
-  show_plan(rna_plan)
-)
-```
-
-Run a dry-run to return the planned download rows without downloading files.
+Check two specific files before transfer.
 
 ```{r rnaseq-dry-run}
+rna_file_ids <- c("ENCFF090VKE", "ENCFF260OJQ")
+
 rna_dry_run <- encode_download(
   rna_files,
   file_accession = rna_file_ids,
@@ -372,9 +355,10 @@ doc_table(
 ```
 
 ```{r atac-preview}
-atac_plan <- encode_preview_download(
+atac_plan <- encode_download(
   atac_selected,
   directory = tempdir(),
+  dry_run = TRUE,
   quiet = TRUE
 )
 ```
@@ -497,7 +481,8 @@ doc_table(
 # Real downloads
 
 The examples above use `tempdir()` and `dry_run = TRUE`. For a real transfer,
-use a project directory and set `dry_run = FALSE`.
+use a project directory and set `dry_run = FALSE`. Add `read = TRUE` when the
+selected files are small enough to load directly into R.
 
 ```r
 downloaded <- encode_download(
@@ -506,4 +491,15 @@ downloaded <- encode_download(
   directory = "data/encode/rna-seq",
   dry_run = FALSE
 )
+
+loaded <- encode_download(
+  rna_files,
+  file_accession = rna_file_ids,
+  directory = "data/encode/rna-seq",
+  dry_run = FALSE,
+  read = TRUE
+)
+
+loaded$data$ENCFF090VKE
+loaded$by_experiment$ENCSR083OKX
 ```

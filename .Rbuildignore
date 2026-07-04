@@ -4,6 +4,7 @@
 ^AGENTS\.md$
 ^coding_guidelines\.md$
 ^docs$
+^data$
 ^site$
 ^\.gitignore$
 ^\.github$

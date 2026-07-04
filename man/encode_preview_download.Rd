@@ -52,8 +52,9 @@ with missing `file_size` metadata without listing an override requirement.}
 A download plan.
 }
 \description{
-Show the destination paths, known total size, unknown-size files, checksum
-availability, and required overrides for a download. No files are downloaded.
+Preview files before download. New code can usually use
+`encode_download(..., dry_run = TRUE)` instead; this helper remains for code
+that wants the older plan summary with largest files and required overrides.
 }
 \examples{
 download_marker <- paste0(intToUtf8(64), intToUtf8(64), "download")

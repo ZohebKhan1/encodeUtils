@@ -251,19 +251,13 @@ doc_table(show_files(selected))
 doc_table(show_explain(selected))
 ```
 
-# Preview and dry-run downloads
+# Check and download files
 
-`encode_preview_download()` checks destination paths and file sizes.
-`encode_download(..., dry_run = TRUE)` returns planned download rows without
-transferring files.
+`encode_download(..., dry_run = TRUE)` checks destination paths and file sizes
+without transferring files. Use the same call with `dry_run = FALSE` for the
+actual transfer.
 
 ```{r download}
-plan <- encode_preview_download(
-  selected,
-  directory = tempdir(),
-  quiet = TRUE
-)
-
 dry_run <- encode_download(
   selected,
   directory = tempdir(),
@@ -273,7 +267,6 @@ dry_run <- encode_download(
 ```
 
 ```{r download-tables, echo=FALSE}
-doc_table(show_plan(plan))
 doc_table(show_plan(dry_run))
 ```
 
@@ -304,7 +297,8 @@ doc_table(
 
 # Read local files
 
-`encode_read()` reads supported files that are already on disk.
+`encode_read()` reads supported files that are already on disk. It can also read
+download result rows, so the file paths do not need to be typed again.
 
 ```{r read}
 txt_path <- tempfile(fileext = ".txt")
@@ -314,4 +308,8 @@ encode_read(txt_path)
 bam_path <- tempfile(fileext = ".bam")
 writeBin(charToRaw("placeholder"), bam_path)
 encode_read(bam_path)
+
+# After a real download:
+# loaded <- encode_read(downloaded)
+# loaded$data$ENCFF000AAA
 ```

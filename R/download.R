@@ -24,6 +24,22 @@
 #' @param overwrite Whether existing destination files may be replaced.
 #' @param dry_run If `TRUE`, return the planned download table without
 #'   downloading.
+#' @param read If `TRUE`, read downloaded files into R after a successful
+#'   transfer. This is intended for small tabular files and supported local
+#'   genomic formats.
+#' @param read_max_size Maximum file size to read into memory when
+#'   `read = TRUE`.
+#' @param read_format Optional file format override used when `read = TRUE`.
+#'   Leave as `NULL` to use ENCODE file metadata or the file extension.
+#' @param read_region Optional genomic range passed to `encode_read()` for
+#'   indexed genomic formats.
+#' @param read_allow_large Whether `read = TRUE` may fully import indexed files
+#'   such as bigWig or bigBed without `read_region`.
+#' @param read_unsupported What to do when a downloaded file cannot be read
+#'   directly: return a path object or throw an error.
+#' @param assign If `TRUE`, assign loaded file objects and experiment groups
+#'   into `envir`. The default is `FALSE` so scripts stay explicit.
+#' @param envir Environment used when `assign = TRUE`.
 #' @param prefer_cloud Whether to prefer ENCODE cloud URLs when available.
 #' @param verify Verification checks to perform. Supported values are `"md5"`
 #'   and `"size"`. Use `NULL` to record downloads without size or MD5
@@ -52,8 +68,8 @@
 #' # Live ENCODE example:
 #' # files <- encode_list_files("ENCSR284QGB", file_format = "fastq")
 #' # selected <- encode_select_files(files, preset = "raw_fastq")
-#' # encode_preview_download(selected, directory = "data/encode")
-#' # encode_download(selected, directory = "data/encode")
+#' # encode_download(selected, directory = "data/encode", dry_run = TRUE)
+#' # downloaded <- encode_download(selected, directory = "data/encode")
 encode_download <- function(
                             x,
                             file_accession = NULL,
@@ -65,10 +81,22 @@ encode_download <- function(
                             allow_unknown_size = FALSE,
                             overwrite = FALSE,
                             dry_run = FALSE,
+                            read = FALSE,
+                            read_max_size = "100MB",
+                            read_format = NULL,
+                            read_region = NULL,
+                            read_allow_large = FALSE,
+                            read_unsupported = c("return_path", "error"),
+                            assign = FALSE,
+                            envir = parent.frame(),
                             prefer_cloud = FALSE,
                             verify = c("md5", "size"),
                             quiet = FALSE) {
   verify <- encode_normalize_verify(verify)
+  read_unsupported <- match.arg(read_unsupported)
+  if (isTRUE(read) && isTRUE(dry_run)) {
+    cli::cli_abort("Use either {.code dry_run = TRUE} or {.code read = TRUE}, not both.")
+  }
   files <- encode_file_table_from_input(x, status = NULL)
   files <- encode_filter_file_accessions(files, file_accession)
   files <- encode_limit_file_rows(files, n = n, file_accession = file_accession)
@@ -161,13 +189,27 @@ encode_download <- function(
       "ENCODE download completed. Print the result to view downloaded files, or use {.code encode_results()} for the table."
     )
   }
+  if (isTRUE(read)) {
+    return(encode_load_downloaded_files(
+      result,
+      max_size = read_max_size,
+      format = read_format,
+      region = read_region,
+      allow_large = read_allow_large,
+      unsupported = read_unsupported,
+      assign = assign,
+      envir = envir,
+      quiet = quiet
+    ))
+  }
   result
 }
 
 #' Preview an ENCODE download
 #'
-#' Show the destination paths, known total size, unknown-size files, checksum
-#' availability, and required overrides for a download. No files are downloaded.
+#' Preview files before download. New code can usually use
+#' `encode_download(..., dry_run = TRUE)` instead; this helper remains for code
+#' that wants the older plan summary with largest files and required overrides.
 #'
 #' @param x ENCFF accession(s), file metadata table, file search result,
 #'   selected-file object, or experiment object.

@@ -15,8 +15,8 @@ encode_read(
 )
 }
 \arguments{
-\item{path}{Local file path or one-row download result from
-`encode_download()`.}
+\item{path}{Local file path, downloaded-file table, or file table with a
+`local_path` column.}
 
 \item{format}{Optional file format override.}
 
@@ -34,14 +34,15 @@ or throw an error.}
 \item{...}{Additional arguments passed to table readers where applicable.}
 }
 \value{
-A data frame, list, optional Bioconductor object, or
-  `encode_local_file` object.
+A data frame, list, optional Bioconductor object,
+  `encode_local_file` object, or `encode_loaded_files` object for multi-row
+  download tables.
 }
 \description{
-Read a file that is already on disk. Small tabular and JSON files are loaded
-directly. Genomic interval and sequence formats use optional Bioconductor
-readers when they are installed. Large or unsupported formats return a path
-object by default.
+Read one or more files that are already on disk. Small tabular and JSON files
+are loaded directly. Genomic interval and sequence formats use optional
+Bioconductor readers when they are installed. Large or unsupported formats
+return a path object by default.
 }
 \examples{
 csv_path <- tempfile(fileext = ".csv")
@@ -53,7 +54,7 @@ writeBin(charToRaw("placeholder"), bam_path)
 # Alignment files are returned as paths unless read with a dedicated reader.
 encode_read(bam_path)
 
-# Use with a one-row download result:
+# Use with downloaded rows:
 # downloaded <- encode_download(encode_results(selected)[1, ], directory = tempdir())
 # encode_read(downloaded[1, ])
 }

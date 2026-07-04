@@ -3,9 +3,9 @@
 `encodeUtils` queries ENCODE metadata from R and helps choose, download, read,
 cite, and record the files used in an analysis.
 
-The package is read-only. It searches ENCODE, lists file metadata, previews
-downloads, downloads selected files, and records provenance. It does not submit
-or modify ENCODE records.
+The package is read-only. It searches ENCODE, lists file metadata, checks
+downloads, downloads selected files, reads supported local files, and records
+provenance. It does not submit or modify ENCODE records.
 
 ## Installation
 
@@ -22,9 +22,10 @@ Most analyses use the same sequence:
 2. Extract the displayed table with `encode_results()` when needed.
 3. List files for selected experiments with `encode_list_files()`.
 4. Select files with `encode_select_files()`.
-5. Check file paths and sizes with `encode_preview_download()`.
+5. Check file paths and sizes with `encode_download(dry_run = TRUE)`.
 6. Download with `encode_download()`.
-7. Save provenance with `encode_manifest()` and `encode_cite()`.
+7. Read supported downloaded files with `encode_read()` or `encode_download(read = TRUE)`.
+8. Save provenance with `encode_manifest()` and `encode_cite()`.
 
 ## Example
 
@@ -45,12 +46,6 @@ files <- encode_list_files(
   assembly = "mm10"
 )
 
-plan <- encode_preview_download(
-  files,
-  file_accession = c("ENCFF260OJQ", "ENCFF090VKE"),
-  directory = tempdir()
-)
-
 dry_run <- encode_download(
   files,
   file_accession = c("ENCFF260OJQ", "ENCFF090VKE"),
@@ -58,13 +53,21 @@ dry_run <- encode_download(
   dry_run = TRUE
 )
 
+downloaded <- encode_download(
+  files,
+  file_accession = c("ENCFF260OJQ", "ENCFF090VKE"),
+  directory = "data/encode/rna-seq"
+)
+
+loaded <- encode_read(downloaded)
+
 manifest <- encode_manifest(
-  dry_run,
+  downloaded,
   include_session = FALSE,
   path = file.path(tempdir(), "encode-rna-manifest.json")
 )
 
-encode_cite(dry_run, enrich = "auto")
+encode_cite(downloaded, enrich = "auto")
 ```
 
 ## Main Functions
@@ -77,9 +80,9 @@ encode_cite(dry_run, enrich = "auto")
 - `encode_list_files()` lists files attached to experiments.
 - `encode_select_files()` selects files by accession, format, output type, or preset.
 - `encode_explain_selection()` shows why files were selected or excluded.
-- `encode_preview_download()` checks destination paths, file sizes, and required overrides.
-- `encode_download()` downloads selected files with size and checksum checks.
-- `encode_read()` reads supported local ENCODE files.
+- `encode_download()` checks, downloads, and can optionally read selected files.
+- `encode_preview_download()` is retained for older code that wants a separate plan object.
+- `encode_read()` reads supported local ENCODE files or downloaded file tables.
 - `encode_manifest()` records queries, selected files, downloads, and citation metadata.
 - `encode_cite()` creates ENCODE dataset and file attribution tables.
 

@@ -1,12 +1,12 @@
 #' Read a local ENCODE file
 #'
-#' Read a file that is already on disk. Small tabular and JSON files are loaded
-#' directly. Genomic interval and sequence formats use optional Bioconductor
-#' readers when they are installed. Large or unsupported formats return a path
-#' object by default.
+#' Read one or more files that are already on disk. Small tabular and JSON files
+#' are loaded directly. Genomic interval and sequence formats use optional
+#' Bioconductor readers when they are installed. Large or unsupported formats
+#' return a path object by default.
 #'
-#' @param path Local file path or one-row download result from
-#'   `encode_download()`.
+#' @param path Local file path, downloaded-file table, or file table with a
+#'   `local_path` column.
 #' @param format Optional file format override.
 #' @param max_size Maximum size to read into memory, as bytes or a string.
 #' @param region Optional genomic range object passed to `rtracklayer::import()`
@@ -17,8 +17,9 @@
 #'   or throw an error.
 #' @param ... Additional arguments passed to table readers where applicable.
 #'
-#' @return A data frame, list, optional Bioconductor object, or
-#'   `encode_local_file` object.
+#' @return A data frame, list, optional Bioconductor object,
+#'   `encode_local_file` object, or `encode_loaded_files` object for multi-row
+#'   download tables.
 #' @export
 #'
 #' @examples
@@ -31,7 +32,7 @@
 #' # Alignment files are returned as paths unless read with a dedicated reader.
 #' encode_read(bam_path)
 #'
-#' # Use with a one-row download result:
+#' # Use with downloaded rows:
 #' # downloaded <- encode_download(encode_results(selected)[1, ], directory = tempdir())
 #' # encode_read(downloaded[1, ])
 encode_read <- function(
@@ -43,6 +44,22 @@ encode_read <- function(
                         unsupported = c("return_path", "error"),
                         ...) {
   unsupported <- match.arg(unsupported)
+  if (encode_is_read_table(path)) {
+    if (!"local_path" %in% names(path)) {
+      cli::cli_abort("{.arg path} table input must include {.field local_path}.")
+    }
+    if (nrow(path) != 1L) {
+      return(encode_load_downloaded_files(
+        path,
+        max_size = max_size,
+        format = format,
+        region = region,
+        allow_large = allow_large,
+        unsupported = unsupported,
+        quiet = TRUE
+      ))
+    }
+  }
   path <- encode_read_path(path)
   if (!file.exists(path)) {
     cli::cli_abort("File does not exist: {.path {path}}.")
@@ -118,12 +135,12 @@ encode_read <- function(
 }
 
 encode_read_path <- function(path) {
-  if (inherits(path, "encode_download_result") || inherits(path, "encode_file_table")) {
-    if (nrow(path) != 1L) {
-      cli::cli_abort("{.arg path} table input must contain exactly one row.")
-    }
+  if (encode_is_read_table(path)) {
     if (!"local_path" %in% names(path)) {
       cli::cli_abort("{.arg path} table input must include {.field local_path}.")
+    }
+    if (nrow(path) != 1L) {
+      cli::cli_abort("{.arg path} table input must contain exactly one row.")
     }
     return(path$local_path[[1L]])
   }
@@ -131,6 +148,13 @@ encode_read_path <- function(path) {
     cli::cli_abort("{.arg path} must be one local file path.")
   }
   path
+}
+
+encode_is_read_table <- function(path) {
+  is.data.frame(path) &&
+    ("local_path" %in% names(path) ||
+      inherits(path, "encode_download_result") ||
+      inherits(path, "encode_file_table"))
 }
 
 encode_read_with_optional_package <- function(package, fun, path, unsupported, reason, region = NULL, ...) {

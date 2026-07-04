@@ -45,6 +45,9 @@ encode_results <- function(x, component = c("matrix", "assays", "biosamples")) {
   if (inherits(x, "encode_download_plan")) {
     return(x$files)
   }
+  if (inherits(x, "encode_loaded_files")) {
+    return(x$metadata)
+  }
   if (is.data.frame(x)) {
     return(x)
   }

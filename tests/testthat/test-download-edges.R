@@ -189,3 +189,137 @@ test_that("verify = NULL records unverified downloads without false failures", {
   expect_true(is.na(result$md5_verified[[1]]))
   expect_true(is.na(result$failure_reason[[1]]))
 })
+
+test_that("download can read small tabular files into grouped R objects", {
+  local_encode_test_options()
+  destination <- withr::local_tempdir()
+  payloads <- c(
+    ENCFFLOAD001 = "gene_id\tcount\ttpm\nGata4\t10\t1.5\nTbx5\t20\t2.5\n",
+    ENCFFLOAD002 = "gene_id\tcount\ttpm\nGata4\t12\t1.7\nTbx5\t25\t2.9\n"
+  )
+  files <- data.frame(
+    file_accession = names(payloads),
+    experiment_accession = "ENCSRLOAD001",
+    dataset_type = "Experiment",
+    assay_title = "total RNA-seq",
+    file_format = "tsv",
+    output_type = "gene quantifications",
+    href = paste0("/files/", names(payloads), "/@@download/", names(payloads), ".tsv"),
+    file_size = nchar(payloads, type = "bytes"),
+    md5sum = NA_character_,
+    stringsAsFactors = FALSE
+  )
+  testthat::local_mocked_bindings(
+    encode_perform_file = function(url, path, timeout = NULL) {
+      accession <- sub("^.*/(ENCFF[A-Z0-9]+)[.]tsv$", "\\1", url)
+      writeLines(payloads[[accession]], path, useBytes = TRUE)
+      list(url = url, status_code = 200L, retrieved_at = Sys.time())
+    }
+  )
+
+  loaded <- encode_download(
+    files,
+    directory = destination,
+    verify = NULL,
+    read = TRUE,
+    quiet = TRUE
+  )
+
+  expect_s3_class(loaded, "encode_loaded_files")
+  expect_equal(names(loaded$data), names(payloads))
+  expect_s3_class(loaded$data$ENCFFLOAD001, "data.frame")
+  expect_equal(loaded$data$ENCFFLOAD001$count, c(10L, 20L))
+  expect_equal(
+    loaded$matrices$count,
+    data.frame(
+      gene_id = c("Gata4", "Tbx5"),
+      ENCFFLOAD001 = c(10L, 20L),
+      ENCFFLOAD002 = c(12L, 25L),
+      check.names = FALSE
+    )
+  )
+  expect_equal(names(loaded$by_experiment), "ENCSRLOAD001")
+  expect_equal(
+    loaded$by_experiment$ENCSRLOAD001$matrices$count,
+    data.frame(
+      gene_id = c("Gata4", "Tbx5"),
+      ENCFFLOAD001 = c(10L, 20L),
+      ENCFFLOAD002 = c(12L, 25L),
+      check.names = FALSE
+    )
+  )
+  expect_equal(encode_results(loaded)$file_accession, names(payloads))
+})
+
+test_that("downloaded rows can be read later without typing file paths", {
+  local_encode_test_options()
+  destination <- withr::local_tempdir()
+  payload <- "gene_id\tcount\nGata4\t10\n"
+  files <- data.frame(
+    file_accession = "ENCFFLOAD003",
+    experiment_accession = "ENCSRLOAD003",
+    file_format = "tsv",
+    href = "/files/ENCFFLOAD003/@@download/ENCFFLOAD003.tsv",
+    file_size = nchar(payload, type = "bytes"),
+    md5sum = NA_character_,
+    stringsAsFactors = FALSE
+  )
+  testthat::local_mocked_bindings(
+    encode_perform_file = function(url, path, timeout = NULL) {
+      writeLines(payload, path, useBytes = TRUE)
+      list(url = url, status_code = 200L, retrieved_at = Sys.time())
+    }
+  )
+
+  downloaded <- encode_download(
+    files,
+    directory = destination,
+    verify = NULL,
+    quiet = TRUE
+  )
+  plain_rows <- as.data.frame(rbind(downloaded, downloaded))
+  loaded <- encode_read(plain_rows, format = "tsv")
+
+  expect_s3_class(loaded, "encode_loaded_files")
+  expect_equal(length(loaded$data), 2L)
+  expect_equal(loaded$data[[1]]$gene_id, "Gata4")
+})
+
+test_that("download read mode is explicit about dry-run and assignment", {
+  local_encode_test_options()
+  destination <- withr::local_tempdir()
+  payload <- "gene_id\tcount\nGata4\t10\n"
+  files <- data.frame(
+    file_accession = "ENCFFLOAD004",
+    experiment_accession = "ENCSRLOAD004",
+    file_format = "tsv",
+    href = "/files/ENCFFLOAD004/@@download/ENCFFLOAD004.tsv",
+    file_size = nchar(payload, type = "bytes"),
+    md5sum = NA_character_,
+    stringsAsFactors = FALSE
+  )
+  expect_error(
+    encode_download(files, directory = destination, dry_run = TRUE, read = TRUE, quiet = TRUE),
+    "dry_run"
+  )
+  testthat::local_mocked_bindings(
+    encode_perform_file = function(url, path, timeout = NULL) {
+      writeLines(payload, path, useBytes = TRUE)
+      list(url = url, status_code = 200L, retrieved_at = Sys.time())
+    }
+  )
+  env <- new.env(parent = emptyenv())
+  loaded <- encode_download(
+    files,
+    directory = destination,
+    verify = NULL,
+    read = TRUE,
+    assign = TRUE,
+    envir = env,
+    quiet = TRUE
+  )
+
+  expect_s3_class(loaded, "encode_loaded_files")
+  expect_true(exists("ENCFFLOAD004", envir = env, inherits = FALSE))
+  expect_true(exists("ENCSRLOAD004", envir = env, inherits = FALSE))
+})
