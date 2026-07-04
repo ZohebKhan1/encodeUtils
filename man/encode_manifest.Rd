@@ -4,7 +4,13 @@
 \alias{encode_manifest}
 \title{Build an ENCODE reproducibility manifest}
 \usage{
-encode_manifest(x, include_citation = TRUE, include_session = TRUE)
+encode_manifest(
+  x,
+  include_citation = TRUE,
+  include_session = TRUE,
+  path = NULL,
+  pretty = TRUE
+)
 }
 \arguments{
 \item{x}{ENCODE result object, file table, selected files, or download result.}
@@ -12,14 +18,19 @@ encode_manifest(x, include_citation = TRUE, include_session = TRUE)
 \item{include_citation}{Whether to include `encode_cite(x)` when supported.}
 
 \item{include_session}{Whether to include `utils::sessionInfo()`.}
+
+\item{path}{Optional destination JSON path. If supplied, the manifest is also
+written to disk.}
+
+\item{pretty}{Whether to pretty-print JSON when `path` is supplied.}
 }
 \value{
 A manifest list.
 }
 \description{
 Capture the query, selected files, download records, citation metadata, and
-optional R session information for an ENCODE workflow. The manifest is a
-regular R list that can be written to JSON with `encode_write_manifest()`.
+optional R session information for an ENCODE workflow. Provide `path` to save
+the same manifest as JSON.
 }
 \examples{
 files <- data.frame(
@@ -29,10 +40,7 @@ files <- data.frame(
   output_type = "metadata",
   status = "released"
 )
-manifest <- encode_manifest(files, include_session = FALSE)
+path <- tempfile(fileext = ".json")
+manifest <- encode_manifest(files, include_session = FALSE, path = path)
 names(manifest)
-
-# Typical use:
-# manifest <- encode_manifest(selected, include_session = FALSE)
-# encode_write_manifest(manifest, "encode-manifest.json")
 }

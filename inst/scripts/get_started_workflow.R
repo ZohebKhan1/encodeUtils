@@ -120,11 +120,7 @@ chip_plan <- encode_preview_download(
 
 manifest <- encode_manifest(
   rna_dry_run,
-  include_session = FALSE
-)
-
-encode_write_manifest(
-  manifest,
+  include_session = FALSE,
   path = file.path(tempdir(), "encode-rna-manifest.json")
 )
 

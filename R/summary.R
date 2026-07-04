@@ -8,22 +8,8 @@
 #' @param ... Reserved for future methods.
 #'
 #' @return A compact summary object or data frame, depending on input type.
-#' @export
+#' @noRd
 #'
-#' @examples
-#' files <- data.frame(
-#'   file_accession = c("ENCFF000AAA", "ENCFF000AAB"),
-#'   experiment_accession = c("ENCSR000AAA", "ENCSR000AAA"),
-#'   file_format = c("bed", "bigWig"),
-#'   output_type = c("peaks", "signal"),
-#'   assembly = c("GRCh38", "GRCh38"),
-#'   file_size = c(100, 200)
-#' )
-#' encode_summary(files)
-#'
-#' # Search results can also be summarized:
-#' # res <- encode_search(type = "Experiment", search = "mouse heart ChIP-seq")
-#' # encode_summary(res)
 encode_summary <- function(x, ...) {
   if (inherits(x, "encode_object")) {
     return(x$summary)

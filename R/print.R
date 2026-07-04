@@ -6,11 +6,6 @@ names.encode_search_result <- function(x) {
 }
 
 #' @export
-names.encode_count_result <- function(x) {
-  c("total_results", "query_url", "metadata")
-}
-
-#' @export
 names.encode_object <- function(x) {
   c("summary", "type", "accession", "query_url", "metadata")
 }
@@ -59,17 +54,6 @@ print.encode_experiment_table <- function(x, ...) {
   cli::cli_text("ENCODE experiments")
   cli::cli_text("- experiments: {.val {nrow(x)}}")
   encode_print_table("Experiments", encode_experiment_display(x))
-  invisible(x)
-}
-
-#' @export
-print.encode_count_result <- function(x, ..., verbose = FALSE) {
-  cli::cli_text("ENCODE count")
-  cli::cli_text("- total matches: {.val {x$total}}")
-  if (isTRUE(verbose)) {
-    cli::cli_text("- URL: {x$query_url %||% x$url}")
-    encode_print_table("Active filters", x$filters)
-  }
   invisible(x)
 }
 

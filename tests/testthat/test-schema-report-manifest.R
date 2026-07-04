@@ -153,8 +153,15 @@ test_that("manifests preserve branch-specific payloads and JSON round trips", {
   expect_equal(manifest$retrieval$query_url, encode_query_url(download))
 
   path <- withr::local_tempfile(fileext = ".json")
-  expect_identical(encode_write_manifest(manifest, path), path)
+  manifest_written <- encode_manifest(
+    download,
+    include_citation = FALSE,
+    include_session = TRUE,
+    path = path
+  )
   parsed <- jsonlite::fromJSON(path, simplifyVector = FALSE)
+  expect_s3_class(manifest_written, "encode_manifest")
+  expect_equal(attr(manifest_written, "path", exact = TRUE), path)
   expect_equal(parsed$package$name, "encodeUtils")
   expect_equal(parsed$downloaded_files[[1]]$file_accession, "ENCFFREAL001")
 })

@@ -25,9 +25,7 @@ reference:
       - encode_get
       - encode_matrix
       - encode_report
-      - encode_count
       - encode_results
-      - encode_summary
 
   - title: Work with ENCODE files
     desc: List, summarize, select, preview, download, and read files.
@@ -44,7 +42,6 @@ reference:
     contents:
       - encode_cite
       - encode_manifest
-      - encode_write_manifest
 
 articles:
   - title: Start here

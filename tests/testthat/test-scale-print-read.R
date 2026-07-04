@@ -33,10 +33,6 @@ test_that("print methods expose stable concise diagnostics", {
     function(req) fixture_json_response("search-embedded-experiments.json"),
     encode_search(limit = 2, quiet = TRUE)
   )
-  count <- httr2::with_mocked_responses(
-    function(req) fixture_json_response("search-embedded-experiments.json"),
-    encode_count(quiet = TRUE)
-  )
   selected <- encode_select_files(
     fixture_download_files(),
     file_format = "txt",
@@ -60,7 +56,6 @@ test_that("print methods expose stable concise diagnostics", {
 
   search_output <- capture_cli(print(search))
   search_verbose_output <- capture_cli(print(search, verbose = TRUE))
-  count_output <- capture_cli(print(count))
   selected_output <- capture_cli(print(selected))
   selected_verbose_output <- capture_cli(print(selected, verbose = TRUE))
   plan_output <- capture_cli(print(plan))
@@ -73,7 +68,6 @@ test_that("print methods expose stable concise diagnostics", {
   expect_false(any(grepl("Top facets", search_output, fixed = TRUE)))
   expect_true(any(grepl("Active filters", search_verbose_output, fixed = TRUE)))
   expect_true(any(grepl("Top facets", search_verbose_output, fixed = TRUE)))
-  expect_true(any(grepl("ENCODE count", count_output, fixed = TRUE)))
   expect_true(any(grepl("ENCODE selected files", selected_output, fixed = TRUE)))
   expect_false(any(grepl("Exclusion reasons", selected_output, fixed = TRUE)))
   expect_true(any(grepl("Exclusion reasons", selected_verbose_output, fixed = TRUE)))

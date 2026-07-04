@@ -264,11 +264,7 @@ After selecting files, save enough information to reproduce the choice later.
 ```{r manifest}
 manifest <- encode_manifest(
   rna_dry_run,
-  include_session = FALSE
-)
-
-encode_write_manifest(
-  manifest,
+  include_session = FALSE,
   path = file.path(tempdir(), "encode-rna-manifest.json")
 )
 ```
@@ -285,7 +281,6 @@ encode_cite(
 # Practical notes
 
 - Use `limit = 10` or another small number while learning.
-- Use `encode_count()` only as a preflight for very broad queries.
 - Use `encode_preview_download()` before real downloads.
 - Use `file_accession = c("ENCFF...", "ENCFF...")` when you want specific
   files from a table.

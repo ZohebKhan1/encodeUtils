@@ -1071,18 +1071,18 @@ test_that("encode_manifest records selected files and writes JSON", {
     assembly = "GRCh38",
     explain = FALSE
   )
-  manifest <- encode_manifest(selected, include_session = FALSE)
   path <- withr::local_tempfile(fileext = ".json")
+  manifest <- encode_manifest(selected, include_session = FALSE, path = path)
 
-  encode_write_manifest(manifest, path)
   parsed <- jsonlite::fromJSON(path, simplifyVector = FALSE)
 
   testthat::expect_s3_class(manifest, "encode_manifest")
   testthat::expect_true(file.exists(path))
+  testthat::expect_equal(attr(manifest, "path", exact = TRUE), path)
   testthat::expect_equal(parsed$package$name, "encodeUtils")
   testthat::expect_equal(length(manifest$selected_files$file_accession), nrow(selected$files))
   testthat::expect_equal(nrow(manifest$excluded_files), nrow(selected$excluded))
-  testthat::expect_error(encode_write_manifest(list(), path), "encode_manifest")
+  testthat::expect_error(encode_manifest(selected, path = ""), "non-empty JSON path")
 })
 
 test_that("encode_filter_results and encode_select work without web requests", {

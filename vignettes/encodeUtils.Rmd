@@ -34,13 +34,6 @@ experiment_search_json <- paste0(
     '"biosample_summary":"Homo sapiens heart tissue"}],"total":1}'
 )
 
-count_json <- paste0(
-    '{"@graph":[],',
-    '"total":128,',
-    '"filters":[{"field":"type","term":"Experiment"},',
-    '{"field":"assay_title","term":"total RNA-seq"}]}'
-)
-
 experiment_object_json <- paste0(
     '{"@type":["Experiment","Item"],"accession":"ENCSR000AAA",',
     '"@id":"/experiments/ENCSR000AAA/",',
@@ -89,9 +82,6 @@ files. The package is organized around a deliberate workflow:
 7. Record manifests and citation/provenance tables.
 8. Read supported local files when that is safe.
 
-For broad exploratory queries, `encode_count()` is available as an optional
-safety preflight when you only need the live match count.
-
 The package is read-only with respect to ENCODE. It does not implement
 submission workflows.
 
@@ -112,24 +102,6 @@ res <- httr2::with_mocked_responses(
 )
 
 encode_results(res)
-```
-
-# Optional Count Preflight
-
-Most workflows can start with `encode_search()` because it already reports the
-returned rows and live total. Use `encode_count()` for broad filters when you
-want to check query size without fetching metadata rows.
-
-```{r count}
-count <- httr2::with_mocked_responses(
-    function(req) json_response(count_json),
-    encode_count(
-        filters = list(assay_title = "total RNA-seq"),
-        quiet = TRUE
-    )
-)
-
-count
 ```
 
 # Matrix Discovery
@@ -178,13 +150,10 @@ encode_results(files)[, c("file_accession", "dataset_accession", "file_format", 
 
 # Summarize And Select Files
 
-`encode_summary()` gives a compact overview before download. `encode_select_files()`
-keeps both the selected files and an exclusion log so file decisions are
-traceable.
+`encode_select_files()` keeps both the selected files and an exclusion log so
+file decisions are traceable.
 
 ```{r select-files}
-encode_summary(files)
-
 encode_select_files(preset = "metadata")
 
 selected <- encode_select_files(
@@ -218,11 +187,15 @@ encode_download(
 # Manifest
 
 `encode_manifest()` records package, query, selection, and file provenance in a
-plain R list. Use `encode_write_manifest()` when you want a JSON copy alongside
-downloaded files.
+plain R list. Provide `path` when you want a JSON copy alongside downloaded
+files.
 
 ```{r manifest}
-manifest <- encode_manifest(selected, include_session = FALSE)
+manifest <- encode_manifest(
+    selected,
+    include_session = FALSE,
+    path = file.path(tempdir(), "encode-manifest.json")
+)
 names(manifest)
 ```
 

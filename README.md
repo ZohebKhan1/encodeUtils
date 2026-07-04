@@ -31,12 +31,8 @@ This package now implements the core read-only ENCODE workflow:
   genomic formats to Bioconductor readers when installed.
 - `encode_cite()` creates dataset and file provenance tables or text/markdown
   summaries for reports and methods sections.
-- `encode_manifest()` and `encode_write_manifest()` create reproducibility
-  manifests for selected/downloaded data.
-- `encode_summary()` gives compact summaries for search results, objects, and
-  file tables.
-- `encode_count()` is an optional safety preflight for broad queries when you
-  only want the live match count and do not need result metadata rows.
+- `encode_manifest()` creates reproducibility manifests for selected/downloaded
+  data and can write them to JSON with `path =`.
 
 The package remains read-only with respect to ENCODE. It does not implement
 submission, `POST`, or `PATCH` workflows.
@@ -62,8 +58,6 @@ files <- encode_list_files(
     metadata = "full"
 )
 
-encode_summary(files)
-
 plan <- encode_preview_download(
     files,
     file_accession = c("ENCFF260OJQ", "ENCFF090VKE"),
@@ -77,18 +71,12 @@ dry_run <- encode_download(
     dry_run = TRUE
 )
 
-manifest <- encode_manifest(dry_run, include_session = FALSE)
-encode_cite(dry_run, enrich = "auto")
-```
-
-For broad exploratory queries, count first when you only need to know query
-size:
-
-```r
-encode_count(
-    type = "File",
-    filters = list(file_format = "fastq")
+manifest <- encode_manifest(
+    dry_run,
+    include_session = FALSE,
+    path = file.path(tempdir(), "encode-rna-manifest.json")
 )
+encode_cite(dry_run, enrich = "auto")
 ```
 
 See the pkgdown article `Get started` for complete RNA-seq, ATAC-seq, and

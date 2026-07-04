@@ -21,6 +21,7 @@ transferring data.
 Useful links:
 \itemize{
   \item \url{https://github.com/ZohebKhan1/encodeUtils}
+  \item \url{https://zohebkhan1.github.io/encodeUtils/}
   \item Report bugs at \url{https://github.com/ZohebKhan1/encodeUtils/issues}
 }
 

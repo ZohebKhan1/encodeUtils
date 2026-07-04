@@ -7,6 +7,7 @@ encode_test_internal <- function(name) {
 }
 
 encode_browse <- encode_test_internal("encode_browse")
+encode_count <- encode_test_internal("encode_count")
 encode_facets <- encode_test_internal("encode_facets")
 encode_file_preset <- encode_test_internal("encode_file_preset")
 encode_file_summary <- encode_test_internal("encode_file_summary")
@@ -18,6 +19,7 @@ encode_query_url <- encode_test_internal("encode_query_url")
 encode_search_fields <- encode_test_internal("encode_search_fields")
 encode_select <- encode_test_internal("encode_select")
 encode_size <- encode_test_internal("encode_size")
+encode_summary <- encode_test_internal("encode_summary")
 
 fixture_text <- function(...) {
   paste(readLines(fixture_path(...), warn = FALSE), collapse = "\n")

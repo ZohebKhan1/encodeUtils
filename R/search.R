@@ -180,26 +180,8 @@ encode_search_query <- function(
 #'   keeps the count request small because no result rows are returned.
 #'
 #' @return A query count. Printing shows the total number of matching records.
-#' @export
+#' @noRd
 #'
-#' @examples
-#' # This mocked response keeps the example offline and runnable.
-#' count_json <- paste0(
-#'   '{"@graph":[],"total":12,',
-#'   '"filters":[{"field":"type","term":"Experiment"}]}'
-#' )
-#' count <- httr2::with_mocked_responses(
-#'   function(req) httr2::response(
-#'     200,
-#'     headers = "Content-Type: application/json",
-#'     body = charToRaw(count_json)
-#'   ),
-#'   encode_count(quiet = TRUE)
-#' )
-#' count$total_results
-#'
-#' # Use count as an optional safety check for broad searches:
-#' # encode_count(type = "File", filters = list(file_format = "fastq"))
 encode_count <- function(
                          type = "Experiment",
                          filters = list(),
