@@ -1,10 +1,12 @@
 #' Build an ENCODE reproducibility manifest
 #'
-#' Capture the query, selected files, download records, citation metadata, and
-#' optional R session information. Provide `path` to save the manifest as JSON.
+#' Capture the query, selected files, download records, ENCODE attribution
+#' metadata, and optional R session information. Provide `path` to save the
+#' manifest as JSON.
 #'
 #' @param x ENCODE result object, file table, selected files, or download result.
-#' @param include_citation Whether to include `encode_cite(x)` when supported.
+#' @param include_citation Whether to include ENCODE attribution metadata when
+#'   supported.
 #' @param include_session Whether to include `utils::sessionInfo()`.
 #' @param path Optional destination JSON path. If supplied, the manifest is also
 #'   written to disk.

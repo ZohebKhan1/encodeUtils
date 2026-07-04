@@ -1008,7 +1008,7 @@ test_that("encode_cite creates auditable provenance outputs without fake BibTeX"
   testthat::expect_match(supplement_text[[1]], "experiment=ENCSR000AAA")
   testthat::expect_true(any(grepl("methods attribution", methods_markdown)))
   testthat::expect_true(any(grepl("\\| experiment \\| file \\|", supplement_markdown)))
-  testthat::expect_true(any(grepl("Citation guidance", markdown)))
+  testthat::expect_true(any(grepl("ENCODE attribution guidance", markdown)))
   testthat::expect_length(bibtex, 0)
 })
 

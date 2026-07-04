@@ -16,30 +16,11 @@
 #' @export
 #'
 #' @examples
-#' # Offline example.
-#' matrix_json <- paste0(
-#'   '{"total":1,"matrix":{"x":{"group_by":"assay_title",',
-#'   '"assay_title":{"buckets":[{"key":"RNA-seq","doc_count":1}]}},',
-#'   '"y":{"group_by":["biosample_ontology.classification",',
-#'   '"biosample_ontology.term_name"],',
-#'   '"biosample_ontology.classification":{"buckets":[{"key":"tissue",',
-#'   '"doc_count":1,"biosample_ontology.term_name":{"buckets":[{',
-#'   '"key":"heart","doc_count":1,"assay_title":{"buckets":[{',
-#'   '"key":"RNA-seq","doc_count":1}]}}]}}]}}}}'
-#' )
-#' mat <- httr2::with_mocked_responses(
-#'   function(req) httr2::response(
-#'     200,
-#'     headers = "Content-Type: application/json",
-#'     body = charToRaw(matrix_json)
-#'   ),
-#'   encode_matrix(quiet = TRUE)
-#' )
-#' encode_results(mat)
-#' encode_results(mat, component = "assays")
-#'
-#' # Live ENCODE example:
-#' # encode_matrix(filters = list("control_type!=" = "*", perturbed = "false"))
+#' # mat <- encode_matrix(
+#' #   filters = list("control_type!=" = "*", perturbed = "false")
+#' # )
+#' # encode_results(mat)
+#' # encode_results(mat, component = "assays")
 encode_matrix <- function(
                           type = "Experiment",
                           filters = list(),

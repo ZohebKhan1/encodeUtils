@@ -1,7 +1,7 @@
 # encodeUtils
 
 `encodeUtils` queries ENCODE metadata from R and helps choose, download, read,
-cite, and record the files used in an analysis.
+and record the files used in an analysis.
 
 The package is read-only. It searches ENCODE, lists file metadata, checks
 downloads, downloads selected files, reads supported local files, and records
@@ -25,7 +25,7 @@ Most analyses use the same sequence:
 5. Check file paths and sizes with `encode_download(dry_run = TRUE)`.
 6. Download with `encode_download()`.
 7. Read supported downloaded files with `encode_read()` or `encode_download(read = TRUE)`.
-8. Save provenance with `encode_manifest()` and `encode_cite()`.
+8. Save provenance with `encode_manifest()`.
 
 ## Example
 
@@ -66,29 +66,30 @@ manifest <- encode_manifest(
   include_session = FALSE,
   path = file.path(tempdir(), "encode-rna-manifest.json")
 )
-
-encode_cite(downloaded, enrich = "auto")
 ```
 
 ## Main Functions
 
 - `encode_search()` finds ENCODE experiments, files, and other records.
-- `encode_get()` retrieves one ENCODE record by accession, path, or URL.
-- `encode_matrix()` summarizes ENCODE record counts by assay and biosample.
-- `encode_report()` returns a selected-field metadata table.
 - `encode_results()` extracts the main table from result objects.
 - `encode_list_files()` lists files attached to experiments.
 - `encode_select_files()` selects files by accession, format, output type, or preset.
 - `encode_explain_selection()` shows why files were selected or excluded.
 - `encode_download()` checks, downloads, and can optionally read selected files.
-- `encode_preview_download()` is retained for older code that wants a separate plan object.
 - `encode_read()` reads supported local ENCODE files or downloaded file tables.
-- `encode_manifest()` records queries, selected files, downloads, and citation metadata.
-- `encode_cite()` creates ENCODE dataset and file attribution tables.
+- `encode_manifest()` records queries, selected files, downloads, and ENCODE attribution metadata.
+
+## Additional Helpers
+
+- `encode_get()` retrieves one ENCODE record by accession, path, or URL.
+- `encode_matrix()` summarizes ENCODE record counts by assay and biosample.
+- `encode_report()` returns a selected-field metadata table.
+- `encode_cite()` returns the ENCODE attribution table by itself.
+- `encode_preview_download()` is retained for older code that wants a separate plan object.
 
 ## References
 
 - ENCODE REST API: <https://www.encodeproject.org/help/rest-api/>
 - ENCODE Search: <https://www.encodeproject.org/search/>
 - ENCODE Matrix: <https://www.encodeproject.org/matrix/>
-- ENCODE citation guidance: <https://www.encodeproject.org/help/citing-encode/>
+- ENCODE attribution guidance: <https://www.encodeproject.org/help/citing-encode/>

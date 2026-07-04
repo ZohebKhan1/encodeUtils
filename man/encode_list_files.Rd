@@ -58,28 +58,6 @@ The default `limit = "all"` requests the complete file list for the selected
 experiments.
 }
 \examples{
-# Offline example.
-download_marker <- paste0(intToUtf8(64), intToUtf8(64), "download")
-files_json <- paste0(
-  '{"@graph":[{"accession":"ENCFF000AAA",',
-  '"@id":"/files/ENCFF000AAA/",',
-  '"dataset":"/experiments/ENCSR000AAA/",',
-  '"file_format":"txt","output_type":"metadata",',
-  '"file_size":3,',
-  '"href":"/files/ENCFF000AAA/', download_marker, '/ENCFF000AAA.txt",',
-  '"status":"released"}],"total":1}'
-)
-files <- httr2::with_mocked_responses(
-  function(req) httr2::response(
-    200,
-    headers = "Content-Type: application/json",
-    body = charToRaw(files_json)
-  ),
-  encode_list_files("ENCSR000AAA", file_format = "txt", quiet = TRUE)
-)
-files[, c("file_accession", "file_format", "file_size_pretty")]
-
-# Live ENCODE examples:
 # experiments <- encode_search(type = "Experiment", search = "mouse heart ChIP-seq")
 # encode_list_files(experiments, file_format = "bed", assembly = "mm10")
 

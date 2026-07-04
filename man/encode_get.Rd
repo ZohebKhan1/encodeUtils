@@ -22,22 +22,6 @@ Retrieve metadata for one ENCODE record, such as an experiment or file. This
 function retrieves metadata only; it does not download file contents.
 }
 \examples{
-# Offline example.
-object_json <- paste0(
-  '{"@type":["Experiment","Item"],"accession":"ENCSR000AAA",',
-  '"@id":"/experiments/ENCSR000AAA/",',
-  '"assay_title":"total RNA-seq","status":"released"}'
-)
-experiment <- httr2::with_mocked_responses(
-  function(req) httr2::response(
-    200,
-    headers = "Content-Type: application/json",
-    body = charToRaw(object_json)
-  ),
-  encode_get("ENCSR000AAA", quiet = TRUE)
-)
-encode_results(experiment)
-
-# Live ENCODE example:
-# encode_get("ENCSR284QGB")
+# experiment <- encode_get("ENCSR284QGB")
+# encode_results(experiment)
 }

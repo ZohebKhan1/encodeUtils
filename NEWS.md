@@ -24,7 +24,7 @@ NEW FEATURES
     o Read supported local text, table, JSON, interval, and sequence files.
       Optional Bioconductor readers are used for genomic formats when installed.
 
-    o Create ENCODE dataset/file citation metadata and reproducibility manifests.
+    o Create reproducibility manifests with ENCODE dataset and file attribution.
 
 USER-VISIBLE CHANGES
 
@@ -41,5 +41,5 @@ USER-VISIBLE CHANGES
       unless allow_unknown_size = TRUE. Dry-runs and previews still report those
       files.
 
-    o encode_cite() defaults to enrich = "auto" for small file tables. Use
-      enrich = FALSE to avoid additional ENCODE requests.
+    o encode_manifest() is the main provenance helper. encode_cite() is
+      available when the ENCODE attribution table is needed by itself.

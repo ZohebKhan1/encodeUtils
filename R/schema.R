@@ -8,19 +8,8 @@
 #' @return A schema result. `encode_results()` extracts the property table.
 #'
 #' @examples
-#' schema_json <- paste0(
-#'   '{"title":"Experiment","id":"/profiles/experiment.json",',
-#'   '"properties":{"accession":{"type":"string","title":"Accession"}}}'
-#' )
-#' schema <- httr2::with_mocked_responses(
-#'   function(req) httr2::response(
-#'     200,
-#'     headers = "Content-Type: application/json",
-#'     body = charToRaw(schema_json)
-#'   ),
-#'   encode_get_schema("Experiment", quiet = TRUE)
-#' )
-#' encode_results(schema)
+#' # schema <- encode_get_schema("Experiment")
+#' # encode_results(schema)
 #' @noRd
 encode_get_schema <- function(type, quiet = FALSE) {
   path <- encode_schema_path(type)

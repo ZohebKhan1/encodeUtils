@@ -15,280 +15,97 @@ vignette: >
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  eval = FALSE
 )
 ```
 
-```{r helpers, include=FALSE}
+```{r library}
 library(encodeUtils)
-
-json_response <- function(body) {
-  httr2::response(
-    200,
-    headers = "Content-Type: application/json",
-    body = charToRaw(body)
-  )
-}
-
-rows <- function(x) {
-  as.data.frame(encode_results(x), stringsAsFactors = FALSE)
-}
-
-show_columns <- function(x, columns) {
-  x <- as.data.frame(x, stringsAsFactors = FALSE)
-  x[, intersect(columns, names(x)), drop = FALSE]
-}
-
-show_experiments <- function(x) {
-  show_columns(
-    rows(x),
-    c(
-      "accession", "assay_title", "target", "control_type", "organism",
-      "biosample_term_name", "biosample_type", "sex", "biosample_summary",
-      "lab", "project", "file_count", "date_released", "status"
-    )
-  )
-}
-
-show_files <- function(x) {
-  show_columns(
-    rows(x),
-    c(
-      "experiment_accession", "file_accession", "assay_title", "target",
-      "biosample_term_name", "biosample_type", "sex", "file_format",
-      "file_type", "output_type", "assembly", "analysis_accession",
-      "file_size_pretty", "status"
-    )
-  )
-}
-
-show_plan <- function(x) {
-  show_columns(
-    encode_results(x),
-    c(
-      "experiment_accession", "file_accession", "file_format",
-      "output_type", "assembly", "file_size_pretty", "local_path"
-    )
-  )
-}
-
-show_explain <- function(x) {
-  show_columns(
-    encode_explain_selection(x),
-    c("file_accession", "experiment_accession", "decision", "reason")
-  )
-}
-
-doc_table <- function(x) {
-  knitr::kable(
-    x,
-    format = "html",
-    row.names = FALSE,
-    table.attr = 'class="encode-table"'
-  )
-}
-
-download_marker <- paste0(intToUtf8(64), intToUtf8(64), "download")
-
-rna_experiment_json <- paste0(
-  '{"@graph":[',
-  '{"accession":"ENCSR083OKX","@id":"/experiments/ENCSR083OKX/",',
-  '"@type":["Experiment"],"assay_title":"total RNA-seq",',
-  '"organism":{"scientific_name":"Mus musculus"},',
-  '"biosample_ontology":{"term_name":"heart","classification":"tissue"},',
-  '"biosample_summary":"female postnatal (4 days) strain B6CASTF1/J heart tissue",',
-  '"lab":{"title":"Barbara Wold, Caltech"},"award":{"project":"ENCODE"},',
-  '"date_released":"2021-08-18","files":[1,2],"status":"released"},',
-  '{"accession":"ENCSR967IKT","@id":"/experiments/ENCSR967IKT/",',
-  '"@type":["Experiment"],"assay_title":"total RNA-seq",',
-  '"organism":{"scientific_name":"Mus musculus"},',
-  '"biosample_ontology":{"term_name":"heart","classification":"tissue"},',
-  '"biosample_summary":"female adult (8-10 months) strain 5xFAD/CAST heart tissue",',
-  '"lab":{"title":"Barbara Wold, Caltech"},"award":{"project":"ENCODE"},',
-  '"date_released":"2022-02-23","files":[1,2],"status":"released"}',
-  '],"total":80}'
-)
-
-rna_file_json <- paste0(
-  '{"@graph":[',
-  '{"accession":"ENCFF090VKE","@id":"/files/ENCFF090VKE/",',
-  '"dataset":"/experiments/ENCSR083OKX/","assay_title":"total RNA-seq",',
-  '"simple_biosample_summary":"female postnatal (4 days) strain B6CASTF1/J heart tissue",',
-  '"biosample_ontology":{"term_name":"heart","classification":"tissue"},',
-  '"file_format":"tsv","file_type":"tsv","output_type":"gene quantifications",',
-  '"assembly":"mm10","file_size":11890884,',
-  '"md5sum":"11111111111111111111111111111111",',
-  '"href":"/files/ENCFF090VKE/', download_marker, '/ENCFF090VKE.tsv",',
-  '"analyses":["/analyses/ENCAN155LXI/"],"status":"released"},',
-  '{"accession":"ENCFF260OJQ","@id":"/files/ENCFF260OJQ/",',
-  '"dataset":"/experiments/ENCSR967IKT/","assay_title":"total RNA-seq",',
-  '"simple_biosample_summary":"female adult (8-10 months) strain 5xFAD/CAST heart tissue",',
-  '"biosample_ontology":{"term_name":"heart","classification":"tissue"},',
-  '"file_format":"tsv","file_type":"tsv","output_type":"gene quantifications",',
-  '"assembly":"mm10","file_size":11900950,',
-  '"md5sum":"22222222222222222222222222222222",',
-  '"href":"/files/ENCFF260OJQ/', download_marker, '/ENCFF260OJQ.tsv",',
-  '"analyses":["/analyses/ENCAN631YVW/"],"status":"released"}',
-  '],"total":2}'
-)
-
-atac_experiment_json <- paste0(
-  '{"@graph":[',
-  '{"accession":"ENCSR000ATC","@id":"/experiments/ENCSR000ATC/",',
-  '"@type":["Experiment"],"assay_title":"ATAC-seq",',
-  '"organism":{"scientific_name":"Mus musculus"},',
-  '"biosample_ontology":{"term_name":"heart","classification":"tissue"},',
-  '"biosample_summary":"mouse heart tissue embryo (14.5 days)",',
-  '"lab":{"title":"ENCODE DCC"},"award":{"project":"ENCODE"},',
-  '"date_released":"2021-02-01","files":[1,2],"status":"released"}',
-  '],"total":12}'
-)
-
-atac_file_json <- paste0(
-  '{"@graph":[',
-  '{"accession":"ENCFF000ATC","@id":"/files/ENCFF000ATC/",',
-  '"dataset":"/experiments/ENCSR000ATC/","assay_title":"ATAC-seq",',
-  '"simple_biosample_summary":"mouse heart tissue embryo (14.5 days)",',
-  '"biosample_ontology":{"term_name":"heart","classification":"tissue"},',
-  '"file_format":"bed","file_type":"bed narrowPeak",',
-  '"output_type":"IDR thresholded peaks","assembly":"mm10",',
-  '"file_size":882134,"md5sum":"33333333333333333333333333333333",',
-  '"href":"/files/ENCFF000ATC/', download_marker, '/ENCFF000ATC.bed.gz",',
-  '"preferred_default":true,"status":"released"},',
-  '{"accession":"ENCFF000ATD","@id":"/files/ENCFF000ATD/",',
-  '"dataset":"/experiments/ENCSR000ATC/","assay_title":"ATAC-seq",',
-  '"simple_biosample_summary":"mouse heart tissue embryo (14.5 days)",',
-  '"biosample_ontology":{"term_name":"heart","classification":"tissue"},',
-  '"file_format":"bigWig","output_type":"signal p-value","assembly":"mm10",',
-  '"file_size":4822000,"md5sum":"44444444444444444444444444444444",',
-  '"href":"/files/ENCFF000ATD/', download_marker, '/ENCFF000ATD.bigWig",',
-  '"status":"released"}',
-  '],"total":2}'
-)
-
-chip_experiment_json <- paste0(
-  '{"@graph":[',
-  '{"accession":"ENCSR582SPN","@id":"/experiments/ENCSR582SPN/",',
-  '"@type":["Experiment"],"assay_title":"Histone ChIP-seq",',
-  '"target":{"label":"H3K27ac-mouse"},',
-  '"control_type":null,',
-  '"organism":{"scientific_name":"Mus musculus"},',
-  '"biosample_ontology":{"term_name":"heart","classification":"tissue"},',
-  '"biosample_summary":"mouse heart tissue embryo (10.5 days)",',
-  '"lab":{"title":"Bing Ren, UCSD"},"award":{"project":"ENCODE"},',
-  '"date_released":"2016-07-19","files":[1,2],"status":"released"},',
-  '{"accession":"ENCSR077QRY","@id":"/experiments/ENCSR077QRY/",',
-  '"@type":["Experiment"],"assay_title":"Control ChIP-seq",',
-  '"control_type":"input library",',
-  '"organism":{"scientific_name":"Mus musculus"},',
-  '"biosample_ontology":{"term_name":"heart","classification":"tissue"},',
-  '"biosample_summary":"mouse heart tissue embryo (10.5 days)",',
-  '"lab":{"title":"Bing Ren, UCSD"},"award":{"project":"ENCODE"},',
-  '"date_released":"2015-06-23","files":[1],"status":"released"}',
-  '],"total":5}'
-)
-
-chip_peak_json <- paste0(
-  '{"@graph":[',
-  '{"accession":"ENCFF000CHP","@id":"/files/ENCFF000CHP/",',
-  '"dataset":"/experiments/ENCSR582SPN/","assay_title":"Histone ChIP-seq",',
-  '"target":{"label":"H3K27ac-mouse"},',
-  '"simple_biosample_summary":"mouse heart tissue embryo (10.5 days)",',
-  '"biosample_ontology":{"term_name":"heart","classification":"tissue"},',
-  '"file_format":"bed","file_type":"bed narrowPeak",',
-  '"output_type":"optimal IDR thresholded peaks","assembly":"mm10",',
-  '"file_size":2190442,"md5sum":"55555555555555555555555555555555",',
-  '"href":"/files/ENCFF000CHP/', download_marker, '/ENCFF000CHP.bed.gz",',
-  '"preferred_default":true,"status":"released"},',
-  '{"accession":"ENCFF000CHS","@id":"/files/ENCFF000CHS/",',
-  '"dataset":"/experiments/ENCSR582SPN/","assay_title":"Histone ChIP-seq",',
-  '"target":{"label":"H3K27ac-mouse"},',
-  '"simple_biosample_summary":"mouse heart tissue embryo (10.5 days)",',
-  '"biosample_ontology":{"term_name":"heart","classification":"tissue"},',
-  '"file_format":"bigWig","output_type":"fold change over control",',
-  '"assembly":"mm10","file_size":6720010,',
-  '"md5sum":"66666666666666666666666666666666",',
-  '"href":"/files/ENCFF000CHS/', download_marker, '/ENCFF000CHS.bigWig",',
-  '"status":"released"}',
-  '],"total":2}'
-)
 ```
 
-# Overview
+# Workflow
 
-ENCODE records are searched before any files are downloaded. A typical analysis
-starts with experiments, lists the files attached to those experiments, selects
-the files to use, checks the planned download, and records provenance.
+Most analyses follow the same sequence:
 
-Two ENCODE record types are used most often:
+1. Search for experiments.
+2. List files attached to those experiments.
+3. Select the file accessions you want.
+4. Check the download with `dry_run = TRUE`.
+5. Download the files.
+6. Read supported files into R.
+7. Save a manifest for the files you used.
 
-- **Experiment**: a dataset page on the ENCODE website.
-- **File**: one downloadable file attached to an experiment.
+`encode_results()` extracts the main table from any result object when you want
+to filter, save, or inspect it with ordinary R code.
 
 # Bulk RNA-seq
 
 Search for mouse heart total RNA-seq experiments.
 
 ```{r rnaseq-search}
-rna_experiments <- httr2::with_mocked_responses(
-  function(req) json_response(rna_experiment_json),
-  encode_search(
-    type = "Experiment",
-    search = "mouse heart total RNA-seq",
-    status = "released",
-    limit = 10,
-    quiet = TRUE
-  )
+rna_experiments <- encode_search(
+  type = "Experiment",
+  search = "mouse heart total RNA-seq",
+  status = "released",
+  limit = 10
 )
+
+encode_results(rna_experiments)
 ```
 
-The search returns matching ENCODE experiments.
-
-```{r rnaseq-results, echo=FALSE}
-doc_table(
-  show_experiments(rna_experiments)
-)
-```
-
-List gene-quantification TSV files for the returned experiments.
+List gene-quantification TSV files for those experiments.
 
 ```{r rnaseq-files}
-rna_files <- httr2::with_mocked_responses(
-  function(req) json_response(rna_file_json),
-  encode_list_files(
-    rna_experiments,
-    file_format = "tsv",
-    output_type = "gene quantifications",
-    assembly = "mm10",
-    quiet = TRUE
-  )
+rna_files <- encode_list_files(
+  rna_experiments,
+  file_format = "tsv",
+  output_type = "gene quantifications",
+  assembly = "mm10"
 )
+
+encode_results(rna_files)
 ```
 
-```{r rnaseq-file-table, echo=FALSE}
-doc_table(
-  show_files(rna_files)
-)
+Choose the exact files to use. File accessions are the safest way to avoid
+accidentally downloading the first rows of a broad search.
+
+```{r rnaseq-select}
+rna_file_ids <- c("ENCFF090VKE", "ENCFF260OJQ")
 ```
 
-Check two specific files before transfer.
+Check the transfer before downloading.
 
 ```{r rnaseq-dry-run}
-rna_file_ids <- c("ENCFF090VKE", "ENCFF260OJQ")
-
 rna_dry_run <- encode_download(
   rna_files,
   file_accession = rna_file_ids,
-  directory = tempdir(),
-  dry_run = TRUE,
-  quiet = TRUE
+  directory = "data/encode/rna-seq",
+  dry_run = TRUE
 )
+
+encode_results(rna_dry_run)
 ```
 
-```{r rnaseq-dry-run-table, echo=FALSE}
-doc_table(
-  show_plan(rna_dry_run)
+Download and read the files.
+
+```{r rnaseq-download}
+rna_downloaded <- encode_download(
+  rna_files,
+  file_accession = rna_file_ids,
+  directory = "data/encode/rna-seq"
 )
+
+rna_loaded <- encode_read(rna_downloaded)
+```
+
+The loaded object keeps the data and metadata together.
+
+```{r rnaseq-loaded}
+rna_loaded$metadata
+rna_loaded$data$ENCFF090VKE
+rna_loaded$matrices$expected_count
+rna_loaded$matrices$TPM
 ```
 
 # ATAC-seq
@@ -296,210 +113,107 @@ doc_table(
 Search for mouse heart ATAC-seq experiments.
 
 ```{r atac-search}
-atac_experiments <- httr2::with_mocked_responses(
-  function(req) json_response(atac_experiment_json),
-  encode_search(
-    type = "Experiment",
-    search = "mouse heart ATAC-seq",
-    status = "released",
-    limit = 10,
-    quiet = TRUE
-  )
+atac_experiments <- encode_search(
+  type = "Experiment",
+  search = "mouse heart ATAC-seq",
+  status = "released",
+  limit = 10
 )
+
+encode_results(atac_experiments)
 ```
 
-```{r atac-experiment-table, echo=FALSE}
-doc_table(
-  show_experiments(atac_experiments)
-)
-```
-
-List candidate peak and signal files.
+List peak and signal files.
 
 ```{r atac-files}
-atac_files <- httr2::with_mocked_responses(
-  function(req) json_response(atac_file_json),
-  encode_list_files(
-    atac_experiments,
-    file_format = c("bed", "bigWig"),
-    assembly = "mm10",
-    quiet = TRUE
-  )
+atac_files <- encode_list_files(
+  atac_experiments,
+  file_format = c("bed", "bigWig"),
+  assembly = "mm10"
 )
+
+encode_results(atac_files)
 ```
 
-```{r atac-file-table, echo=FALSE}
-doc_table(
-  show_files(atac_files)
-)
-```
-
-Select ATAC-seq peak files.
+Select peak files, then check the download.
 
 ```{r atac-select}
 atac_selected <- encode_select_files(
   atac_files,
   preset = "atacseq_peaks",
-  assembly = "mm10",
-  explain = FALSE
+  assembly = "mm10"
 )
-```
 
-```{r atac-select-table, echo=FALSE}
-doc_table(
-  show_files(atac_selected)
-)
-doc_table(
-  show_explain(atac_selected)
-)
-```
+encode_explain_selection(atac_selected)
 
-```{r atac-preview}
-atac_plan <- encode_download(
+atac_dry_run <- encode_download(
   atac_selected,
-  directory = tempdir(),
-  dry_run = TRUE,
-  quiet = TRUE
-)
-```
-
-```{r atac-preview-table, echo=FALSE}
-doc_table(
-  show_plan(atac_plan)
+  directory = "data/encode/atac-seq",
+  dry_run = TRUE
 )
 ```
 
 # ChIP-seq
 
-For ChIP-seq, target and control information are part of the experiment table.
+Search for mouse heart ChIP-seq experiments.
 
 ```{r chip-search}
-chip_experiments <- httr2::with_mocked_responses(
-  function(req) json_response(chip_experiment_json),
-  encode_search(
-    type = "Experiment",
-    search = "mouse heart H3K27ac ChIP-seq",
-    status = "released",
-    limit = 10,
-    quiet = TRUE
-  )
+chip_experiments <- encode_search(
+  type = "Experiment",
+  search = "mouse heart ChIP-seq",
+  status = "released",
+  limit = 10
 )
+
+encode_results(chip_experiments)
 ```
 
-```{r chip-experiment-table, echo=FALSE}
-doc_table(
-  show_experiments(chip_experiments)
-)
-```
+For ChIP-seq, inspect the `target` and `control_type` columns. Histone and TF
+experiments should show the target. Control experiments usually have
+`control_type = "input library"` and no target.
 
-List peak and signal files.
+List peak files and select IDR peaks.
 
 ```{r chip-files}
-chip_files <- httr2::with_mocked_responses(
-  function(req) json_response(chip_peak_json),
-  encode_list_files(
-    chip_experiments,
-    file_format = c("bed", "bigWig"),
-    assembly = "mm10",
-    quiet = TRUE
-  )
+chip_files <- encode_list_files(
+  chip_experiments,
+  file_format = "bed",
+  assembly = "mm10"
 )
-```
 
-```{r chip-file-table, echo=FALSE}
-doc_table(
-  show_files(chip_files)
-)
-```
-
-Select peak files.
-
-```{r chip-select-peaks}
-chip_peaks <- encode_select_files(
+chip_selected <- encode_select_files(
   chip_files,
   preset = "chipseq_idr_peaks",
-  assembly = "mm10",
-  explain = FALSE
+  assembly = "mm10"
 )
+
+encode_results(chip_selected)
+encode_explain_selection(chip_selected)
 ```
 
-```{r chip-select-peaks-table, echo=FALSE}
-doc_table(
-  show_files(chip_peaks)
+Check the download.
+
+```{r chip-dry-run}
+chip_dry_run <- encode_download(
+  chip_selected,
+  directory = "data/encode/chip-seq",
+  dry_run = TRUE
 )
-doc_table(
-  show_explain(chip_peaks)
-)
+
+encode_results(chip_dry_run)
 ```
 
-Select signal tracks from the same file table.
+# Provenance
 
-```{r chip-signal}
-chip_signal <- encode_select_files(
-  chip_files,
-  preset = "chipseq_signal_bigwig",
-  assembly = "mm10",
-  explain = FALSE
-)
-```
-
-```{r chip-signal-table, echo=FALSE}
-doc_table(
-  show_files(chip_signal)
-)
-```
-
-# Manifest and citation
-
-Save a manifest after files have been selected or downloaded.
+Use a manifest to save the query, selected files, downloaded paths, and ENCODE
+attribution metadata for the files used in an analysis.
 
 ```{r manifest}
 manifest <- encode_manifest(
-  rna_dry_run,
+  rna_downloaded,
   include_session = FALSE,
-  path = file.path(tempdir(), "encode-rna-manifest.json")
-)
-```
-
-```{r manifest-table, echo=FALSE}
-doc_table(
-  data.frame(section = names(manifest))
-)
-```
-
-Create a citation table for the datasets and files used.
-
-```{r cite, echo=FALSE}
-doc_table(
-  show_columns(
-    encode_cite(rna_dry_run, enrich = FALSE),
-    c("accession", "type", "url", "dataset", "file_accession")
-  )
-)
-```
-
-# Real downloads
-
-The examples above use `tempdir()` and `dry_run = TRUE`. For a real transfer,
-use a project directory and set `dry_run = FALSE`. Add `read = TRUE` when the
-selected files are small enough to load directly into R.
-
-```r
-downloaded <- encode_download(
-  rna_files,
-  file_accession = rna_file_ids,
-  directory = "data/encode/rna-seq",
-  dry_run = FALSE
+  path = "data/encode/rna-seq/encode-manifest.json"
 )
 
-loaded <- encode_download(
-  rna_files,
-  file_accession = rna_file_ids,
-  directory = "data/encode/rna-seq",
-  dry_run = FALSE,
-  read = TRUE
-)
-
-loaded$data$ENCFF090VKE
-loaded$by_experiment$ENCSR083OKX
+names(manifest)
 ```

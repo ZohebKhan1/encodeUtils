@@ -119,19 +119,8 @@ encode_filters <- function(x) {
 #' @return A data frame describing schema properties.
 #'
 #' @examples
-#' schema_json <- paste0(
-#'   '{"title":"Experiment","id":"/profiles/experiment.json",',
-#'   '"properties":{"accession":{"type":"string","title":"Accession"}}}'
-#' )
-#' fields <- httr2::with_mocked_responses(
-#'   function(req) httr2::response(
-#'     200,
-#'     headers = "Content-Type: application/json",
-#'     body = charToRaw(schema_json)
-#'   ),
-#'   encode_search_fields("Experiment")
-#' )
-#' fields$property
+#' # fields <- encode_search_fields("Experiment")
+#' # fields$property
 #' @noRd
 encode_search_fields <- function(type = "Experiment", quiet = TRUE) {
   encode_get_schema(type, quiet = quiet)$properties

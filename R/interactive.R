@@ -11,20 +11,12 @@
 #'   selected rows.
 #'
 #' @examples
-#' search_json <- paste0(
-#'   '{"@graph":[{"accession":"ENCSR000AAA",',
-#'   '"@id":"/experiments/ENCSR000AAA/",',
-#'   '"assay_title":"total RNA-seq","status":"released"}],"total":1}'
-#' )
-#' browsed <- httr2::with_mocked_responses(
-#'   function(req) httr2::response(
-#'     200,
-#'     headers = "Content-Type: application/json",
-#'     body = charToRaw(search_json)
-#'   ),
-#'   encode_browse(limit = 1, quiet = TRUE)
-#' )
-#' encode_results(browsed)
+#' # browsed <- encode_browse(
+#' #   type = "Experiment",
+#' #   search = "mouse heart ChIP-seq",
+#' #   limit = 10
+#' # )
+#' # encode_results(browsed)
 #' @noRd
 encode_browse <- function(..., select = FALSE) {
   result <- encode_search(...)

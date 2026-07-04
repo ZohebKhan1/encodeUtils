@@ -2,7 +2,7 @@
 #'
 #' encodeUtils queries ENCODE metadata, lists files attached to experiments,
 #' selects files, checks and downloads chosen files, reads supported local files,
-#' and records citation or manifest metadata.
+#' and records reproducibility manifests.
 #'
 #' Start with `encode_search()` for experiments or files. Use `encode_results()`
 #' to extract the displayed table, `encode_list_files()` to list files for

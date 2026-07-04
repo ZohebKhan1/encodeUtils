@@ -20,3 +20,6 @@ doc/
 tmp/
 site/
 data/
+
+/tools/
+/docs/

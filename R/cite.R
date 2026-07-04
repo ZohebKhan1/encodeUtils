@@ -1,4 +1,4 @@
-#' Create ENCODE citation metadata
+#' Create ENCODE attribution metadata
 #'
 #' Build a table or short text summary describing the ENCODE datasets and files
 #' used in an analysis.
@@ -12,7 +12,7 @@
 #' @param format Output format: `"table"`, `"text"`, `"markdown"`, or
 #'   `"bibtex"`.
 #' @param style Presentation style for text and markdown outputs.
-#' @param enrich Whether file-table citations should fetch parent experiment
+#' @param enrich Whether file-table attribution should fetch parent experiment
 #'   metadata to fill lab, institution, project, organism, and biosample fields
 #'   when possible. Use `"auto"` to enrich small file tables, `TRUE` to always
 #'   enrich, or `FALSE` to avoid extra web requests.
@@ -21,7 +21,7 @@
 #' @param quiet If `FALSE`, print concise messages.
 #'
 #' @return A data frame for `format = "table"`; otherwise a character vector
-#'   containing text, markdown, or BibTeX-like entries.
+#'   containing text, markdown, or BibTeX-like entries for ENCODE records.
 #' @export
 #'
 #' @examples
@@ -130,7 +130,7 @@ encode_citation_table <- function(
   if (is.character(x)) {
     return(encode_citation_from_character(x, quiet = quiet))
   }
-  cli::cli_abort("{.arg x} could not be converted to ENCODE citation metadata.")
+  cli::cli_abort("{.arg x} could not be converted to ENCODE attribution metadata.")
 }
 
 encode_citation_from_character <- function(x, quiet = FALSE) {
@@ -139,7 +139,7 @@ encode_citation_from_character <- function(x, quiet = FALSE) {
   experiment_ids <- accessions[encode_is_experiment_accession(accessions)]
   other <- setdiff(accessions, c(file_ids, experiment_ids))
   if (length(other) > 0L) {
-    cli::cli_abort("Citation character input currently supports ENCSR and ENCFF accessions/URLs.")
+    cli::cli_abort("Character input currently supports ENCSR and ENCFF accessions/URLs.")
   }
   rows <- list()
   if (length(file_ids) > 0L) {
@@ -157,7 +157,7 @@ encode_citation_from_character <- function(x, quiet = FALSE) {
     )
   }
   if (!isTRUE(quiet)) {
-    cli::cli_inform("Built ENCODE citation metadata for {length(x)} input id(s).")
+    cli::cli_inform("Built ENCODE attribution metadata for {length(x)} input id(s).")
   }
   encode_bind_rows(rows, encode_citation_columns())
 }
@@ -449,7 +449,7 @@ encode_citation_text <- function(table, style) {
     encode_join_or_na(labs),
     ". Assay(s): ",
     encode_join_or_na(assays),
-    ". Follow ENCODE citation guidance and include ENCSR/ENCFF accessions in downstream reports."
+    ". Follow ENCODE attribution guidance and include ENCSR/ENCFF accessions in downstream reports."
   )
 }
 
@@ -460,7 +460,7 @@ encode_citation_markdown <- function(table, style) {
       "",
       encode_citation_text(table, style = "summary"),
       "",
-      "Citation guidance: https://www.encodeproject.org/help/citing-encode/"
+      "ENCODE attribution guidance: https://www.encodeproject.org/help/citing-encode/"
     ))
   }
   if (identical(style, "methods")) {
@@ -469,7 +469,7 @@ encode_citation_markdown <- function(table, style) {
       "",
       encode_citation_text(table, style = "methods"),
       "",
-      "Citation guidance: https://www.encodeproject.org/help/citing-encode/"
+      "ENCODE attribution guidance: https://www.encodeproject.org/help/citing-encode/"
     ))
   }
   header <- c(
@@ -492,7 +492,7 @@ encode_citation_markdown <- function(table, style) {
     header,
     rows,
     "",
-    "Citation guidance: https://www.encodeproject.org/help/citing-encode/"
+    "ENCODE attribution guidance: https://www.encodeproject.org/help/citing-encode/"
   )
 }
 

@@ -52,26 +52,6 @@ The default `endpoint = "search"` is bounded by `limit`. The optional
 `allow_large = TRUE` because the portal may return many rows.
 }
 \examples{
-# Offline example.
-search_json <- paste0(
-  '{"@graph":[{"accession":"ENCSR000AAA",',
-  '"assay_title":"total RNA-seq","status":"released"}],"total":1}'
-)
-report <- httr2::with_mocked_responses(
-  function(req) httr2::response(
-    200,
-    headers = "Content-Type: application/json",
-    body = charToRaw(search_json)
-  ),
-  encode_report(
-    fields = c("accession", "assay_title"),
-    limit = 1,
-    quiet = TRUE
-  )
-)
-encode_results(report)
-
-# Live ENCODE example:
 # encode_report(
 #   fields = c("accession", "assay_title", "biosample_summary"),
 #   type = "Experiment",

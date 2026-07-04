@@ -11,7 +11,7 @@ Authors@R: person(
 Description: Provides an R interface for querying ENCODE Portal metadata,
     listing files attached to experiments, selecting files, previewing
     downloads, downloading selected files, reading supported local files, and
-    recording citation and manifest metadata.
+    recording reproducibility manifests.
 License: Artistic-2.0
 URL: https://github.com/ZohebKhan1/encodeUtils, https://zohebkhan1.github.io/encodeUtils/
 BugReports: https://github.com/ZohebKhan1/encodeUtils/issues

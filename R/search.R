@@ -28,30 +28,10 @@
 #' @export
 #'
 #' @examples
-#' # Offline example.
-#' search_json <- paste0(
-#'   '{"@graph":[{"accession":"ENCSR000AAA",',
-#'   '"@id":"/experiments/ENCSR000AAA/",',
-#'   '"assay_title":"total RNA-seq","status":"released"}],"total":1}'
-#' )
-#' res <- httr2::with_mocked_responses(
-#'   function(req) httr2::response(
-#'     200,
-#'     headers = "Content-Type: application/json",
-#'     body = charToRaw(search_json)
-#'   ),
-#'   encode_search(
-#'     filters = list(assay_title = "total RNA-seq"),
-#'     limit = 1,
-#'     quiet = TRUE
-#'   )
-#' )
-#' encode_results(res)[, c("accession", "assay_title")]
-#'
-#' # Live ENCODE example:
 #' # res <- encode_search(
 #' #   type = "Experiment",
 #' #   search = "mouse heart ChIP-seq",
+#' #   status = "released",
 #' #   limit = 10
 #' # )
 #' # encode_results(res)

@@ -2,7 +2,7 @@
 % Please edit documentation in R/cite.R
 \name{encode_cite}
 \alias{encode_cite}
-\title{Create ENCODE citation metadata}
+\title{Create ENCODE attribution metadata}
 \usage{
 encode_cite(
   x,
@@ -22,7 +22,7 @@ or ENCODE object.}
 
 \item{style}{Presentation style for text and markdown outputs.}
 
-\item{enrich}{Whether file-table citations should fetch parent experiment
+\item{enrich}{Whether file-table attribution should fetch parent experiment
 metadata to fill lab, institution, project, organism, and biosample fields
 when possible. Use `"auto"` to enrich small file tables, `TRUE` to always
 enrich, or `FALSE` to avoid extra web requests.}
@@ -34,7 +34,7 @@ enrich automatically when `enrich = "auto"`.}
 }
 \value{
 A data frame for `format = "table"`; otherwise a character vector
-  containing text, markdown, or BibTeX-like entries.
+  containing text, markdown, or BibTeX-like entries for ENCODE records.
 }
 \description{
 Build a table or short text summary describing the ENCODE datasets and files

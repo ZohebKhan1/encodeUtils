@@ -15,301 +15,178 @@ vignette: >
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  eval = FALSE
 )
 ```
 
-```{r mock-data, include=FALSE}
+```{r library}
 library(encodeUtils)
-
-json_response <- function(body) {
-  httr2::response(
-    200,
-    headers = "Content-Type: application/json",
-    body = charToRaw(body)
-  )
-}
-
-rows <- function(x, ...) {
-  as.data.frame(encode_results(x, ...), stringsAsFactors = FALSE)
-}
-
-show_columns <- function(x, columns) {
-  x <- as.data.frame(x, stringsAsFactors = FALSE)
-  x[, intersect(columns, names(x)), drop = FALSE]
-}
-
-show_experiments <- function(x) {
-  show_columns(
-    rows(x),
-    c(
-      "accession", "assay_title", "organism", "biosample_term_name",
-      "biosample_type", "biosample_summary", "lab", "project",
-      "file_count", "date_released", "status"
-    )
-  )
-}
-
-show_files <- function(x) {
-  show_columns(
-    rows(x),
-    c(
-      "experiment_accession", "file_accession", "assay_title",
-      "biosample_term_name", "file_format", "output_type",
-      "file_size_pretty", "md5sum", "status"
-    )
-  )
-}
-
-show_plan <- function(x) {
-  show_columns(
-    encode_results(x),
-    c(
-      "experiment_accession", "file_accession", "file_format",
-      "output_type", "file_size_pretty", "local_path"
-    )
-  )
-}
-
-show_explain <- function(x) {
-  show_columns(
-    encode_explain_selection(x),
-    c("file_accession", "experiment_accession", "decision", "reason")
-  )
-}
-
-doc_table <- function(x) {
-  knitr::kable(
-    x,
-    format = "html",
-    row.names = FALSE,
-    table.attr = 'class="encode-table"'
-  )
-}
-
-download_marker <- paste0(intToUtf8(64), intToUtf8(64), "download")
-
-experiment_search_json <- paste0(
-  '{"@graph":[{"accession":"ENCSR000AAA",',
-  '"@id":"/experiments/ENCSR000AAA/",',
-  '"@type":["Experiment"],',
-  '"assay_title":"total RNA-seq","status":"released",',
-  '"organism":{"scientific_name":"Homo sapiens"},',
-  '"biosample_ontology":{"term_name":"heart","classification":"tissue"},',
-  '"biosample_summary":"Homo sapiens heart tissue",',
-  '"lab":{"title":"Example lab"},"award":{"project":"ENCODE"},',
-  '"date_released":"2024-01-01","files":[1]}],"total":1}'
-)
-
-experiment_object_json <- paste0(
-  '{"@type":["Experiment","Item"],"accession":"ENCSR000AAA",',
-  '"@id":"/experiments/ENCSR000AAA/",',
-  '"assay_title":"total RNA-seq","status":"released",',
-  '"organism":{"scientific_name":"Homo sapiens"},',
-  '"biosample_ontology":{"term_name":"heart","classification":"tissue"},',
-  '"biosample_summary":"Homo sapiens heart tissue",',
-  '"lab":{"title":"Example lab"},"award":{"project":"ENCODE"},',
-  '"date_released":"2024-01-01"}'
-)
-
-file_search_json <- paste0(
-  '{"@graph":[{"accession":"ENCFF000AAA",',
-  '"@id":"/files/ENCFF000AAA/",',
-  '"dataset":"/experiments/ENCSR000AAA/",',
-  '"assay_title":"total RNA-seq",',
-  '"simple_biosample_summary":"heart tissue",',
-  '"biosample_ontology":{"term_name":"heart","classification":"tissue"},',
-  '"file_format":"txt","output_type":"metadata",',
-  '"file_size":3,"md5sum":"900150983cd24fb0d6963f7d28e17f72",',
-  '"preferred_default":true,',
-  '"href":"/files/ENCFF000AAA/', download_marker, '/ENCFF000AAA.txt",',
-  '"status":"released"}],"total":1}'
-)
-
-matrix_json <- paste0(
-  '{"total":3,"filters":[],',
-  '"matrix":{"x":{"group_by":"assay_title",',
-  '"assay_title":{"buckets":[{"key":"total RNA-seq","doc_count":2},',
-  '{"key":"ChIP-seq","doc_count":1}]}},',
-  '"y":{"group_by":["biosample_ontology.classification",',
-  '"biosample_ontology.term_name"],',
-  '"biosample_ontology.classification":{"buckets":[{"key":"tissue",',
-  '"doc_count":3,"biosample_ontology.term_name":{"buckets":[{"key":"heart",',
-  '"doc_count":3,"assay_title":{"buckets":[{"key":"total RNA-seq",',
-  '"doc_count":2},{"key":"ChIP-seq","doc_count":1}]}}]}}]}}}}'
-)
 ```
 
-# Search records
+# Core workflow
 
-`encode_search()` returns a result object that prints as a compact table.
-`encode_results()` extracts the table.
+The core workflow is:
+
+```{r core-workflow}
+experiments <- encode_search(
+  type = "Experiment",
+  search = "mouse heart total RNA-seq",
+  status = "released",
+  limit = 10
+)
+
+files <- encode_list_files(
+  experiments,
+  file_format = "tsv",
+  output_type = "gene quantifications",
+  assembly = "mm10"
+)
+
+file_ids <- c("ENCFF090VKE", "ENCFF260OJQ")
+
+checked <- encode_download(
+  files,
+  file_accession = file_ids,
+  directory = "data/encode/rna-seq",
+  dry_run = TRUE
+)
+
+downloaded <- encode_download(
+  files,
+  file_accession = file_ids,
+  directory = "data/encode/rna-seq"
+)
+
+loaded <- encode_read(downloaded)
+manifest <- encode_manifest(downloaded, include_session = FALSE)
+```
+
+# Search
+
+`encode_search()` finds ENCODE records and returns a compact result object.
 
 ```{r search}
-res <- httr2::with_mocked_responses(
-  function(req) json_response(experiment_search_json),
-  encode_search(
-    type = "Experiment",
-    filters = list(assay_title = "total RNA-seq"),
-    limit = 3,
-    quiet = TRUE
-  )
+experiments <- encode_search(
+  type = "Experiment",
+  search = "mouse heart ChIP-seq",
+  status = "released",
+  limit = 10
 )
+
+encode_results(experiments)
 ```
 
-```{r search-table, echo=FALSE}
-doc_table(show_experiments(res))
-```
+# One record
 
-# Check availability
-
-`encode_matrix()` returns ENCODE Matrix counts by assay and biosample.
-
-```{r matrix}
-mat <- httr2::with_mocked_responses(
-  function(req) json_response(matrix_json),
-  encode_matrix(quiet = TRUE)
-)
-```
-
-```{r matrix-tables, echo=FALSE}
-doc_table(rows(mat))
-doc_table(rows(mat, component = "assays"))
-doc_table(rows(mat, component = "biosamples"))
-```
-
-# Retrieve one record
-
-`encode_get()` retrieves one ENCODE record by accession, path, or URL.
+`encode_get()` retrieves one ENCODE record by accession, portal path, or URL.
 
 ```{r get}
-experiment <- httr2::with_mocked_responses(
-  function(req) json_response(experiment_object_json),
-  encode_get("ENCSR000AAA", quiet = TRUE)
+experiment <- encode_get("ENCSR284QGB")
+encode_results(experiment)
+```
+
+# Availability counts
+
+`encode_matrix()` returns ENCODE availability counts by assay and biosample.
+Use it when you want a high-level view before writing a narrower search.
+
+```{r matrix}
+mat <- encode_matrix(
+  filters = list("control_type!=" = "*", perturbed = "false")
 )
+
+encode_results(mat)
+encode_results(mat, component = "assays")
+encode_results(mat, component = "biosamples")
 ```
 
-```{r get-table, echo=FALSE}
-doc_table(show_experiments(experiment))
-```
+# Files
 
-# Build a metadata table
-
-`encode_report()` returns selected fields from matching records.
-
-```{r report}
-report <- httr2::with_mocked_responses(
-  function(req) json_response(experiment_search_json),
-  encode_report(
-    fields = c("accession", "assay_title", "status"),
-    limit = 1,
-    quiet = TRUE
-  )
-)
-```
-
-```{r report-table, echo=FALSE}
-doc_table(rows(report))
-```
-
-# List files
-
-`encode_list_files()` lists file metadata for experiments. It does not download
-file contents.
+`encode_list_files()` lists downloadable files attached to experiments. It does
+not download file contents.
 
 ```{r files}
-files <- httr2::with_mocked_responses(
-  function(req) json_response(file_search_json),
-  encode_list_files(
-    "ENCSR000AAA",
-    file_format = "txt",
-    quiet = TRUE
-  )
+files <- encode_list_files(
+  experiments,
+  file_format = "bed",
+  assembly = "mm10"
 )
+
+encode_results(files)
 ```
 
-```{r files-table, echo=FALSE}
-doc_table(show_files(files))
-```
+# Selection
 
-# Select files
+`encode_select_files()` narrows a file table. Use file accessions when you know
+the exact files, or a preset when selecting a standard processed output.
 
-`encode_select_files()` keeps selected rows and records why other rows were not
-kept.
-
-```{r select-files}
+```{r select}
 selected <- encode_select_files(
   files,
-  preset = "metadata",
-  prefer_default = TRUE,
-  explain = FALSE
+  preset = "chipseq_idr_peaks",
+  assembly = "mm10"
 )
+
+encode_results(selected)
+encode_explain_selection(selected)
 ```
 
-```{r select-files-table, echo=FALSE}
-doc_table(show_files(selected))
-doc_table(show_explain(selected))
-```
+# Download and read
 
-# Check and download files
+Use `dry_run = TRUE` first. Then run the same call without `dry_run` to transfer
+files. `encode_read()` reads supported downloaded files without typing paths.
 
-`encode_download(..., dry_run = TRUE)` checks destination paths and file sizes
-without transferring files. Use the same call with `dry_run = FALSE` for the
-actual transfer.
-
-```{r download}
-dry_run <- encode_download(
+```{r download-read}
+checked <- encode_download(
   selected,
-  directory = tempdir(),
-  dry_run = TRUE,
-  quiet = TRUE
+  directory = "data/encode/chip-seq",
+  dry_run = TRUE
 )
+
+downloaded <- encode_download(
+  selected,
+  directory = "data/encode/chip-seq"
+)
+
+loaded <- encode_read(downloaded)
+loaded$metadata
 ```
 
-```{r download-tables, echo=FALSE}
-doc_table(show_plan(dry_run))
-```
+# Manifest
 
-# Record provenance
-
-`encode_manifest()` records selected files, download rows, queries, and citation
-metadata. `encode_cite()` returns dataset and file attribution.
+`encode_manifest()` writes a reproducibility record for the query and files used
+in an analysis. It includes ENCODE attribution metadata by default.
 
 ```{r manifest}
 manifest <- encode_manifest(
-  selected,
+  downloaded,
   include_session = FALSE,
-  path = file.path(tempdir(), "encode-manifest.json")
+  path = "data/encode/chip-seq/encode-manifest.json"
 )
+
+names(manifest)
 ```
 
-```{r manifest-tables, echo=FALSE}
-doc_table(
-  data.frame(section = names(manifest))
+# Additional metadata helpers
+
+`encode_report()` returns a table with user-selected ENCODE fields. It is useful
+when the compact tables do not include a field you need.
+
+```{r report}
+report <- encode_report(
+  fields = c("accession", "assay_title", "biosample_summary"),
+  type = "Experiment",
+  search = "mouse heart ChIP-seq",
+  limit = 10
 )
-doc_table(
-  show_columns(
-    encode_cite(selected, enrich = FALSE),
-    c("accession", "type", "url", "dataset", "file_accession")
-  )
-)
+
+encode_results(report)
 ```
 
-# Read local files
+`encode_cite()` returns the ENCODE attribution table by itself. Most workflows
+can use `encode_manifest()` instead.
 
-`encode_read()` reads supported files that are already on disk. It can also read
-download result rows, so the file paths do not need to be typed again.
-
-```{r read}
-txt_path <- tempfile(fileext = ".txt")
-writeLines("abc", txt_path)
-encode_read(txt_path)
-
-bam_path <- tempfile(fileext = ".bam")
-writeBin(charToRaw("placeholder"), bam_path)
-encode_read(bam_path)
-
-# After a real download:
-# loaded <- encode_read(downloaded)
-# loaded$data$ENCFF000AAA
+```{r cite}
+encode_cite(downloaded, enrich = "auto")
 ```

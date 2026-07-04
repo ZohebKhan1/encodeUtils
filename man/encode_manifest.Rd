@@ -15,7 +15,8 @@ encode_manifest(
 \arguments{
 \item{x}{ENCODE result object, file table, selected files, or download result.}
 
-\item{include_citation}{Whether to include `encode_cite(x)` when supported.}
+\item{include_citation}{Whether to include ENCODE attribution metadata when
+supported.}
 
 \item{include_session}{Whether to include `utils::sessionInfo()`.}
 
@@ -28,8 +29,9 @@ written to disk.}
 A manifest list.
 }
 \description{
-Capture the query, selected files, download records, citation metadata, and
-optional R session information. Provide `path` to save the manifest as JSON.
+Capture the query, selected files, download records, ENCODE attribution
+metadata, and optional R session information. Provide `path` to save the
+manifest as JSON.
 }
 \examples{
 files <- data.frame(
