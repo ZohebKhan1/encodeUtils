@@ -30,6 +30,54 @@ json_response <- function(body) {
   )
 }
 
+rows <- function(x, ...) {
+  as.data.frame(encode_results(x, ...), stringsAsFactors = FALSE)
+}
+
+show_columns <- function(x, columns) {
+  x <- as.data.frame(x, stringsAsFactors = FALSE)
+  x[, intersect(columns, names(x)), drop = FALSE]
+}
+
+show_experiments <- function(x) {
+  show_columns(
+    rows(x),
+    c(
+      "accession", "assay_title", "organism", "biosample_term_name",
+      "biosample_type", "biosample_summary", "lab", "project",
+      "file_count", "date_released", "status"
+    )
+  )
+}
+
+show_files <- function(x) {
+  show_columns(
+    rows(x),
+    c(
+      "experiment_accession", "file_accession", "assay_title",
+      "biosample_term_name", "file_format", "output_type",
+      "file_size_pretty", "md5sum", "status"
+    )
+  )
+}
+
+show_plan <- function(x) {
+  show_columns(
+    encode_results(x),
+    c(
+      "experiment_accession", "file_accession", "file_format",
+      "output_type", "file_size_pretty", "local_path"
+    )
+  )
+}
+
+show_explain <- function(x) {
+  show_columns(
+    encode_explain_selection(x),
+    c("file_accession", "experiment_accession", "decision", "reason")
+  )
+}
+
 download_marker <- paste0(intToUtf8(64), intToUtf8(64), "download")
 
 experiment_search_json <- paste0(
@@ -98,9 +146,10 @@ res <- httr2::with_mocked_responses(
     quiet = TRUE
   )
 )
+```
 
-res
-encode_results(res)
+```{r search-table, echo=FALSE}
+knitr::kable(show_experiments(res), row.names = FALSE)
 ```
 
 # Check availability
@@ -112,10 +161,12 @@ mat <- httr2::with_mocked_responses(
   function(req) json_response(matrix_json),
   encode_matrix(quiet = TRUE)
 )
+```
 
-encode_results(mat)
-encode_results(mat, component = "assays")
-encode_results(mat, component = "biosamples")
+```{r matrix-tables, echo=FALSE}
+knitr::kable(rows(mat), row.names = FALSE)
+knitr::kable(rows(mat, component = "assays"), row.names = FALSE)
+knitr::kable(rows(mat, component = "biosamples"), row.names = FALSE)
 ```
 
 # Retrieve one record
@@ -127,9 +178,10 @@ experiment <- httr2::with_mocked_responses(
   function(req) json_response(experiment_object_json),
   encode_get("ENCSR000AAA", quiet = TRUE)
 )
+```
 
-experiment
-encode_results(experiment)
+```{r get-table, echo=FALSE}
+knitr::kable(show_experiments(experiment), row.names = FALSE)
 ```
 
 # Build a metadata table
@@ -145,8 +197,10 @@ report <- httr2::with_mocked_responses(
     quiet = TRUE
   )
 )
+```
 
-encode_results(report)
+```{r report-table, echo=FALSE}
+knitr::kable(rows(report), row.names = FALSE)
 ```
 
 # List files
@@ -163,9 +217,10 @@ files <- httr2::with_mocked_responses(
     quiet = TRUE
   )
 )
+```
 
-files
-encode_results(files)[, c("file_accession", "file_format", "file_size_pretty", "md5sum")]
+```{r files-table, echo=FALSE}
+knitr::kable(show_files(files), row.names = FALSE)
 ```
 
 # Select files
@@ -180,9 +235,11 @@ selected <- encode_select_files(
   prefer_default = TRUE,
   explain = FALSE
 )
+```
 
-selected
-encode_explain_selection(selected)
+```{r select-files-table, echo=FALSE}
+knitr::kable(show_files(selected), row.names = FALSE)
+knitr::kable(show_explain(selected), row.names = FALSE)
 ```
 
 # Preview and dry-run downloads
@@ -192,15 +249,23 @@ encode_explain_selection(selected)
 transferring files.
 
 ```{r download}
-encode_preview_download(selected, directory = tempdir())
+plan <- encode_preview_download(
+  selected,
+  directory = tempdir(),
+  quiet = TRUE
+)
 
 dry_run <- encode_download(
   selected,
   directory = tempdir(),
-  dry_run = TRUE
+  dry_run = TRUE,
+  quiet = TRUE
 )
+```
 
-encode_results(dry_run)
+```{r download-tables, echo=FALSE}
+knitr::kable(show_plan(plan), row.names = FALSE)
+knitr::kable(show_plan(dry_run), row.names = FALSE)
 ```
 
 # Record provenance
@@ -214,9 +279,20 @@ manifest <- encode_manifest(
   include_session = FALSE,
   path = file.path(tempdir(), "encode-manifest.json")
 )
+```
 
-names(manifest)
-encode_cite(selected, enrich = FALSE)
+```{r manifest-tables, echo=FALSE}
+knitr::kable(
+  data.frame(section = names(manifest)),
+  row.names = FALSE
+)
+knitr::kable(
+  show_columns(
+    encode_cite(selected, enrich = FALSE),
+    c("accession", "type", "url", "dataset", "file_accession")
+  ),
+  row.names = FALSE
+)
 ```
 
 # Read local files

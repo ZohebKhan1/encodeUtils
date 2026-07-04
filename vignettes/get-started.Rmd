@@ -30,6 +30,55 @@ json_response <- function(body) {
   )
 }
 
+rows <- function(x) {
+  as.data.frame(encode_results(x), stringsAsFactors = FALSE)
+}
+
+show_columns <- function(x, columns) {
+  x <- as.data.frame(x, stringsAsFactors = FALSE)
+  x[, intersect(columns, names(x)), drop = FALSE]
+}
+
+show_experiments <- function(x) {
+  show_columns(
+    rows(x),
+    c(
+      "accession", "assay_title", "target", "control_type", "organism",
+      "biosample_term_name", "biosample_type", "sex", "biosample_summary",
+      "lab", "project", "file_count", "date_released", "status"
+    )
+  )
+}
+
+show_files <- function(x) {
+  show_columns(
+    rows(x),
+    c(
+      "experiment_accession", "file_accession", "assay_title", "target",
+      "biosample_term_name", "biosample_type", "sex", "file_format",
+      "file_type", "output_type", "assembly", "analysis_accession",
+      "file_size_pretty", "status"
+    )
+  )
+}
+
+show_plan <- function(x) {
+  show_columns(
+    encode_results(x),
+    c(
+      "experiment_accession", "file_accession", "file_format",
+      "output_type", "assembly", "file_size_pretty", "local_path"
+    )
+  )
+}
+
+show_explain <- function(x) {
+  show_columns(
+    encode_explain_selection(x),
+    c("file_accession", "experiment_accession", "decision", "reason")
+  )
+}
+
 download_marker <- paste0(intToUtf8(64), intToUtf8(64), "download")
 
 rna_experiment_json <- paste0(
@@ -182,14 +231,15 @@ rna_experiments <- httr2::with_mocked_responses(
     quiet = TRUE
   )
 )
-
-rna_experiments
 ```
 
-Use `encode_results()` when the table is needed for ordinary R operations.
+The search returns matching ENCODE experiments.
 
-```{r rnaseq-results}
-encode_results(rna_experiments)
+```{r rnaseq-results, echo=FALSE}
+knitr::kable(
+  show_experiments(rna_experiments),
+  row.names = FALSE
+)
 ```
 
 List gene-quantification TSV files for the returned experiments.
@@ -205,8 +255,13 @@ rna_files <- httr2::with_mocked_responses(
     quiet = TRUE
   )
 )
+```
 
-rna_files
+```{r rnaseq-file-table, echo=FALSE}
+knitr::kable(
+  show_files(rna_files),
+  row.names = FALSE
+)
 ```
 
 Preview two specific files before transfer.
@@ -217,10 +272,16 @@ rna_file_ids <- c("ENCFF090VKE", "ENCFF260OJQ")
 rna_plan <- encode_preview_download(
   rna_files,
   file_accession = rna_file_ids,
-  directory = tempdir()
+  directory = tempdir(),
+  quiet = TRUE
 )
+```
 
-rna_plan
+```{r rnaseq-preview-table, echo=FALSE}
+knitr::kable(
+  show_plan(rna_plan),
+  row.names = FALSE
+)
 ```
 
 Run a dry-run to return the planned download rows without downloading files.
@@ -230,10 +291,16 @@ rna_dry_run <- encode_download(
   rna_files,
   file_accession = rna_file_ids,
   directory = tempdir(),
-  dry_run = TRUE
+  dry_run = TRUE,
+  quiet = TRUE
 )
+```
 
-encode_results(rna_dry_run)
+```{r rnaseq-dry-run-table, echo=FALSE}
+knitr::kable(
+  show_plan(rna_dry_run),
+  row.names = FALSE
+)
 ```
 
 # ATAC-seq
@@ -251,8 +318,13 @@ atac_experiments <- httr2::with_mocked_responses(
     quiet = TRUE
   )
 )
+```
 
-atac_experiments
+```{r atac-experiment-table, echo=FALSE}
+knitr::kable(
+  show_experiments(atac_experiments),
+  row.names = FALSE
+)
 ```
 
 List candidate peak and signal files.
@@ -267,8 +339,13 @@ atac_files <- httr2::with_mocked_responses(
     quiet = TRUE
   )
 )
+```
 
-atac_files
+```{r atac-file-table, echo=FALSE}
+knitr::kable(
+  show_files(atac_files),
+  row.names = FALSE
+)
 ```
 
 Select ATAC-seq peak files.
@@ -277,15 +354,35 @@ Select ATAC-seq peak files.
 atac_selected <- encode_select_files(
   atac_files,
   preset = "atacseq_peaks",
-  assembly = "mm10"
+  assembly = "mm10",
+  explain = FALSE
 )
+```
 
-atac_selected
-encode_explain_selection(atac_selected)
+```{r atac-select-table, echo=FALSE}
+knitr::kable(
+  show_files(atac_selected),
+  row.names = FALSE
+)
+knitr::kable(
+  show_explain(atac_selected),
+  row.names = FALSE
+)
 ```
 
 ```{r atac-preview}
-encode_preview_download(atac_selected, directory = tempdir())
+atac_plan <- encode_preview_download(
+  atac_selected,
+  directory = tempdir(),
+  quiet = TRUE
+)
+```
+
+```{r atac-preview-table, echo=FALSE}
+knitr::kable(
+  show_plan(atac_plan),
+  row.names = FALSE
+)
 ```
 
 # ChIP-seq
@@ -303,8 +400,13 @@ chip_experiments <- httr2::with_mocked_responses(
     quiet = TRUE
   )
 )
+```
 
-chip_experiments
+```{r chip-experiment-table, echo=FALSE}
+knitr::kable(
+  show_experiments(chip_experiments),
+  row.names = FALSE
+)
 ```
 
 List peak and signal files.
@@ -319,8 +421,13 @@ chip_files <- httr2::with_mocked_responses(
     quiet = TRUE
   )
 )
+```
 
-chip_files
+```{r chip-file-table, echo=FALSE}
+knitr::kable(
+  show_files(chip_files),
+  row.names = FALSE
+)
 ```
 
 Select peak files.
@@ -329,11 +436,20 @@ Select peak files.
 chip_peaks <- encode_select_files(
   chip_files,
   preset = "chipseq_idr_peaks",
-  assembly = "mm10"
+  assembly = "mm10",
+  explain = FALSE
 )
+```
 
-chip_peaks
-encode_explain_selection(chip_peaks)
+```{r chip-select-peaks-table, echo=FALSE}
+knitr::kable(
+  show_files(chip_peaks),
+  row.names = FALSE
+)
+knitr::kable(
+  show_explain(chip_peaks),
+  row.names = FALSE
+)
 ```
 
 Select signal tracks from the same file table.
@@ -342,10 +458,16 @@ Select signal tracks from the same file table.
 chip_signal <- encode_select_files(
   chip_files,
   preset = "chipseq_signal_bigwig",
-  assembly = "mm10"
+  assembly = "mm10",
+  explain = FALSE
 )
+```
 
-chip_signal
+```{r chip-signal-table, echo=FALSE}
+knitr::kable(
+  show_files(chip_signal),
+  row.names = FALSE
+)
 ```
 
 # Manifest and citation
@@ -358,14 +480,25 @@ manifest <- encode_manifest(
   include_session = FALSE,
   path = file.path(tempdir(), "encode-rna-manifest.json")
 )
+```
 
-names(manifest)
+```{r manifest-table, echo=FALSE}
+knitr::kable(
+  data.frame(section = names(manifest)),
+  row.names = FALSE
+)
 ```
 
 Create a citation table for the datasets and files used.
 
-```{r cite}
-encode_cite(rna_dry_run, enrich = FALSE)
+```{r cite, echo=FALSE}
+knitr::kable(
+  show_columns(
+    encode_cite(rna_dry_run, enrich = FALSE),
+    c("accession", "type", "url", "dataset", "file_accession")
+  ),
+  row.names = FALSE
+)
 ```
 
 # Real downloads
