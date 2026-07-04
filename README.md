@@ -12,13 +12,7 @@ provenance. It does not submit or modify ENCODE records.
 These summaries show released ENCODE Experiment records for common sequencing
 workflows.
 
-<img src="man/figures/encode-dataset-coverage.svg" width="720" alt="Released ENCODE RNA-seq, ChIP-seq, and ATAC-seq experiment counts.">
-
-<img src="man/figures/encode-assay-subtypes.svg" width="720" alt="Common ENCODE RNA-seq, ChIP-seq, and ATAC-seq assay subtypes.">
-
-<img src="man/figures/encode-metadata-breakdown.svg" width="760" alt="ENCODE experiment breakdown by species, organ or tissue, and life stage.">
-
-<img src="man/figures/encode-histone-chip-targets.svg" width="720" alt="Histone ChIP-seq target counts by histone mark.">
+<img src="man/figures/encode-database-overview.svg" width="780" alt="Released ENCODE RNA-seq, ChIP-seq, and ATAC-seq experiment counts with species, tissue, life-stage, and histone-target summaries.">
 
 Regenerate the figures with:
 

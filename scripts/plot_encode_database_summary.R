@@ -1,6 +1,9 @@
 #!/usr/bin/env Rscript
 
-required_packages <- c("ggplot2", "dplyr", "tidyr", "forcats", "scales", "svglite")
+required_packages <- c(
+  "ggplot2", "dplyr", "tidyr", "forcats", "scales", "svglite",
+  "sysfonts", "showtext", "patchwork"
+)
 missing_packages <- required_packages[!vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)]
 if (length(missing_packages) > 0L) {
   stop(
@@ -25,45 +28,62 @@ library(scales)
 figure_dir <- "man/figures"
 dir.create(figure_dir, recursive = TRUE, showWarnings = FALSE)
 
-dataset_families <- list(
-  "RNA-seq" = c(
-    "total RNA-seq", "polyA plus RNA-seq", "polyA minus RNA-seq",
-    "long read RNA-seq", "small RNA-seq", "microRNA-seq", "snRNA-seq",
-    "scRNA-seq", "long read scRNA-seq", "shRNA RNA-seq",
-    "CRISPR RNA-seq", "siRNA RNA-seq", "CRISPRi RNA-seq"
-  ),
-  "ChIP-seq" = c("TF ChIP-seq", "Histone ChIP-seq", "Control ChIP-seq"),
-  "ATAC-seq" = c("ATAC-seq", "snATAC-seq")
+nimbus_fonts <- c(
+  regular = "/usr/share/fonts/opentype/urw-base35/NimbusSans-Regular.otf",
+  bold = "/usr/share/fonts/opentype/urw-base35/NimbusSans-Bold.otf",
+  italic = "/usr/share/fonts/opentype/urw-base35/NimbusSans-Italic.otf",
+  bolditalic = "/usr/share/fonts/opentype/urw-base35/NimbusSans-BoldItalic.otf"
+)
+missing_fonts <- nimbus_fonts[!file.exists(nimbus_fonts)]
+if (length(missing_fonts) > 0L) {
+  stop("Nimbus Sans font files were not found: ", paste(missing_fonts, collapse = ", "), call. = FALSE)
+}
+
+sysfonts::font_add(
+  family = "Nimbus Sans",
+  regular = nimbus_fonts[["regular"]],
+  bold = nimbus_fonts[["bold"]],
+  italic = nimbus_fonts[["italic"]],
+  bolditalic = nimbus_fonts[["bolditalic"]]
 )
 
+showtext::showtext_auto(TRUE)
+on.exit(showtext::showtext_auto(FALSE), add = TRUE)
+
+dataset_levels <- c("RNA-seq", "ChIP-seq", "ATAC-seq")
 palette_family <- c(
-  "RNA-seq" = "#4C78A8",
-  "ChIP-seq" = "#C44E52",
-  "ATAC-seq" = "#55A868"
+  "RNA-seq" = "#4E79A7",
+  "ChIP-seq" = "#B07AA1",
+  "ATAC-seq" = "#59A14F"
 )
 
-theme_encode <- function(base_size = 11) {
+theme_encode <- function(base_size = 9.5) {
   theme_minimal(base_family = "Nimbus Sans", base_size = base_size) +
     theme(
-      plot.title = element_text(face = "bold", size = rel(1.12), margin = margin(b = 6)),
-      plot.subtitle = element_text(color = "#4d4d4d", margin = margin(b = 12)),
-      plot.caption = element_text(color = "#6b6b6b", size = rel(0.82), hjust = 0),
-      axis.title = element_text(color = "#333333"),
-      axis.text = element_text(color = "#333333"),
+      plot.title = element_text(face = "bold", size = rel(1.12), color = "#1F2933", margin = margin(b = 4)),
+      plot.subtitle = element_text(color = "#52606D", margin = margin(b = 8)),
+      plot.caption = element_text(color = "#6B7280", size = rel(0.78), hjust = 0),
+      axis.title = element_text(color = "#323F4B"),
+      axis.text = element_text(color = "#323F4B"),
+      axis.text.y = element_text(margin = margin(r = 3)),
       panel.grid.major.y = element_blank(),
       panel.grid.minor = element_blank(),
       legend.position = "bottom",
       legend.title = element_blank(),
-      strip.text = element_text(face = "bold", hjust = 0),
-      strip.background = element_rect(fill = "#F2F4F5", color = NA),
+      legend.margin = margin(t = 2),
+      legend.box.margin = margin(t = -4),
+      strip.text = element_text(face = "bold", hjust = 0, color = "#1F2933"),
+      strip.background = element_rect(fill = "#F4F6F8", color = NA),
       plot.background = element_rect(fill = "white", color = NA),
-      panel.background = element_rect(fill = "white", color = NA)
+      panel.background = element_rect(fill = "white", color = NA),
+      plot.margin = margin(8, 12, 8, 8)
     )
 }
 
-save_svg <- function(plot, filename, width, height) {
+save_svg <- function(plot, filename, width = 9.0, height = 11.0) {
+  path <- file.path(figure_dir, filename)
   ggplot2::ggsave(
-    filename = file.path(figure_dir, filename),
+    filename = path,
     plot = plot,
     width = width,
     height = height,
@@ -71,103 +91,84 @@ save_svg <- function(plot, filename, width, height) {
     device = svglite::svglite,
     bg = "white"
   )
+  path
+}
+
+classify_assay_family <- function(assay_title) {
+  case_when(
+    grepl("RNA-seq", assay_title, fixed = TRUE) ~ "RNA-seq",
+    grepl("ChIP-seq", assay_title, fixed = TRUE) ~ "ChIP-seq",
+    grepl("ATAC-seq", assay_title, fixed = TRUE) ~ "ATAC-seq",
+    TRUE ~ NA_character_
+  )
 }
 
 matrix_result <- encode_matrix(quiet = TRUE)
 assay_counts <- encode_results(matrix_result, component = "assays") |>
   as_tibble() |>
-  select(assay_title, n)
+  transmute(
+    assay_title,
+    n = as.numeric(n),
+    dataset_type = classify_assay_family(assay_title)
+  )
 
-family_counts <- tibble(
-  dataset_type = names(dataset_families),
-  n = vapply(dataset_families, function(assays) {
-    sum(assay_counts$n[assay_counts$assay_title %in% assays], na.rm = TRUE)
-  }, numeric(1))
-) |>
-  mutate(dataset_type = factor(dataset_type, levels = names(dataset_families)))
+family_assays <- assay_counts |>
+  filter(!is.na(dataset_type), n > 0) |>
+  mutate(dataset_type = factor(dataset_type, levels = dataset_levels))
 
-subtype_counts <- bind_rows(lapply(names(dataset_families), function(dataset_type) {
-  assays <- dataset_families[[dataset_type]]
-  assay_counts |>
-    filter(assay_title %in% assays) |>
-    mutate(dataset_type = factor(dataset_type, levels = names(dataset_families)))
-})) |>
-  arrange(dataset_type, desc(n)) |>
+dataset_families <- split(family_assays$assay_title, family_assays$dataset_type, drop = TRUE)
+
+family_counts <- family_assays |>
   group_by(dataset_type) |>
-  slice_head(n = 8) |>
-  ungroup()
+  summarize(n = sum(n, na.rm = TRUE), assay_titles = paste(assay_title, collapse = "; "), .groups = "drop") |>
+  mutate(dataset_type = factor(dataset_type, levels = dataset_levels))
+
+get_search_result <- function(dataset_type) {
+  encode_search(
+    type = "Experiment",
+    filters = list(assay_title = dataset_families[[dataset_type]]),
+    status = "released",
+    limit = 0,
+    quiet = TRUE
+  )
+}
+
+search_results <- setNames(lapply(dataset_levels, get_search_result), dataset_levels)
+search_totals <- vapply(search_results, function(x) x$total_results, numeric(1))
+matrix_totals <- setNames(family_counts$n, as.character(family_counts$dataset_type))
+if (!identical(as.numeric(matrix_totals[dataset_levels]), as.numeric(search_totals[dataset_levels]))) {
+  stop(
+    "Collapsed assay totals do not match live ENCODE search totals.\n",
+    "Matrix totals: ", paste(dataset_levels, matrix_totals[dataset_levels], sep = "=", collapse = ", "), "\n",
+    "Search totals: ", paste(dataset_levels, search_totals[dataset_levels], sep = "=", collapse = ", "),
+    call. = FALSE
+  )
+}
 
 caption_text <- paste0(
   "Released ENCODE Experiment records queried ",
   format(Sys.Date(), "%Y-%m-%d"),
-  "."
+  ". Assay families are collapsed from ENCODE assay titles containing RNA-seq, ChIP-seq, or ATAC-seq."
 )
 
 family_plot <- family_counts |>
   mutate(dataset_type = fct_reorder(dataset_type, n)) |>
   ggplot(aes(x = n, y = dataset_type, fill = dataset_type)) +
-  geom_col(width = 0.68) +
-  geom_text(
-    aes(label = comma(n)),
-    hjust = -0.12,
-    family = "Nimbus Sans",
-    size = 3.7,
-    color = "#222222"
-  ) +
+  geom_col(width = 0.62) +
+  geom_text(aes(label = comma(n)), hjust = -0.12, family = "Nimbus Sans", size = 3.2, color = "#1F2933") +
   scale_fill_manual(values = palette_family) +
-  scale_x_continuous(labels = label_number(big.mark = ","), expand = expansion(mult = c(0, 0.18))) +
-  labs(
-    title = "ENCODE experiment coverage",
-    x = "Released experiments",
-    y = NULL,
-    caption = caption_text
-  ) +
-  theme_encode(base_size = 12) +
+  scale_x_continuous(labels = label_number(big.mark = ","), expand = expansion(mult = c(0, 0.16))) +
+  labs(title = "Collapsed assay families", x = "Released experiments", y = NULL) +
+  theme_encode(base_size = 9.8) +
   theme(legend.position = "none")
 
-save_svg(family_plot, "encode-dataset-coverage.svg", width = 7.0, height = 3.2)
-
-subtype_plot <- subtype_counts |>
-  mutate(assay_title = fct_reorder(assay_title, n)) |>
-  ggplot(aes(x = n, y = assay_title, fill = dataset_type)) +
-  geom_col(width = 0.65) +
-  geom_text(
-    aes(label = comma(n)),
-    hjust = -0.08,
-    family = "Nimbus Sans",
-    size = 2.8,
-    color = "#222222"
-  ) +
-  facet_wrap(~dataset_type, scales = "free_y", ncol = 1) +
-  scale_fill_manual(values = palette_family) +
-  scale_x_continuous(labels = label_number(big.mark = ","), expand = expansion(mult = c(0, 0.18))) +
-  labs(
-    title = "Most common assay subtypes",
-    x = "Released experiments",
-    y = NULL,
-    caption = caption_text
-  ) +
-  theme_encode(base_size = 10.5) +
-  theme(legend.position = "none")
-
-save_svg(subtype_plot, "encode-assay-subtypes.svg", width = 7.2, height = 7.2)
-
-get_facets <- function(dataset_type, assays) {
-  result <- encode_search(
-    type = "Experiment",
-    filters = list(assay_title = assays),
-    status = "released",
-    limit = 0,
-    quiet = TRUE
-  )
-  encode_facets(result) |>
+get_facets <- function(dataset_type) {
+  encode_facets(search_results[[dataset_type]]) |>
     as_tibble() |>
-    mutate(dataset_type = factor(dataset_type, levels = names(dataset_families)))
+    mutate(dataset_type = factor(dataset_type, levels = dataset_levels))
 }
 
-facet_counts <- bind_rows(lapply(names(dataset_families), function(dataset_type) {
-  get_facets(dataset_type, dataset_families[[dataset_type]])
-}))
+facet_counts <- bind_rows(lapply(dataset_levels, get_facets))
 
 species_counts <- facet_counts |>
   filter(field == "replicates.library.biosample.donor.organism.scientific_name") |>
@@ -178,7 +179,7 @@ organ_counts <- facet_counts |>
   group_by(term) |>
   mutate(total = sum(count, na.rm = TRUE)) |>
   ungroup() |>
-  filter(term %in% head(unique(term[order(total, decreasing = TRUE)]), 10)) |>
+  filter(term %in% head(unique(term[order(total, decreasing = TRUE)]), 8)) |>
   transmute(dataset_type, category = "Organ / tissue", term, n = count)
 
 life_stage_counts <- facet_counts |>
@@ -207,48 +208,65 @@ breakdown_counts <- bind_rows(species_counts, organ_counts, life_stage_counts) |
 
 breakdown_plot <- breakdown_counts |>
   ggplot(aes(x = n, y = term, fill = dataset_type)) +
-  geom_col(position = position_dodge2(width = 0.78, preserve = "single"), width = 0.66) +
-  facet_wrap(~category, scales = "free", axes = "all_x", ncol = 1) +
+  geom_col(position = position_dodge2(width = 0.76, preserve = "single"), width = 0.62) +
+  facet_wrap(~category, scales = "free", axes = "all_x", ncol = 3) +
   scale_fill_manual(values = palette_family) +
-  scale_x_continuous(labels = label_number(big.mark = ","), expand = expansion(mult = c(0, 0.08))) +
-  labs(
-    title = "ENCODE experiment metadata breakdown",
-    x = "Released experiments",
-    y = NULL,
-    caption = caption_text
-  ) +
-  theme_encode(base_size = 10.5)
+  scale_x_continuous(labels = label_number(big.mark = ","), expand = expansion(mult = c(0, 0.10))) +
+  labs(title = "Species, tissue, and life-stage breakdown", x = "Released experiments", y = NULL) +
+  theme_encode(base_size = 8.6) +
+  theme(legend.position = "bottom")
 
-save_svg(breakdown_plot, "encode-metadata-breakdown.svg", width = 8.2, height = 9.2)
+histone_result <- encode_search(
+  type = "Experiment",
+  filters = list(assay_title = "Histone ChIP-seq"),
+  status = "released",
+  limit = 0,
+  quiet = TRUE
+)
 
-histone_facets <- get_facets("Histone ChIP-seq", "Histone ChIP-seq")
-histone_marks <- histone_facets |>
-  filter(field == "target.label") |>
-  filter(!is.na(term), count > 0) |>
+histone_marks <- encode_facets(histone_result) |>
+  as_tibble() |>
+  filter(field == "target.label", !is.na(term), count > 0) |>
   arrange(desc(count)) |>
-  slice_head(n = 18) |>
+  slice_head(n = 16) |>
   mutate(term = fct_reorder(term, count))
 
 histone_plot <- histone_marks |>
   ggplot(aes(x = count, y = term)) +
-  geom_col(fill = "#8E6C8A", width = 0.68) +
-  geom_text(
-    aes(label = comma(count)),
-    hjust = -0.08,
-    family = "Nimbus Sans",
-    size = 3.1,
-    color = "#222222"
-  ) +
-  scale_x_continuous(labels = label_number(big.mark = ","), expand = expansion(mult = c(0, 0.18))) +
-  labs(
-    title = "Histone ChIP-seq targets in ENCODE",
-    x = "Released experiments",
-    y = NULL,
-    caption = caption_text
-  ) +
-  theme_encode(base_size = 11) +
+  geom_col(fill = "#8F6B7F", width = 0.62) +
+  geom_text(aes(label = comma(count)), hjust = -0.08, family = "Nimbus Sans", size = 2.65, color = "#1F2933") +
+  scale_x_continuous(labels = label_number(big.mark = ","), expand = expansion(mult = c(0, 0.16))) +
+  labs(title = "Most frequent Histone ChIP-seq targets", x = "Released experiments", y = NULL) +
+  theme_encode(base_size = 8.8) +
   theme(legend.position = "none")
 
-save_svg(histone_plot, "encode-histone-chip-targets.svg", width = 7.2, height = 6.0)
+overview_panel <- family_plot / breakdown_plot / histone_plot +
+  patchwork::plot_layout(heights = c(0.85, 2.15, 1.35)) +
+  patchwork::plot_annotation(
+    title = "ENCODE RNA-seq, ChIP-seq, and ATAC-seq datasets",
+    subtitle = "Released Experiment records grouped by assay family and summarized by common metadata fields.",
+    caption = caption_text,
+    tag_levels = "A",
+    theme = theme_encode(base_size = 9.8) +
+      theme(
+        plot.title = element_text(size = 15, face = "bold"),
+        plot.subtitle = element_text(size = 9.5),
+        plot.caption = element_text(size = 7.2)
+      )
+  ) &
+  theme(plot.tag = element_text(family = "Nimbus Sans", face = "bold", size = 10, color = "#1F2933"))
 
-message("Wrote ENCODE summary figures to ", normalizePath(figure_dir))
+output_path <- save_svg(overview_panel, "encode-database-overview.svg", width = 9.2, height = 11.0)
+
+old_figures <- file.path(
+  figure_dir,
+  c(
+    "encode-dataset-coverage.svg",
+    "encode-assay-subtypes.svg",
+    "encode-metadata-breakdown.svg",
+    "encode-histone-chip-targets.svg"
+  )
+)
+unlink(old_figures[file.exists(old_figures)])
+
+message("Wrote ENCODE summary panel to ", normalizePath(output_path))
