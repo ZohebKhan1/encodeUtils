@@ -1,7 +1,7 @@
 #' Select ENCODE files to use or download
 #'
 #' Choose files from an `encode_list_files()` table using explicit filters or a
-#' preset for common workflows. The result keeps the selected files and an
+#' preset. The result keeps the selected files and an
 #' exclusion table so the selection can be checked later.
 #'
 #' Call `encode_select_files()` with no `files` argument to list available
@@ -35,8 +35,7 @@
 #'   path or URL.
 #' @param explain If `FALSE`, suppress the concise selection message.
 #'
-#' @return Selected files with the selected rows, excluded rows, and selection
-#'   criteria. If `files = NULL`, returns available preset names or a preset
+#' @return Selected files. If `files = NULL`, returns preset names or a preset
 #'   definition.
 #' @export
 #'
@@ -401,8 +400,8 @@ encode_file_preset <- function(preset = NULL) {
 #' Explain why files were selected or excluded
 #'
 #' Return a row-by-row decision table from `encode_select_files()`. Use this
-#' after applying presets or filters to see exactly which files were kept and why
-#' other files were excluded.
+#' after applying presets or filters to see which files were kept and why other
+#' files were excluded.
 #'
 #' @param x Selected files returned by `encode_select_files()`.
 #'

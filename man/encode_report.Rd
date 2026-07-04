@@ -30,7 +30,7 @@ encode_report(
 
 \item{limit}{Number of search rows to request, or `"all"`.}
 
-\item{metadata}{How much linked metadata to request when
+\item{metadata}{Amount of linked metadata to request when
 `endpoint = "search"`. `"full"` returns more readable linked fields.
 `"basic"` requests a smaller response.}
 
@@ -41,13 +41,10 @@ encode_report(
 \item{quiet}{If `FALSE`, print a concise status message.}
 }
 \value{
-A metadata report. Printing shows the report table, and
-  `encode_results()` extracts it for ordinary R workflows.
+A metadata report. `encode_results()` extracts the report table.
 }
 \description{
-Return selected ENCODE metadata fields as a table. This is useful when you
-know the exact fields you want and prefer a narrower table than the default
-search output.
+Return selected ENCODE metadata fields as a table.
 }
 \details{
 The default `endpoint = "search"` is bounded by `limit`. The optional
@@ -55,7 +52,7 @@ The default `endpoint = "search"` is bounded by `limit`. The optional
 `allow_large = TRUE` because the portal may return many rows.
 }
 \examples{
-# This mocked response keeps the example offline and runnable.
+# Offline example.
 search_json <- paste0(
   '{"@graph":[{"accession":"ENCSR000AAA",',
   '"assay_title":"total RNA-seq","status":"released"}],"total":1}'
@@ -74,7 +71,7 @@ report <- httr2::with_mocked_responses(
 )
 encode_results(report)
 
-# For a real targeted report:
+# Live ENCODE example:
 # encode_report(
 #   fields = c("accession", "assay_title", "biosample_summary"),
 #   type = "Experiment",

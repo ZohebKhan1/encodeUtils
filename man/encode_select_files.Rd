@@ -58,13 +58,12 @@ path or URL.}
 \item{explain}{If `FALSE`, suppress the concise selection message.}
 }
 \value{
-Selected files with the selected rows, excluded rows, and selection
-  criteria. If `files = NULL`, returns available preset names or a preset
+Selected files. If `files = NULL`, returns preset names or a preset
   definition.
 }
 \description{
 Choose files from an `encode_list_files()` table using explicit filters or a
-preset for common workflows. The result keeps the selected files and an
+preset. The result keeps the selected files and an
 exclusion table so the selection can be checked later.
 }
 \details{

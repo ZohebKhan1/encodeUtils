@@ -26,8 +26,7 @@ selected-file object, or experiment object.}
 `"ENCFF260OJQ"`, to include from `x`. Use this when you want specific files
 rather than the first `n` rows.}
 
-\item{n}{Optional number of files to include in the plan. This is only a
-convenience for quick checks.}
+\item{n}{Optional number of files to include from the top of `x`.}
 
 \item{directory}{Destination directory. If `NULL`, a package cache directory
 from `tools::R_user_dir("encodeUtils", "cache")` is used.}
@@ -50,15 +49,11 @@ with missing `file_size` metadata without listing an override requirement.}
 \item{quiet}{If `FALSE`, print a concise status message.}
 }
 \value{
-A download plan with file metadata, size summary, largest files,
-  destination paths, checksum availability, and required overrides.
+A download plan.
 }
 \description{
-Build the same destination and size plan used by `encode_download()` without
-transferring any files. Previewing is the recommended step before downloading
-ENCODE data because it shows how many files will be downloaded, the known
-total size, unknown-size files, destination paths, checksum availability, and
-any overrides that would be needed.
+Show the destination paths, known total size, unknown-size files, checksum
+availability, and required overrides for a download. No files are downloaded.
 }
 \examples{
 download_marker <- paste0(intToUtf8(64), intToUtf8(64), "download")
@@ -75,7 +70,7 @@ files <- data.frame(
 encode_preview_download(files, directory = tempdir())
 encode_preview_download(files, n = 1, directory = tempdir())
 
-# In a workflow, preview the selected files before transfer:
+# Live ENCODE example:
 # selected <- encode_select_files(files, preset = "raw_fastq")
 # encode_preview_download(selected, directory = "data/encode")
 }

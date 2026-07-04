@@ -1,13 +1,11 @@
 #' Retrieve an ENCODE schema/profile
 #'
-#' Retrieve an ENCODE profile JSON document and return a compact property table
-#' for field discovery. The raw schema is retained as advanced metadata.
+#' Retrieve an ENCODE profile JSON document and return a compact property table.
 #'
 #' @param type ENCODE object type, schema path, or profile JSON URL.
 #' @param quiet If `FALSE`, print a concise status message.
 #'
-#' @return A schema result. Printing shows the property table, and
-#'   `encode_results()` extracts it for ordinary R workflows.
+#' @return A schema result. `encode_results()` extracts the property table.
 #'
 #' @examples
 #' schema_json <- paste0(

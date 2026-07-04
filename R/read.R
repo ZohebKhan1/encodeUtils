@@ -2,9 +2,8 @@
 #'
 #' Read a file that is already on disk. Small tabular and JSON files are loaded
 #' directly. Genomic interval and sequence formats use optional Bioconductor
-#' readers when they are installed. Large or unsupported formats return a
-#' lightweight path object by default instead of being silently loaded into
-#' memory.
+#' readers when they are installed. Large or unsupported formats return a path
+#' object by default.
 #'
 #' @param path Local file path or one-row download result from
 #'   `encode_download()`.
@@ -14,8 +13,8 @@
 #'   as `which` for indexed genomic formats.
 #' @param allow_large Whether to allow full import of indexed formats such as
 #'   bigWig or bigBed without `region`.
-#' @param unsupported What to do for unsupported or deliberately skipped
-#'   formats: return a path object or throw an error.
+#' @param unsupported What to do for unsupported formats: return a path object
+#'   or throw an error.
 #' @param ... Additional arguments passed to table readers where applicable.
 #'
 #' @return A data frame, list, optional Bioconductor object, or
@@ -29,10 +28,10 @@
 #'
 #' bam_path <- tempfile(fileext = ".bam")
 #' writeBin(charToRaw("placeholder"), bam_path)
-#' # Alignment files are not read wholesale; this returns a path object.
+#' # Alignment files are returned as paths unless read with a dedicated reader.
 #' encode_read(bam_path)
 #'
-#' # Typical use after a small dry-run/download result:
+#' # Use with a one-row download result:
 #' # downloaded <- encode_download(encode_results(selected)[1, ], directory = tempdir())
 #' # encode_read(downloaded[1, ])
 encode_read <- function(
@@ -99,14 +98,14 @@ encode_read <- function(
   if (format %in% c("fq", "fastq")) {
     return(encode_unsupported_local_file(
       path = path,
-      reason = "FASTQ files should not be read wholesale by encode_read(); use a read-processing workflow deliberately",
+      reason = "FASTQ files are returned as paths; use a read-processing tool for sequence data",
       unsupported = unsupported
     ))
   }
   if (format %in% c("bam", "cram", "sam")) {
     return(encode_unsupported_local_file(
       path = path,
-      reason = "alignment files should be opened with Rsamtools or GenomicAlignments for the intended region/workflow",
+      reason = "alignment files are returned as paths; use Rsamtools or GenomicAlignments for region-based reads",
       unsupported = unsupported
     ))
   }

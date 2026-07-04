@@ -6,16 +6,14 @@
 \alias{encodeUtils-package}
 \title{encodeUtils: Work with ENCODE metadata and files from R}
 \description{
-encodeUtils provides a small, metadata-first workflow for ENCODE data:
-search for records, list the files attached to chosen experiments, select the
-files you intend to use, preview downloads, download deliberately, read safe
-local files, and record citation or manifest metadata.
+encodeUtils queries ENCODE metadata, lists files attached to experiments,
+selects files, previews downloads, downloads chosen files, reads supported
+local files, and records citation or manifest metadata.
 }
 \details{
-Start with `encode_search()` for experiments or files. Use
-`encode_results()` to extract the printed table, `encode_list_files()` to move
-from experiments to file metadata, and `encode_preview_download()` before
-transferring data.
+Start with `encode_search()` for experiments or files. Use `encode_results()`
+to extract the displayed table, `encode_list_files()` to list files for
+experiments, and `encode_preview_download()` before transferring data.
 }
 \seealso{
 Useful links:
@@ -35,4 +33,3 @@ Authors:
 }
 
 }
-\keyword{internal}

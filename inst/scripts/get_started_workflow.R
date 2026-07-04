@@ -1,34 +1,27 @@
-# encodeUtils get-started workflow
+# Small ENCODE examples for encodeUtils.
 #
-# This script demonstrates the common ENCODE workflow:
-# search -> list files -> select files -> preview download -> dry-run download
-# -> manifest/citation.
-#
-# The download steps use tempdir() and dry_run = TRUE by default so the script is
-# safe to test without filling a project directory.
+# The script searches metadata, lists files, selects files, previews downloads,
+# runs dry-run downloads, and records provenance. Downloads use tempdir() and
+# dry_run = TRUE unless the final example is edited.
 
 library(encodeUtils)
 
-# 1. Bulk RNA-seq: mouse heart gene quantification files -----------------------
+# Bulk RNA-seq: mouse heart gene quantification files --------------------------
 
 rna_experiments <- encode_search(
   type = "Experiment",
   search = "mouse heart total RNA-seq",
   status = "released",
-  limit = 10,
-  metadata = "full"
+  limit = 10
 )
 
 rna_files <- encode_list_files(
   rna_experiments,
   file_format = "tsv",
   output_type = "gene quantifications",
-  assembly = "mm10",
-  metadata = "full"
+  assembly = "mm10"
 )
 
-# Choose file IDs from the printed file table. Replace these with IDs from your
-# own result if ENCODE search ordering changes.
 rna_file_ids <- c("ENCFF260OJQ", "ENCFF090VKE")
 
 rna_plan <- encode_preview_download(
@@ -45,21 +38,19 @@ rna_dry_run <- encode_download(
 )
 
 
-# 2. ATAC-seq: mouse heart peak files -----------------------------------------
+# ATAC-seq: mouse heart peak files --------------------------------------------
 
 atac_experiments <- encode_search(
   type = "Experiment",
   search = "mouse heart ATAC-seq",
   status = "released",
-  limit = 10,
-  metadata = "full"
+  limit = 10
 )
 
 atac_files <- encode_list_files(
   atac_experiments,
   file_format = "bed",
-  assembly = "mm10",
-  metadata = "full"
+  assembly = "mm10"
 )
 
 atac_selected <- encode_select_files(
@@ -74,21 +65,19 @@ atac_plan <- encode_preview_download(
 )
 
 
-# 3. ChIP-seq: mouse heart H3K27ac peak and signal files -----------------------
+# ChIP-seq: mouse heart H3K27ac peak and signal files -------------------------
 
 chip_experiments <- encode_search(
   type = "Experiment",
   search = "mouse heart H3K27ac ChIP-seq",
   status = "released",
-  limit = 10,
-  metadata = "full"
+  limit = 10
 )
 
 chip_peak_files <- encode_list_files(
   chip_experiments,
   file_format = "bed",
-  assembly = "mm10",
-  metadata = "full"
+  assembly = "mm10"
 )
 
 chip_peaks <- encode_select_files(
@@ -100,8 +89,7 @@ chip_peaks <- encode_select_files(
 chip_signal_files <- encode_list_files(
   chip_experiments,
   file_format = "bigWig",
-  assembly = "mm10",
-  metadata = "full"
+  assembly = "mm10"
 )
 
 chip_signal <- encode_select_files(
@@ -116,7 +104,7 @@ chip_plan <- encode_preview_download(
 )
 
 
-# 4. Reproducibility -----------------------------------------------------------
+# Provenance ------------------------------------------------------------------
 
 manifest <- encode_manifest(
   rna_dry_run,
@@ -130,11 +118,8 @@ encode_cite(
 )
 
 
-# 5. Real download -------------------------------------------------------------
+# Real download ---------------------------------------------------------------
 
-# When the preview and dry-run output look correct, use a deliberate project
-# directory and set dry_run = FALSE.
-#
 # downloaded <- encode_download(
 #   rna_files,
 #   file_accession = rna_file_ids,

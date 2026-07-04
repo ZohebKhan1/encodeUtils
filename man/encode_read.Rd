@@ -28,8 +28,8 @@ as `which` for indexed genomic formats.}
 \item{allow_large}{Whether to allow full import of indexed formats such as
 bigWig or bigBed without `region`.}
 
-\item{unsupported}{What to do for unsupported or deliberately skipped
-formats: return a path object or throw an error.}
+\item{unsupported}{What to do for unsupported formats: return a path object
+or throw an error.}
 
 \item{...}{Additional arguments passed to table readers where applicable.}
 }
@@ -40,9 +40,8 @@ A data frame, list, optional Bioconductor object, or
 \description{
 Read a file that is already on disk. Small tabular and JSON files are loaded
 directly. Genomic interval and sequence formats use optional Bioconductor
-readers when they are installed. Large or unsupported formats return a
-lightweight path object by default instead of being silently loaded into
-memory.
+readers when they are installed. Large or unsupported formats return a path
+object by default.
 }
 \examples{
 csv_path <- tempfile(fileext = ".csv")
@@ -51,10 +50,10 @@ encode_read(csv_path)
 
 bam_path <- tempfile(fileext = ".bam")
 writeBin(charToRaw("placeholder"), bam_path)
-# Alignment files are not read wholesale; this returns a path object.
+# Alignment files are returned as paths unless read with a dedicated reader.
 encode_read(bam_path)
 
-# Typical use after a small dry-run/download result:
+# Use with a one-row download result:
 # downloaded <- encode_download(encode_results(selected)[1, ], directory = tempdir())
 # encode_read(downloaded[1, ])
 }

@@ -28,8 +28,7 @@ object, selected-file object, or experiment object.}
 `"ENCFF260OJQ"`, to download from `x`. Use this when you want specific
 files rather than the first `n` rows.}
 
-\item{n}{Optional number of files to use from `x`. This is only a convenience
-for quick checks.}
+\item{n}{Optional number of files to use from the top of `x`.}
 
 \item{directory}{Destination directory. If `NULL`, a package cache directory
 from `tools::R_user_dir("encodeUtils", "cache")` is used.}
@@ -65,10 +64,9 @@ A download-result table with local paths, download status, observed
 }
 \description{
 Download files from an ENCODE file table, selected-file object, file search,
-or file accession. Downloads are deliberately guarded: planned sizes are
-checked before transfer, existing files are not overwritten by default, files
-are written through a temporary `.part` path, and size/MD5 checks are used
-when ENCODE provides the metadata.
+or file accession. Planned sizes are checked before transfer, existing files
+are not overwritten by default, files are written through a temporary `.part`
+path, and size/MD5 checks are used when ENCODE provides the metadata.
 }
 \examples{
 download_marker <- paste0(intToUtf8(64), intToUtf8(64), "download")
@@ -85,7 +83,7 @@ files <- data.frame(
 encode_download(files, directory = tempdir(), dry_run = TRUE, quiet = TRUE)
 encode_download(files, n = 1, directory = tempdir(), dry_run = TRUE, quiet = TRUE)
 
-# Recommended live pattern:
+# Live ENCODE example:
 # files <- encode_list_files("ENCSR284QGB", file_format = "fastq")
 # selected <- encode_select_files(files, preset = "raw_fastq")
 # encode_preview_download(selected, directory = "data/encode")

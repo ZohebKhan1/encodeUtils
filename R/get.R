@@ -1,20 +1,18 @@
 #' Retrieve one ENCODE record
 #'
-#' Get the metadata for a single ENCODE record, such as one experiment or one
-#' file. This is useful after a search when you want a closer look at one
-#' accession. It retrieves metadata only and never downloads file contents.
+#' Retrieve metadata for one ENCODE record, such as an experiment or file. This
+#' function retrieves metadata only; it does not download file contents.
 #'
 #' @param x One ENCODE accession, portal path, or full portal URL.
-#' @param metadata How much linked metadata to request. `"full"` returns more
-#'   readable linked fields for browsing. `"basic"` requests a smaller response.
+#' @param metadata Amount of linked metadata to request. `"full"` gives richer
+#'   linked fields. `"basic"` requests fewer fields.
 #' @param quiet If `FALSE`, print a concise status message.
 #'
-#' @return One ENCODE record with a compact printed summary. `encode_results()`
-#'   extracts the summary table.
+#' @return One ENCODE record. `encode_results()` extracts the summary table.
 #' @export
 #'
 #' @examples
-#' # This mocked response keeps the example offline and runnable.
+#' # Offline example.
 #' object_json <- paste0(
 #'   '{"@type":["Experiment","Item"],"accession":"ENCSR000AAA",',
 #'   '"@id":"/experiments/ENCSR000AAA/",',
@@ -30,7 +28,7 @@
 #' )
 #' encode_results(experiment)
 #'
-#' # Look up one record from ENCODE:
+#' # Live ENCODE example:
 #' # encode_get("ENCSR284QGB")
 encode_get <- function(
                        x,

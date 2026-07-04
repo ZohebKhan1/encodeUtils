@@ -16,18 +16,14 @@ encode_results(x, component = c("matrix", "assays", "biosamples"))
 `"matrix"`, `"assays"`, or `"biosamples"`. Ignored for other result types.}
 }
 \value{
-A data frame. The returned table is the same compact table shown by
-  the print method when possible.
+A data frame.
 }
 \description{
-Many encodeUtils functions return small result objects that print nicely and
-retain query metadata. `encode_results()` returns the main data frame from
-those objects for ordinary R work such as filtering, joining, writing to CSV,
-or passing to downstream functions.
+`encode_results()` returns the main data frame from an ENCODE result object.
+Use it before filtering, joining, writing a CSV, or passing rows to another
+function.
 }
 \examples{
-# In a typical workflow, keep the returned search result and extract
-# the table only when you need ordinary data-frame operations.
 # res <- encode_search(type = "Experiment", search = "mouse heart ChIP-seq")
 # experiments <- encode_results(res)
 }

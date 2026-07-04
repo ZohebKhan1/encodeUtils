@@ -1,35 +1,34 @@
 #' Search ENCODE metadata
 #'
-#' Find ENCODE experiments, files, or other portal records by metadata. The
-#' search returns matching records and the total number of matches, but it never
-#' downloads data files.
+#' Find ENCODE experiments, files, or other records. The search returns matching
+#' metadata rows and the total number of matches. It does not download data
+#' files.
 #'
-#' The result prints as a compact table. Use `encode_results()` when you want the
-#' table as a data frame, and `print(x, verbose = TRUE)` when you need the query
-#' URL, active filters, or facets for troubleshooting.
+#' The result prints as a compact table. Use `encode_results()` to extract the
+#' table. Use `print(x, verbose = TRUE)` to show the query URL, active filters,
+#' and ENCODE facets.
 #'
 #' @param type ENCODE object type to search, such as `"Experiment"` or `"File"`.
 #'   Use `"Experiment"` to find datasets and `"File"` to find individual files.
 #'   Use `NULL` only for mixed free-text searches.
-#' @param filters Named list of ENCODE search filters. Raw ENCODE filter names
-#'   are supported, including dot notation and negation such as
-#'   `"control_type!="`.
+#' @param filters Named list of ENCODE search filters. ENCODE field names,
+#'   dot notation, and negated filters such as `"control_type!="` are accepted.
 #' @param search Optional free-text search term.
 #' @param status Optional ENCODE status filter. The default keeps released
 #'   records only. Use `NULL` to omit the status filter.
 #' @param limit Number of records to return, or the explicit string `"all"`.
-#' @param metadata How much linked metadata to request. `"full"` returns more
-#'   readable linked fields for browsing. `"basic"` requests a smaller response.
+#' @param metadata Amount of linked metadata to request. `"full"` gives richer
+#'   lab, organism, biosample, and target columns. `"basic"` requests fewer
+#'   fields.
 #' @param include_facets Whether to keep ENCODE facet counts in the result
-#'   object for verbose printing and filter discovery.
+#'   object for verbose printing.
 #' @param quiet If `FALSE`, print a concise query status message.
 #'
-#' @return Search results with a compact printed summary. `encode_results()`
-#'   extracts the result table.
+#' @return Search results. `encode_results()` extracts the result table.
 #' @export
 #'
 #' @examples
-#' # This mocked response keeps the example offline and runnable.
+#' # Offline example.
 #' search_json <- paste0(
 #'   '{"@graph":[{"accession":"ENCSR000AAA",',
 #'   '"@id":"/experiments/ENCSR000AAA/",',
@@ -49,7 +48,7 @@
 #' )
 #' encode_results(res)[, c("accession", "assay_title")]
 #'
-#' # Search experiments, then continue with file listing:
+#' # Live ENCODE example:
 #' # res <- encode_search(
 #' #   type = "Experiment",
 #' #   search = "mouse heart ChIP-seq",
@@ -168,12 +167,10 @@ encode_search_query <- function(
 
 #' Count ENCODE search matches
 #'
-#' Return only the number of records that match a search. This is useful as a
-#' quick preflight for broad queries before asking for many rows or before using
-#' `limit = "all"`.
+#' Return only the number of matching records. Use this for broad queries when
+#' the row count matters but the result rows do not.
 #'
-#' Most interactive workflows can start with `encode_search()`, which already
-#' reports both the number returned and the total number available.
+#' `encode_search()` already reports both returned rows and total matches.
 #'
 #' @inheritParams encode_search
 #' @param metadata How much linked metadata to request. The default `"basic"`
@@ -223,8 +220,8 @@ encode_count <- function(
 
 #' Filter an ENCODE result table in R
 #'
-#' Filter the compact table from `encode_search()` or another ENCODE helper
-#' without making another web request. Values are matched exactly by default.
+#' Filter an ENCODE result table without making another web request. Values are
+#' matched exactly by default.
 #'
 #' @param x A search result from `encode_search()` or a data frame.
 #' @param filters Named list of columns and values to keep.

@@ -8,13 +8,10 @@ Authors@R: person(
     email = "zohebkhan600@gmail.com",
     role = c("aut", "cre")
     )
-Description: Provides a small R interface for querying the ENCODE Portal REST
-    API, inspecting experiment and file metadata, and deliberately retrieving
-    selected public datasets. The package is designed around ENCODE's search,
-    matrix, report, object, file, and schema endpoints while keeping results
-    easy to inspect from the R console. Downloads and local file loading are
-    intended to be explicit, size-aware, cache-aware, and compatible with
-    Bioconductor workflows.
+Description: Provides an R interface for querying ENCODE Portal metadata,
+    listing files attached to experiments, selecting files, previewing
+    downloads, downloading selected files, reading supported local files, and
+    recording citation and manifest metadata.
 License: Artistic-2.0
 URL: https://github.com/ZohebKhan1/encodeUtils, https://zohebkhan1.github.io/encodeUtils/
 BugReports: https://github.com/ZohebKhan1/encodeUtils/issues
@@ -39,18 +36,6 @@ Suggests:
     withr
 VignetteBuilder: knitr
 Config/testthat/edition: 3
-Config/Needs/development:
-    BiocCheck,
-    bookdown,
-    covr,
-    devtools,
-    pkgbuild,
-    pkgload,
-    rcmdcheck,
-    renv,
-    roxygen2,
-    styler,
-    usethis
 Config/Needs/website:
     pkgdown,
     rmarkdown,

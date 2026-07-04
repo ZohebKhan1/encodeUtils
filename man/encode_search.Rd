@@ -20,9 +20,8 @@ encode_search(
 Use `"Experiment"` to find datasets and `"File"` to find individual files.
 Use `NULL` only for mixed free-text searches.}
 
-\item{filters}{Named list of ENCODE search filters. Raw ENCODE filter names
-are supported, including dot notation and negation such as
-`"control_type!="`.}
+\item{filters}{Named list of ENCODE search filters. ENCODE field names,
+dot notation, and negated filters such as `"control_type!="` are accepted.}
 
 \item{search}{Optional free-text search term.}
 
@@ -31,30 +30,30 @@ records only. Use `NULL` to omit the status filter.}
 
 \item{limit}{Number of records to return, or the explicit string `"all"`.}
 
-\item{metadata}{How much linked metadata to request. `"full"` returns more
-readable linked fields for browsing. `"basic"` requests a smaller response.}
+\item{metadata}{Amount of linked metadata to request. `"full"` gives richer
+lab, organism, biosample, and target columns. `"basic"` requests fewer
+fields.}
 
 \item{include_facets}{Whether to keep ENCODE facet counts in the result
-object for verbose printing and filter discovery.}
+object for verbose printing.}
 
 \item{quiet}{If `FALSE`, print a concise query status message.}
 }
 \value{
-Search results with a compact printed summary. `encode_results()`
-  extracts the result table.
+Search results. `encode_results()` extracts the result table.
 }
 \description{
-Find ENCODE experiments, files, or other portal records by metadata. The
-search returns matching records and the total number of matches, but it never
-downloads data files.
+Find ENCODE experiments, files, or other records. The search returns matching
+metadata rows and the total number of matches. It does not download data
+files.
 }
 \details{
-The result prints as a compact table. Use `encode_results()` when you want the
-table as a data frame, and `print(x, verbose = TRUE)` when you need the query
-URL, active filters, or facets for troubleshooting.
+The result prints as a compact table. Use `encode_results()` to extract the
+table. Use `print(x, verbose = TRUE)` to show the query URL, active filters,
+and ENCODE facets.
 }
 \examples{
-# This mocked response keeps the example offline and runnable.
+# Offline example.
 search_json <- paste0(
   '{"@graph":[{"accession":"ENCSR000AAA",',
   '"@id":"/experiments/ENCSR000AAA/",',
@@ -74,7 +73,7 @@ res <- httr2::with_mocked_responses(
 )
 encode_results(res)[, c("accession", "assay_title")]
 
-# Search experiments, then continue with file listing:
+# Live ENCODE example:
 # res <- encode_search(
 #   type = "Experiment",
 #   search = "mouse heart ChIP-seq",

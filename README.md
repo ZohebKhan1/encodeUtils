@@ -1,130 +1,91 @@
 # encodeUtils
 
-`encodeUtils` is an R package for working with ENCODE Portal metadata and
-selected files from R. It is designed around a metadata-first workflow: search
-or summarize what exists, inspect selected experiments and files, deliberately
-download only the files you chose, then read supported local files when that is
-safe.
+`encodeUtils` queries ENCODE metadata from R and helps choose, download, read,
+cite, and record the files used in an analysis.
 
-## Development Status
+The package is read-only. It searches ENCODE, lists file metadata, previews
+downloads, downloads selected files, and records provenance. It does not submit
+or modify ENCODE records.
 
-This package now implements the core read-only ENCODE workflow:
+## Installation
 
-- `encode_search()` searches ENCODE metadata and prints compact result tables.
-  It defaults to `metadata = "full"` so linked lab, award, organism, and
-  biosample fields are useful in the console.
-- `encode_results()` extracts the compact table from search, object, matrix,
-  report, selected-file, preview, and download result objects.
-- `encode_get()` retrieves one ENCODE record by accession, path, or URL.
-- `encode_matrix()` summarizes Matrix endpoint assay-by-biosample counts.
-- `encode_report()` creates selected-field metadata tables.
-- `encode_list_files()` lists file metadata for selected experiments.
-- `encode_select_files()` applies transparent file-selection presets, can prefer
-  ENCODE `preferred_default` files when available, keeps an exclusion log, and
-  lists preset definitions when called without files.
-- `encode_explain_selection()` returns a tidy selected/excluded decision table.
-- `encode_preview_download()` shows destination paths, size lower bounds,
-  unknown-size files, checksum availability, and required overrides before
-  transfer.
-- `encode_download()` downloads selected files with size and checksum guardrails.
-- `encode_read()` reads safe local text/JSON files and delegates optional
-  genomic formats to Bioconductor readers when installed.
-- `encode_cite()` creates dataset and file provenance tables or text/markdown
-  summaries for reports and methods sections.
-- `encode_manifest()` creates reproducibility manifests for selected/downloaded
-  data and can write them to JSON with `path =`.
+```r
+# install.packages("pak")
+pak::pak("ZohebKhan1/encodeUtils")
+```
 
-The package remains read-only with respect to ENCODE. It does not implement
-submission, `POST`, or `PATCH` workflows.
+## Workflow
 
-## Basic Examples
+Most analyses use the same sequence:
+
+1. Search ENCODE records with `encode_search()`.
+2. Extract the displayed table with `encode_results()` when needed.
+3. List files for selected experiments with `encode_list_files()`.
+4. Select files with `encode_select_files()`.
+5. Check file paths and sizes with `encode_preview_download()`.
+6. Download with `encode_download()`.
+7. Save provenance with `encode_manifest()` and `encode_cite()`.
+
+## Example
 
 ```r
 library(encodeUtils)
 
 experiments <- encode_search(
-    type = "Experiment",
-    search = "mouse heart total RNA-seq",
-    status = "released",
-    limit = 10,
-    metadata = "full"
+  type = "Experiment",
+  search = "mouse heart total RNA-seq",
+  status = "released",
+  limit = 10
 )
 
 files <- encode_list_files(
-    experiments,
-    file_format = "tsv",
-    output_type = "gene quantifications",
-    assembly = "mm10",
-    metadata = "full"
+  experiments,
+  file_format = "tsv",
+  output_type = "gene quantifications",
+  assembly = "mm10"
 )
 
 plan <- encode_preview_download(
-    files,
-    file_accession = c("ENCFF260OJQ", "ENCFF090VKE"),
-    directory = tempdir()
+  files,
+  file_accession = c("ENCFF260OJQ", "ENCFF090VKE"),
+  directory = tempdir()
 )
 
 dry_run <- encode_download(
-    files,
-    file_accession = c("ENCFF260OJQ", "ENCFF090VKE"),
-    directory = tempdir(),
-    dry_run = TRUE
+  files,
+  file_accession = c("ENCFF260OJQ", "ENCFF090VKE"),
+  directory = tempdir(),
+  dry_run = TRUE
 )
 
 manifest <- encode_manifest(
-    dry_run,
-    include_session = FALSE,
-    path = file.path(tempdir(), "encode-rna-manifest.json")
+  dry_run,
+  include_session = FALSE,
+  path = file.path(tempdir(), "encode-rna-manifest.json")
 )
+
 encode_cite(dry_run, enrich = "auto")
 ```
 
-See the pkgdown article `Get started` for complete RNA-seq, ATAC-seq, and
-ChIP-seq workflows.
+## Main Functions
 
-## Developer Setup
-
-This project uses `renv` for the local development environment. Package users
-will install dependencies from `DESCRIPTION`; `renv.lock` is only for
-reproducing this development checkout.
-
-```r
-renv::restore()
-```
-
-For local checks in this WSL environment, use:
-
-```bash
-tools/r_codex_utils preflight
-tools/r_codex_utils check R/search.R
-```
-
-For package checks, build the source package first:
-
-```bash
-R CMD build .
-R CMD check --no-manual encodeUtils_0.99.0.tar.gz
-```
-
-## Design Notes
-
-Detailed planning notes are in:
-
-- [docs/design/user_workflows.md](docs/design/user_workflows.md)
-- [docs/design/encode_package_notes.md](docs/design/encode_package_notes.md)
-
-Recent external review notes and implementation triage are in:
-
-- [docs/reviews/consolidated_audit_synthesis.md](docs/reviews/consolidated_audit_synthesis.md)
-- [docs/reviews/encodeUtils_review.md](docs/reviews/encodeUtils_review.md)
-- [docs/reviews/encodeUtils_review_addendum.md](docs/reviews/encodeUtils_review_addendum.md)
-- [docs/reviews/feedback_triage.md](docs/reviews/feedback_triage.md)
+- `encode_search()` finds ENCODE experiments, files, and other records.
+- `encode_get()` retrieves one ENCODE record by accession, path, or URL.
+- `encode_matrix()` summarizes ENCODE record counts by assay and biosample.
+- `encode_report()` returns a selected-field metadata table.
+- `encode_results()` extracts the main table from result objects.
+- `encode_list_files()` lists files attached to experiments.
+- `encode_select_files()` selects files by accession, format, output type, or preset.
+- `encode_explain_selection()` shows why files were selected or excluded.
+- `encode_preview_download()` checks destination paths, file sizes, and required overrides.
+- `encode_download()` downloads selected files with size and checksum checks.
+- `encode_read()` reads supported local ENCODE files.
+- `encode_manifest()` records queries, selected files, downloads, and citation metadata.
+- `encode_cite()` creates ENCODE dataset and file attribution tables.
 
 ## References
 
 - ENCODE REST API: <https://www.encodeproject.org/help/rest-api/>
 - ENCODE Search: <https://www.encodeproject.org/search/>
 - ENCODE Matrix: <https://www.encodeproject.org/matrix/>
-- ENCODE schemas: <https://www.encodeproject.org/profiles/>
 - ENCODE citation guidance: <https://www.encodeproject.org/help/citing-encode/>
-- Bioconductor contribution guide: <https://contributions.bioconductor.org/>

@@ -1,8 +1,8 @@
 #' Summarize ENCODE availability counts
 #'
 #' Query the ENCODE Matrix endpoint to see how many records are available across
-#' assay and biosample categories. This is a discovery helper for deciding where
-#' to search next; it returns metadata counts only and never downloads files.
+#' assay and biosample categories. It returns metadata counts only and does not
+#' download files.
 #'
 #' @param type ENCODE object type. The primary supported type is `"Experiment"`.
 #' @param filters Named list of ENCODE matrix filters.
@@ -16,7 +16,7 @@
 #' @export
 #'
 #' @examples
-#' # This mocked response keeps the example offline and runnable.
+#' # Offline example.
 #' matrix_json <- paste0(
 #'   '{"total":1,"matrix":{"x":{"group_by":"assay_title",',
 #'   '"assay_title":{"buckets":[{"key":"RNA-seq","doc_count":1}]}},',
@@ -38,7 +38,7 @@
 #' encode_results(mat)
 #' encode_results(mat, component = "assays")
 #'
-#' # Live discovery example:
+#' # Live ENCODE example:
 #' # encode_matrix(filters = list("control_type!=" = "*", perturbed = "false"))
 encode_matrix <- function(
                           type = "Experiment",

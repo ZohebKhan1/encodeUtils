@@ -9,22 +9,20 @@ encode_get(x, metadata = c("full", "basic"), quiet = FALSE)
 \arguments{
 \item{x}{One ENCODE accession, portal path, or full portal URL.}
 
-\item{metadata}{How much linked metadata to request. `"full"` returns more
-readable linked fields for browsing. `"basic"` requests a smaller response.}
+\item{metadata}{Amount of linked metadata to request. `"full"` gives richer
+linked fields. `"basic"` requests fewer fields.}
 
 \item{quiet}{If `FALSE`, print a concise status message.}
 }
 \value{
-One ENCODE record with a compact printed summary. `encode_results()`
-  extracts the summary table.
+One ENCODE record. `encode_results()` extracts the summary table.
 }
 \description{
-Get the metadata for a single ENCODE record, such as one experiment or one
-file. This is useful after a search when you want a closer look at one
-accession. It retrieves metadata only and never downloads file contents.
+Retrieve metadata for one ENCODE record, such as an experiment or file. This
+function retrieves metadata only; it does not download file contents.
 }
 \examples{
-# This mocked response keeps the example offline and runnable.
+# Offline example.
 object_json <- paste0(
   '{"@type":["Experiment","Item"],"accession":"ENCSR000AAA",',
   '"@id":"/experiments/ENCSR000AAA/",',
@@ -40,6 +38,6 @@ experiment <- httr2::with_mocked_responses(
 )
 encode_results(experiment)
 
-# Look up one record from ENCODE:
+# Live ENCODE example:
 # encode_get("ENCSR284QGB")
 }

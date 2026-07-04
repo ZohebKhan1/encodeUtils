@@ -38,8 +38,7 @@ A data frame for `format = "table"`; otherwise a character vector
 }
 \description{
 Build a table or short text summary describing the ENCODE datasets and files
-used in an analysis. The output is intended for methods sections,
-supplements, and reproducibility records.
+used in an analysis.
 }
 \details{
 ENCODE accessions are data records, not publications, so this function reports
@@ -59,7 +58,7 @@ files <- data.frame(
 encode_cite(files, enrich = FALSE)
 encode_cite(files, format = "text")
 
-# Use enrich = "auto" for small real file tables when experiment context is useful:
+# Live ENCODE example:
 # files <- encode_list_files("ENCSR284QGB", file_format = "tsv")
 # encode_cite(files, enrich = "auto")
 }

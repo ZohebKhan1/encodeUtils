@@ -15,8 +15,8 @@ A data frame with file accession, experiment accession, decision, and
 }
 \description{
 Return a row-by-row decision table from `encode_select_files()`. Use this
-after applying presets or filters to see exactly which files were kept and why
-other files were excluded.
+after applying presets or filters to see which files were kept and why other
+files were excluded.
 }
 \examples{
 files <- data.frame(

@@ -29,8 +29,7 @@ A manifest list.
 }
 \description{
 Capture the query, selected files, download records, citation metadata, and
-optional R session information for an ENCODE workflow. Provide `path` to save
-the same manifest as JSON.
+optional R session information. Provide `path` to save the manifest as JSON.
 }
 \examples{
 files <- data.frame(

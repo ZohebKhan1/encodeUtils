@@ -38,11 +38,15 @@ navbar:
       href: articles/get-started.html
 
 home:
-  title: Query, inspect, and safely download ENCODE data from R
+  title: Query and download ENCODE data from R
 
 reference:
+  - title: Package overview
+    contents:
+      - encodeUtils-package
+
   - title: Search and inspect ENCODE
-    desc: Find experiments, files, schemas, and one-record summaries.
+    desc: Find experiments, files, metadata reports, and one-record summaries.
     contents:
       - encode_search
       - encode_get
@@ -51,7 +55,7 @@ reference:
       - encode_results
 
   - title: Work with ENCODE files
-    desc: List, summarize, select, preview, download, and read files.
+    desc: List, select, preview, download, and read files.
     contents:
       - encode_list_files
       - encode_select_files
@@ -61,7 +65,7 @@ reference:
       - encode_read
 
   - title: Reproducibility and attribution
-    desc: Record provenance, citation tables, and reusable manifests.
+    desc: Create citation tables and reproducibility manifests.
     contents:
       - encode_cite
       - encode_manifest

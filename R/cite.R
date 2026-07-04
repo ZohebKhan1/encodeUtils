@@ -1,8 +1,7 @@
 #' Create ENCODE citation metadata
 #'
 #' Build a table or short text summary describing the ENCODE datasets and files
-#' used in an analysis. The output is intended for methods sections,
-#' supplements, and reproducibility records.
+#' used in an analysis.
 #'
 #' ENCODE accessions are data records, not publications, so this function reports
 #' dataset/file attribution and links rather than inventing article-style
@@ -38,7 +37,7 @@
 #' encode_cite(files, enrich = FALSE)
 #' encode_cite(files, format = "text")
 #'
-#' # Use enrich = "auto" for small real file tables when experiment context is useful:
+#' # Live ENCODE example:
 #' # files <- encode_list_files("ENCSR284QGB", file_format = "tsv")
 #' # encode_cite(files, enrich = "auto")
 encode_cite <- function(
@@ -278,7 +277,7 @@ encode_should_enrich_file_citations <- function(files, enrich, max_enrich_datase
     if (!isTRUE(quiet)) {
       cli::cli_inform(c(
         "Skipping citation enrichment for {length(accessions)} parent experiment dataset(s).",
-        "i" = "Use {.code enrich = TRUE} to request enrichment deliberately."
+        "i" = "Use {.code enrich = TRUE} to request enrichment."
       ))
     }
     return(FALSE)

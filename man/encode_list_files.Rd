@@ -35,9 +35,8 @@ experiment identifiers.}
 
 \item{limit}{Number of file records to request, or `"all"`.}
 
-\item{metadata}{How much linked metadata to request. `"basic"` keeps
-file-list responses smaller. `"full"` requests more linked metadata for
-display.}
+\item{metadata}{Amount of linked metadata to request. `"basic"` keeps
+responses smaller. `"full"` adds more display columns.}
 
 \item{max_experiments}{Maximum number of experiments accepted without
 `allow_many = TRUE`.}
@@ -47,21 +46,19 @@ display.}
 \item{quiet}{If `FALSE`, print a concise status message.}
 }
 \value{
-A file metadata table. Printing shows the most useful file columns;
-  `encode_results()` returns the full table.
+A file metadata table.
 }
 \description{
-Return the files attached to one or more ENCODE experiments. This step is
-metadata only: it reports file accessions, formats, sizes, assemblies,
-checksums, and download links, but it does not download file contents.
+Return file metadata for one or more ENCODE experiments. The table includes
+file accessions, formats, output types, assemblies, sizes, checksums, and
+download links. It does not download file contents.
 }
 \details{
-The default `limit = "all"` is intentional for file metadata. File selection
-is safest when it can see the full set of files attached to the experiments
-you already chose.
+The default `limit = "all"` requests the complete file list for the selected
+experiments.
 }
 \examples{
-# This mocked response keeps the example offline and runnable.
+# Offline example.
 download_marker <- paste0(intToUtf8(64), intToUtf8(64), "download")
 files_json <- paste0(
   '{"@graph":[{"accession":"ENCFF000AAA",',
@@ -82,10 +79,9 @@ files <- httr2::with_mocked_responses(
 )
 files[, c("file_accession", "file_format", "file_size_pretty")]
 
-# Typical use after an experiment search:
+# Live ENCODE examples:
 # experiments <- encode_search(type = "Experiment", search = "mouse heart ChIP-seq")
 # encode_list_files(experiments, file_format = "bed", assembly = "mm10")
 
-# Or list files from one known experiment:
 # encode_list_files("ENCSR284QGB", file_format = "fastq")
 }

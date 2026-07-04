@@ -18,9 +18,8 @@
 #
 # Notes:
 # Run from the package root with ENCODEUTILS_REFRESH_FIXTURES=true. Review the
-# resulting diff before committing because these fixtures are API-contract test
-# inputs, not raw data dumps. The file-search fixture is deliberately curated to
-# keep both experiment-backed and annotation-backed records.
+# resulting diff before use. The file-search fixture keeps both
+# experiment-backed and annotation-backed records.
 
 if (!identical(base::Sys.getenv("ENCODEUTILS_REFRESH_FIXTURES"), "true")) {
   base::stop(

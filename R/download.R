@@ -1,18 +1,16 @@
 #' Download ENCODE files
 #'
 #' Download files from an ENCODE file table, selected-file object, file search,
-#' or file accession. Downloads are deliberately guarded: planned sizes are
-#' checked before transfer, existing files are not overwritten by default, files
-#' are written through a temporary `.part` path, and size/MD5 checks are used
-#' when ENCODE provides the metadata.
+#' or file accession. Planned sizes are checked before transfer, existing files
+#' are not overwritten by default, files are written through a temporary `.part`
+#' path, and size/MD5 checks are used when ENCODE provides the metadata.
 #'
 #' @param x ENCFF accession(s), file metadata table, file search result, file
 #'   object, selected-file object, or experiment object.
 #' @param file_accession Optional ENCODE file accession(s), such as
 #'   `"ENCFF260OJQ"`, to download from `x`. Use this when you want specific
 #'   files rather than the first `n` rows.
-#' @param n Optional number of files to use from `x`. This is only a convenience
-#'   for quick checks.
+#' @param n Optional number of files to use from the top of `x`.
 #' @param directory Destination directory. If `NULL`, a package cache directory
 #'   from `tools::R_user_dir("encodeUtils", "cache")` is used.
 #' @param cache Whether `directory = NULL` should use the package cache. If
@@ -51,7 +49,7 @@
 #' encode_download(files, directory = tempdir(), dry_run = TRUE, quiet = TRUE)
 #' encode_download(files, n = 1, directory = tempdir(), dry_run = TRUE, quiet = TRUE)
 #'
-#' # Recommended live pattern:
+#' # Live ENCODE example:
 #' # files <- encode_list_files("ENCSR284QGB", file_format = "fastq")
 #' # selected <- encode_select_files(files, preset = "raw_fastq")
 #' # encode_preview_download(selected, directory = "data/encode")
@@ -127,7 +125,7 @@ encode_download <- function(
     cli::cli_abort(c(
       "Refusing to download {unknown_size} ENCODE file(s) with unknown file size.",
       "i" = "Run {.fun encode_download} with {.code dry_run = TRUE} to inspect the plan.",
-      "i" = "Use {.code allow_unknown_size = TRUE} only after confirming these files deliberately."
+      "i" = "Use {.code allow_unknown_size = TRUE} only after reviewing these files."
     ))
   }
 
@@ -168,19 +166,15 @@ encode_download <- function(
 
 #' Preview an ENCODE download
 #'
-#' Build the same destination and size plan used by `encode_download()` without
-#' transferring any files. Previewing is the recommended step before downloading
-#' ENCODE data because it shows how many files will be downloaded, the known
-#' total size, unknown-size files, destination paths, checksum availability, and
-#' any overrides that would be needed.
+#' Show the destination paths, known total size, unknown-size files, checksum
+#' availability, and required overrides for a download. No files are downloaded.
 #'
 #' @param x ENCFF accession(s), file metadata table, file search result,
 #'   selected-file object, or experiment object.
 #' @param file_accession Optional ENCODE file accession(s), such as
 #'   `"ENCFF260OJQ"`, to include from `x`. Use this when you want specific files
 #'   rather than the first `n` rows.
-#' @param n Optional number of files to include in the plan. This is only a
-#'   convenience for quick checks.
+#' @param n Optional number of files to include from the top of `x`.
 #' @param directory Destination directory. If `NULL`, a package cache directory
 #'   from `tools::R_user_dir("encodeUtils", "cache")` is used.
 #' @param cache Whether `directory = NULL` should use the package cache. If
@@ -194,8 +188,7 @@ encode_download <- function(
 #' @param n_largest Number of largest known-size files to include in the plan.
 #' @param quiet If `FALSE`, print a concise status message.
 #'
-#' @return A download plan with file metadata, size summary, largest files,
-#'   destination paths, checksum availability, and required overrides.
+#' @return A download plan.
 #' @export
 #'
 #' @examples
@@ -213,7 +206,7 @@ encode_download <- function(
 #' encode_preview_download(files, directory = tempdir())
 #' encode_preview_download(files, n = 1, directory = tempdir())
 #'
-#' # In a workflow, preview the selected files before transfer:
+#' # Live ENCODE example:
 #' # selected <- encode_select_files(files, preset = "raw_fastq")
 #' # encode_preview_download(selected, directory = "data/encode")
 encode_preview_download <- function(
@@ -270,7 +263,7 @@ encode_preview_download <- function(
   class(plan) <- c("encode_download_plan", "list")
   if (!isTRUE(quiet)) {
     cli::cli_inform(
-      "Returned a download plan. Print the result to review it, or use {.code encode_results()} for planned file rows."
+      "Returned a download plan. Print the result to view it, or use {.code encode_results()} for planned file rows."
     )
   }
   plan

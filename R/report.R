@@ -1,8 +1,6 @@
 #' Build an ENCODE metadata table
 #'
-#' Return selected ENCODE metadata fields as a table. This is useful when you
-#' know the exact fields you want and prefer a narrower table than the default
-#' search output.
+#' Return selected ENCODE metadata fields as a table.
 #'
 #' The default `endpoint = "search"` is bounded by `limit`. The optional
 #' `endpoint = "report"` uses ENCODE's report TSV endpoint and requires
@@ -14,19 +12,18 @@
 #' @param search Optional free-text search term.
 #' @param status Optional ENCODE status filter. Use `NULL` to omit.
 #' @param limit Number of search rows to request, or `"all"`.
-#' @param metadata How much linked metadata to request when
+#' @param metadata Amount of linked metadata to request when
 #'   `endpoint = "search"`. `"full"` returns more readable linked fields.
 #'   `"basic"` requests a smaller response.
 #' @param endpoint Either `"search"` or `"report"`.
 #' @param allow_large Must be `TRUE` to use `endpoint = "report"`.
 #' @param quiet If `FALSE`, print a concise status message.
 #'
-#' @return A metadata report. Printing shows the report table, and
-#'   `encode_results()` extracts it for ordinary R workflows.
+#' @return A metadata report. `encode_results()` extracts the report table.
 #' @export
 #'
 #' @examples
-#' # This mocked response keeps the example offline and runnable.
+#' # Offline example.
 #' search_json <- paste0(
 #'   '{"@graph":[{"accession":"ENCSR000AAA",',
 #'   '"assay_title":"total RNA-seq","status":"released"}],"total":1}'
@@ -45,7 +42,7 @@
 #' )
 #' encode_results(report)
 #'
-#' # For a real targeted report:
+#' # Live ENCODE example:
 #' # encode_report(
 #' #   fields = c("accession", "assay_title", "biosample_summary"),
 #' #   type = "Experiment",
@@ -165,7 +162,7 @@ encode_report_from_tsv <- function(
     cli::cli_abort(
       c(
         "{.arg endpoint = 'report'} can request very large TSV reports.",
-        "i" = "Use {.code allow_large = TRUE} after narrowing filters deliberately."
+        "i" = "Use {.code allow_large = TRUE} after narrowing filters."
       )
     )
   }
