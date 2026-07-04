@@ -54,7 +54,6 @@ reference:
       - encode_results
       - encode_list_files
       - encode_select_files
-      - encode_explain_selection
       - encode_download
       - encode_read
       - encode_manifest

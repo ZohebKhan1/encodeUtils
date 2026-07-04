@@ -168,7 +168,7 @@ test_that("result objects expose curated names and table accessors", {
 
   expect_equal(names(search), c("results", "total_results", "query_url", "metadata", "requested_limit"))
   expect_equal(names(schema), c("properties", "title", "id", "query_url"))
-  expect_equal(names(selected), c("files", "excluded", "criteria"))
+  expect_equal(names(selected), c("files", "criteria"))
 
   expect_s3_class(encode_results(search), "data.frame")
   expect_s3_class(encode_results(schema), "data.frame")

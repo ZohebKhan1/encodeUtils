@@ -17,7 +17,7 @@ names.encode_schema_result <- function(x) {
 
 #' @export
 names.encode_selected_files <- function(x) {
-  c("files", "excluded", "criteria")
+  c("files", "criteria")
 }
 
 #' @export
@@ -93,11 +93,9 @@ print.encode_file_table <- function(x, ..., verbose = FALSE) {
 print.encode_selected_files <- function(x, ..., verbose = FALSE) {
   cli::cli_text("ENCODE selected files")
   cli::cli_text("- selected: {.val {nrow(x$files)}}")
-  cli::cli_text("- excluded: {.val {nrow(x$excluded)}}")
   encode_print_table("Selected files", encode_display_columns(x$files, encode_file_display_columns()))
   if (isTRUE(verbose)) {
     encode_print_table("Criteria", encode_filter_table(x$criteria))
-    encode_print_table("Exclusion reasons", encode_exclusion_summary(x$excluded))
   }
   invisible(x)
 }

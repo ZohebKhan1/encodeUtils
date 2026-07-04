@@ -6,7 +6,6 @@ test_that("large mixed file tables select and summarize deterministically", {
     replicate_policy = "replicate_level",
     explain = FALSE
   )
-  explanation <- encode_explain_selection(selected)
   summary <- encode_file_summary(files)
   largest <- encode_largest_files(files, n = 8L)
   planned <- encode_download(
@@ -20,7 +19,6 @@ test_that("large mixed file tables select and summarize deterministically", {
   expect_true(nrow(selected$files) > 0)
   expect_true(all(selected$files$file_format == "fastq"))
   expect_true(all(selected$files$output_type == "reads"))
-  expect_equal(nrow(explanation), nrow(selected$files) + nrow(selected$excluded))
   expect_equal(summary$n_files, 120)
   expect_equal(summary$n_experiments, 12)
   expect_true(all(diff(largest$file_size) <= 0))
@@ -65,7 +63,7 @@ test_that("print methods expose stable concise diagnostics", {
   expect_true(any(grepl("Top facets", search_verbose_output, fixed = TRUE)))
   expect_true(any(grepl("ENCODE selected files", selected_output, fixed = TRUE)))
   expect_false(any(grepl("Exclusion reasons", selected_output, fixed = TRUE)))
-  expect_true(any(grepl("Exclusion reasons", selected_verbose_output, fixed = TRUE)))
+  expect_false(any(grepl("Exclusion reasons", selected_verbose_output, fixed = TRUE)))
   expect_true(any(grepl("ENCODE files", planned_output, fixed = TRUE)))
   expect_true(any(grepl("file_size", planned_output, fixed = TRUE)))
 })

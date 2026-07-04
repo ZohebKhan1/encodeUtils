@@ -1,8 +1,7 @@
 #' Select ENCODE files to use or download
 #'
 #' Choose files from an `encode_list_files()` table using explicit filters or a
-#' preset. The result keeps the selected files and an
-#' exclusion table so the selection can be checked later.
+#' preset. The result keeps the selected files for download or reading.
 #'
 #' Call `encode_select_files()` with no `files` argument to list available
 #' presets, or with `preset = "name"` to inspect one preset.
@@ -62,7 +61,6 @@
 #' )
 #' selected <- encode_select_files(files, preset = "peaks", assembly = "GRCh38")
 #' encode_results(selected)
-#' encode_explain_selection(selected)
 encode_select_files <- function(
                                 files = NULL,
                                 preset = NULL,
@@ -222,8 +220,7 @@ encode_select_files <- function(
   }
   cli::cli_inform(c(
     "ENCODE file selection successfully selected {nrow(selected)} of {nrow(files)} file(s).",
-    "i" = "Returned selected files. Print the result to view them, or use {.code encode_results()} for selected file rows.",
-    "i" = "Excluded {nrow(excluded)} file(s); use {.code encode_explain_selection()} for selected/excluded reasons."
+    "i" = "Returned selected files. Print the result to view them, or use {.code encode_results()} for selected file rows."
   ))
   result
 }
@@ -395,61 +392,6 @@ encode_file_preset <- function(preset = NULL) {
   preset_info <- presets[[preset]]
   preset_info$preset <- preset
   preset_info
-}
-
-#' Explain why files were selected or excluded
-#'
-#' Return a row-by-row decision table from `encode_select_files()`. Use this
-#' after applying presets or filters to see which files were kept and why other
-#' files were excluded.
-#'
-#' @param x Selected files returned by `encode_select_files()`.
-#'
-#' @return A data frame with file accession, experiment accession, decision, and
-#'   reason columns.
-#' @export
-#'
-#' @examples
-#' files <- data.frame(
-#'   file_accession = c("ENCFF000AAA", "ENCFF000AAB"),
-#'   experiment_accession = "ENCSR000AAA",
-#'   file_format = c("fastq", "bed"),
-#'   output_type = c("reads", "peaks"),
-#'   status = "released",
-#'   href = "https://example.org/file.txt"
-#' )
-#' selected <- encode_select_files(files, preset = "raw_fastq", explain = FALSE)
-#' encode_explain_selection(selected)
-encode_explain_selection <- function(x) {
-  if (!inherits(x, "encode_selected_files")) {
-    cli::cli_abort("{.arg x} must come from {.fun encode_select_files}.")
-  }
-  selected <- encode_ensure_columns(
-    as.data.frame(x$files, stringsAsFactors = FALSE),
-    c("file_accession", "experiment_accession")
-  )
-  selected_out <- data.frame(
-    file_accession = selected$file_accession,
-    experiment_accession = selected$experiment_accession,
-    decision = rep("selected", nrow(selected)),
-    reason = rep("selected", nrow(selected)),
-    stringsAsFactors = FALSE
-  )
-  excluded <- encode_ensure_columns(
-    as.data.frame(x$excluded, stringsAsFactors = FALSE),
-    c("file_accession", "experiment_accession", "reason")
-  )
-  excluded_out <- data.frame(
-    file_accession = excluded$file_accession,
-    experiment_accession = excluded$experiment_accession,
-    decision = rep("excluded", nrow(excluded)),
-    reason = excluded$reason,
-    stringsAsFactors = FALSE
-  )
-  encode_bind_rows(
-    list(selected_out, excluded_out),
-    c("file_accession", "experiment_accession", "decision", "reason")
-  )
 }
 
 encode_selection_state <- function(files) {

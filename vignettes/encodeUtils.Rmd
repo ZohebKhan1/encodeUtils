@@ -105,7 +105,6 @@ selected <- encode_select_files(
 )
 
 encode_results(selected)
-encode_explain_selection(selected)
 ```
 
 # Download and read

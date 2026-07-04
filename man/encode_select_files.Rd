@@ -63,8 +63,7 @@ Selected files. If `files = NULL`, returns preset names or a preset
 }
 \description{
 Choose files from an `encode_list_files()` table using explicit filters or a
-preset. The result keeps the selected files and an
-exclusion table so the selection can be checked later.
+preset. The result keeps the selected files for download or reading.
 }
 \details{
 Call `encode_select_files()` with no `files` argument to list available
@@ -93,5 +92,4 @@ files <- data.frame(
 )
 selected <- encode_select_files(files, preset = "peaks", assembly = "GRCh38")
 encode_results(selected)
-encode_explain_selection(selected)
 }

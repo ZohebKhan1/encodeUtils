@@ -144,8 +144,6 @@ atac_selected <- encode_select_files(
   assembly = "mm10"
 )
 
-encode_explain_selection(atac_selected)
-
 atac_dry_run <- encode_download(
   atac_selected,
   directory = "data/encode/atac-seq",
@@ -188,7 +186,6 @@ chip_selected <- encode_select_files(
 )
 
 encode_results(chip_selected)
-encode_explain_selection(chip_selected)
 ```
 
 Check the download.

@@ -503,35 +503,8 @@ test_that("encode_select_files applies presets and keeps exclusion reasons", {
   testthat::expect_s3_class(empty, "encode_selected_files")
   testthat::expect_equal(nrow(empty$files), 0)
   testthat::expect_error(encode_file_preset("not_a_preset"), "must be one of")
-})
-
-test_that("encode_explain_selection returns selected and excluded reasons", {
-  selected <- encode_select_files(
-    file_selection_table(),
-    preset = "raw_fastq",
-    explain = FALSE
-  )
-  explanation <- encode_explain_selection(selected)
-
-  testthat::expect_equal(
-    explanation$decision[match("ENCFF000AAF", explanation$file_accession)],
-    "selected"
-  )
-  testthat::expect_true(any(explanation$decision == "excluded"))
   testthat::expect_true("chipseq_idr_peaks" %in% encode_select_files())
   testthat::expect_equal(encode_select_files(preset = "rna_gene_tpm")$preset, "rna_gene_tpm")
-
-  all_selected <- data.frame(
-    file_accession = "ENCFF000AAA",
-    experiment_accession = "ENCSR000AAA",
-    file_format = "fastq",
-    output_type = "reads",
-    status = "released",
-    href = "https://example.org/file.fastq.gz",
-    stringsAsFactors = FALSE
-  )
-  no_exclusions <- encode_select_files(all_selected, preset = "raw_fastq", explain = FALSE)
-  testthat::expect_equal(nrow(encode_explain_selection(no_exclusions)), 1)
 })
 
 test_that("encode_select_files can select explicit file accessions", {
