@@ -3,12 +3,35 @@ destination: site
 
 template:
   bootstrap: 5
-  bootswatch: flatly
+  light-switch: true
+  theme: github-light
+  theme-dark: github-dark
+  bslib:
+    bg: "#fbfcfd"
+    fg: "#18222f"
+    primary: "#176b87"
+    secondary: "#5d6f80"
+    link-color: "#176b87"
+    border-color: "#d9e2ea"
+    body-color: "#18222f"
+    body-bg: "#fbfcfd"
+    code-color: "#0f596f"
+    code-bg: "#eef6f8"
+    navbar-light-bg: "#f7fafb"
+    navbar-dark-bg: "#101820"
+    navbar-padding-y: "0.9rem"
+    border-radius: "0.4rem"
+    btn-border-radius: "0.3rem"
+    grid-gutter-width: "3rem"
+    pkgdown-nav-height: "78px"
+    base_font: {google: "Roboto"}
+    heading_font: {google: "Roboto"}
+    code_font: {google: "Source Code Pro"}
 
 navbar:
   structure:
     left: [intro, reference, articles, news]
-    right: [search, github]
+    right: [search, github, lightswitch]
   components:
     intro:
       text: Get started

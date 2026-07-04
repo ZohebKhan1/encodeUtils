@@ -1,4 +1,6 @@
 ^renv\.lock$
+^_pkgdown\.yml$
+^pkgdown$
 ^AGENTS\.md$
 ^coding_guidelines\.md$
 ^docs$
