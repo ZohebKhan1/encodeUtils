@@ -1,7 +1,7 @@
 $encode-ink: #18222f !default;
 $encode-muted: #5d6f80 !default;
-$encode-primary: #176b87 !default;
-$encode-teal: #2b9c8f !default;
+$encode-primary: #c45f1b !default;
+$encode-orange: #d97a2b !default;
 $encode-border: #d9e2ea !default;
 $encode-panel: #f4f8fa !default;
 $encode-dark-bg: #0f151c !default;
@@ -37,22 +37,23 @@ a {
   text-decoration: underline;
 }
 
-.template-home .page-header,
-.template-title-body .page-header {
+.page-header {
   border-bottom: 1px solid $encode-border;
-  margin-bottom: 2.25rem;
-  padding-bottom: 1.75rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  min-height: 0;
+  padding-bottom: 0.55rem;
 }
 
 .template-home .page-header {
   align-items: center;
   display: flex;
-  gap: 1.25rem;
+  gap: 1rem;
 }
 
-.template-home .page-header h1,
-.template-title-body .page-header h1 {
+.page-header h1 {
   margin-top: 0;
+  margin-bottom: 0;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -84,10 +85,6 @@ main {
   margin-bottom: 4rem;
 }
 
-.contents .page-header {
-  min-height: 0;
-}
-
 pre,
 code {
   border: 0;
@@ -102,8 +99,8 @@ pre {
 }
 
 code {
-  background-color: #eef6f8;
-  color: #0f596f;
+  background-color: #fff3e8;
+  color: #934713;
 }
 
 pre code {
@@ -188,7 +185,7 @@ footer {
   .template-home .page-header {
     align-items: flex-start;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.6rem;
   }
 
   aside {
@@ -210,6 +207,7 @@ footer {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.28);
 }
 
+[data-bs-theme="dark"] .page-header,
 [data-bs-theme="dark"] .template-home .page-header,
 [data-bs-theme="dark"] .template-title-body .page-header,
 [data-bs-theme="dark"] .ref-index h2,
@@ -237,7 +235,7 @@ footer {
 [data-bs-theme="dark"] #toc .nav-link.active,
 [data-bs-theme="dark"] #toc .nav-link:hover,
 [data-bs-theme="dark"] #toc .nav-link:focus {
-  color: #61c3d6;
+  color: #f2a65a;
 }
 
 [data-bs-theme="dark"] pre {
@@ -247,8 +245,8 @@ footer {
 }
 
 [data-bs-theme="dark"] code {
-  background-color: #172532;
-  color: #8bd9e5;
+  background-color: #2a2119;
+  color: #ffc078;
 }
 
 [data-bs-theme="dark"] pre code {
