@@ -4,26 +4,26 @@ destination: site
 template:
   bootstrap: 5
   light-switch: true
-  theme: github-light
-  theme-dark: github-dark
+  theme: a11y-light
+  theme-dark: a11y-dark
   bslib:
-    bg: "#fbfcfd"
-    fg: "#18222f"
-    primary: "#c45f1b"
-    secondary: "#5d6f80"
-    link-color: "#b85619"
-    border-color: "#d9e2ea"
-    body-color: "#18222f"
-    body-bg: "#fbfcfd"
-    code-color: "#934713"
-    code-bg: "#fff3e8"
-    navbar-light-bg: "#f7fafb"
-    navbar-dark-bg: "#101820"
-    navbar-padding-y: "0.9rem"
-    border-radius: "0.4rem"
-    btn-border-radius: "0.3rem"
-    grid-gutter-width: "3rem"
-    pkgdown-nav-height: "78px"
+    bg: "#fafaf7"
+    fg: "#1f2a24"
+    primary: "#4f7d62"
+    secondary: "#6e7b72"
+    link-color: "#2f7457"
+    border-color: "#d9dfd7"
+    body-color: "#1f2a24"
+    body-bg: "#fafaf7"
+    code-color: "#2e6f52"
+    code-bg: "#edf3ee"
+    navbar-light-bg: "#f5f7f2"
+    navbar-dark-bg: "#171d19"
+    navbar-padding-y: "0.58rem"
+    border-radius: "0.32rem"
+    btn-border-radius: "0.25rem"
+    grid-gutter-width: "2.4rem"
+    pkgdown-nav-height: "58px"
     base_font: { google: "Roboto" }
     heading_font: { google: "Roboto" }
     code_font: { google: "Source Code Pro" }

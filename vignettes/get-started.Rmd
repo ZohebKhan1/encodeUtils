@@ -79,6 +79,15 @@ show_explain <- function(x) {
   )
 }
 
+doc_table <- function(x) {
+  knitr::kable(
+    x,
+    format = "html",
+    row.names = FALSE,
+    table.attr = 'class="encode-table"'
+  )
+}
+
 download_marker <- paste0(intToUtf8(64), intToUtf8(64), "download")
 
 rna_experiment_json <- paste0(
@@ -236,9 +245,8 @@ rna_experiments <- httr2::with_mocked_responses(
 The search returns matching ENCODE experiments.
 
 ```{r rnaseq-results, echo=FALSE}
-knitr::kable(
-  show_experiments(rna_experiments),
-  row.names = FALSE
+doc_table(
+  show_experiments(rna_experiments)
 )
 ```
 
@@ -258,9 +266,8 @@ rna_files <- httr2::with_mocked_responses(
 ```
 
 ```{r rnaseq-file-table, echo=FALSE}
-knitr::kable(
-  show_files(rna_files),
-  row.names = FALSE
+doc_table(
+  show_files(rna_files)
 )
 ```
 
@@ -278,9 +285,8 @@ rna_plan <- encode_preview_download(
 ```
 
 ```{r rnaseq-preview-table, echo=FALSE}
-knitr::kable(
-  show_plan(rna_plan),
-  row.names = FALSE
+doc_table(
+  show_plan(rna_plan)
 )
 ```
 
@@ -297,9 +303,8 @@ rna_dry_run <- encode_download(
 ```
 
 ```{r rnaseq-dry-run-table, echo=FALSE}
-knitr::kable(
-  show_plan(rna_dry_run),
-  row.names = FALSE
+doc_table(
+  show_plan(rna_dry_run)
 )
 ```
 
@@ -321,9 +326,8 @@ atac_experiments <- httr2::with_mocked_responses(
 ```
 
 ```{r atac-experiment-table, echo=FALSE}
-knitr::kable(
-  show_experiments(atac_experiments),
-  row.names = FALSE
+doc_table(
+  show_experiments(atac_experiments)
 )
 ```
 
@@ -342,9 +346,8 @@ atac_files <- httr2::with_mocked_responses(
 ```
 
 ```{r atac-file-table, echo=FALSE}
-knitr::kable(
-  show_files(atac_files),
-  row.names = FALSE
+doc_table(
+  show_files(atac_files)
 )
 ```
 
@@ -360,13 +363,11 @@ atac_selected <- encode_select_files(
 ```
 
 ```{r atac-select-table, echo=FALSE}
-knitr::kable(
-  show_files(atac_selected),
-  row.names = FALSE
+doc_table(
+  show_files(atac_selected)
 )
-knitr::kable(
-  show_explain(atac_selected),
-  row.names = FALSE
+doc_table(
+  show_explain(atac_selected)
 )
 ```
 
@@ -379,9 +380,8 @@ atac_plan <- encode_preview_download(
 ```
 
 ```{r atac-preview-table, echo=FALSE}
-knitr::kable(
-  show_plan(atac_plan),
-  row.names = FALSE
+doc_table(
+  show_plan(atac_plan)
 )
 ```
 
@@ -403,9 +403,8 @@ chip_experiments <- httr2::with_mocked_responses(
 ```
 
 ```{r chip-experiment-table, echo=FALSE}
-knitr::kable(
-  show_experiments(chip_experiments),
-  row.names = FALSE
+doc_table(
+  show_experiments(chip_experiments)
 )
 ```
 
@@ -424,9 +423,8 @@ chip_files <- httr2::with_mocked_responses(
 ```
 
 ```{r chip-file-table, echo=FALSE}
-knitr::kable(
-  show_files(chip_files),
-  row.names = FALSE
+doc_table(
+  show_files(chip_files)
 )
 ```
 
@@ -442,13 +440,11 @@ chip_peaks <- encode_select_files(
 ```
 
 ```{r chip-select-peaks-table, echo=FALSE}
-knitr::kable(
-  show_files(chip_peaks),
-  row.names = FALSE
+doc_table(
+  show_files(chip_peaks)
 )
-knitr::kable(
-  show_explain(chip_peaks),
-  row.names = FALSE
+doc_table(
+  show_explain(chip_peaks)
 )
 ```
 
@@ -464,9 +460,8 @@ chip_signal <- encode_select_files(
 ```
 
 ```{r chip-signal-table, echo=FALSE}
-knitr::kable(
-  show_files(chip_signal),
-  row.names = FALSE
+doc_table(
+  show_files(chip_signal)
 )
 ```
 
@@ -483,21 +478,19 @@ manifest <- encode_manifest(
 ```
 
 ```{r manifest-table, echo=FALSE}
-knitr::kable(
-  data.frame(section = names(manifest)),
-  row.names = FALSE
+doc_table(
+  data.frame(section = names(manifest))
 )
 ```
 
 Create a citation table for the datasets and files used.
 
 ```{r cite, echo=FALSE}
-knitr::kable(
+doc_table(
   show_columns(
     encode_cite(rna_dry_run, enrich = FALSE),
     c("accession", "type", "url", "dataset", "file_accession")
-  ),
-  row.names = FALSE
+  )
 )
 ```
 
