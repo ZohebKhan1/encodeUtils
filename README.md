@@ -1,3 +1,10 @@
+## References
+
+- ENCODE REST API: <https://www.encodeproject.org/help/rest-api/>
+- ENCODE attribution guidance: <https://www.encodeproject.org/help/citing-encode/>
+
+Kagda MS, Lam B, Litton C, Small C, Sloan CA, Spragins E, Tanaka F, Whaling I, Gabdank I, Youngworth I, Strattan JS, Hilton J, Jou J, Au J, Lee JW, Andreeva K, Graham K, Lin K, Simison M, Jolanki O, Sud P, Assis P, Adenekan P, Miyasato S, Zhong W, Luo Y, Myers Z, Cherry JM, Hitz BC. Data navigation on the ENCODE portal. Nat Commun. 2025 Oct 30;16(1):9592. doi: 10.1038/s41467-025-64343-9. PMID: 41168159; PMCID: PMC12575607.
+  
 # encodeUtils
 
 `encodeUtils` queries ENCODE metadata from R and helps choose, download, read,
@@ -74,20 +81,3 @@ manifest <- encode_manifest(
   path = file.path(tempdir(), "encode-rna-manifest.json")
 )
 ```
-
-## Main Functions
-
-- `encode_search()` finds ENCODE experiments, files, and other records.
-- `encode_results()` extracts the main table from result objects.
-- `encode_list_files()` lists files attached to experiments.
-- `encode_select_files()` selects files by accession, format, output type, or preset.
-- `encode_explain_selection()` shows why files were selected or excluded.
-- `encode_download()` checks, downloads, and can optionally read selected files.
-- `encode_read()` reads supported local ENCODE files or downloaded file tables.
-- `encode_manifest()` records queries, selected files, downloads, and ENCODE attribution metadata.
-
-## References
-
-- ENCODE REST API: <https://www.encodeproject.org/help/rest-api/>
-- ENCODE Search: <https://www.encodeproject.org/search/>
-- ENCODE attribution guidance: <https://www.encodeproject.org/help/citing-encode/>
