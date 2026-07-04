@@ -91,7 +91,7 @@ encode_attribution_from_character <- function(x, quiet = FALSE) {
   }
   if (length(experiment_ids) > 0L) {
     experiments <- lapply(experiment_ids, function(id) {
-      encode_get(id, metadata = "full", quiet = TRUE)$summary
+      encode_get_record(id, metadata = "full", quiet = TRUE)$summary
     })
     rows[[length(rows) + 1L]] <- encode_attribution_from_experiment_table(
       encode_bind_rows(experiments)

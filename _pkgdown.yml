@@ -59,13 +59,6 @@ reference:
       - encode_read
       - encode_manifest
 
-  - title: Additional helpers
-    desc: Retrieve one record, summarize available records, or create a separate download plan.
-    contents:
-      - encode_get
-      - encode_matrix
-      - encode_preview_download
-
 articles:
   - title: Start here
     navbar: ~

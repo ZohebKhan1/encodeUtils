@@ -59,10 +59,6 @@ encode_manifest <- function(x,
     manifest$files <- as.data.frame(x, stringsAsFactors = FALSE)
   } else if (inherits(x, "encode_object")) {
     manifest$object <- x$summary
-  } else if (inherits(x, "encode_matrix_result")) {
-    manifest$matrix <- x$matrix
-    manifest$assay_summary <- x$assay_summary
-    manifest$biosample_summary <- x$biosample_summary
   } else if (is.character(x)) {
     manifest$accessions <- data.frame(
       accession = vapply(x, encode_normalize_accession, character(1L)),

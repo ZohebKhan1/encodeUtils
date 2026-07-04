@@ -57,14 +57,6 @@ test_that("manifests preserve branch-specific payloads and JSON round trips", {
     function(req) fixture_json_response("search-embedded-experiments.json"),
     encode_search(limit = 2, quiet = TRUE)
   )
-  object <- httr2::with_mocked_responses(
-    function(req) fixture_json_response("experiment-object.json"),
-    encode_get("ENCSRREAL01", quiet = TRUE)
-  )
-  matrix <- httr2::with_mocked_responses(
-    function(req) fixture_json_response("matrix-small.json"),
-    encode_matrix(quiet = TRUE)
-  )
   download <- encode_download(
     fixture_download_files()[1, , drop = FALSE],
     directory = withr::local_tempdir(),
@@ -73,8 +65,6 @@ test_that("manifests preserve branch-specific payloads and JSON round trips", {
   )
 
   expect_true("experiments" %in% names(encode_manifest(search, include_session = FALSE)))
-  expect_true("object" %in% names(encode_manifest(object, include_session = FALSE)))
-  expect_true("matrix" %in% names(encode_manifest(matrix, include_session = FALSE)))
   expect_true("downloaded_files" %in% names(encode_manifest(download, include_session = FALSE)))
 
   manifest <- encode_manifest(

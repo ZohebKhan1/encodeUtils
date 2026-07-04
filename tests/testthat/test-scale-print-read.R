@@ -9,11 +9,11 @@ test_that("large mixed file tables select and summarize deterministically", {
   explanation <- encode_explain_selection(selected)
   summary <- encode_file_summary(files)
   largest <- encode_largest_files(files, n = 8L)
-  plan <- encode_preview_download(
+  planned <- encode_download(
     files,
     n = 25,
     directory = withr::local_tempdir(),
-    allow_unknown_size = TRUE,
+    dry_run = TRUE,
     quiet = TRUE
   )
 
@@ -24,7 +24,7 @@ test_that("large mixed file tables select and summarize deterministically", {
   expect_equal(summary$n_files, 120)
   expect_equal(summary$n_experiments, 12)
   expect_true(all(diff(largest$file_size) <= 0))
-  expect_equal(length(unique(plan$files$local_path)), nrow(plan$files))
+  expect_equal(length(unique(planned$local_path)), nrow(planned))
 })
 
 test_that("print methods expose stable concise diagnostics", {
@@ -38,14 +38,11 @@ test_that("print methods expose stable concise diagnostics", {
     file_format = "txt",
     explain = FALSE
   )
-  plan <- encode_preview_download(
+  planned <- encode_download(
     fixture_download_files(),
     directory = withr::local_tempdir(),
+    dry_run = TRUE,
     quiet = TRUE
-  )
-  matrix <- httr2::with_mocked_responses(
-    function(req) fixture_json_response("matrix-small.json"),
-    encode_matrix(quiet = TRUE)
   )
   capture_cli <- function(expr) {
     expr <- substitute(expr)
@@ -58,9 +55,7 @@ test_that("print methods expose stable concise diagnostics", {
   search_verbose_output <- capture_cli(print(search, verbose = TRUE))
   selected_output <- capture_cli(print(selected))
   selected_verbose_output <- capture_cli(print(selected, verbose = TRUE))
-  plan_output <- capture_cli(print(plan))
-  plan_verbose_output <- capture_cli(print(plan, verbose = TRUE))
-  matrix_output <- capture_cli(print(matrix))
+  planned_output <- capture_cli(print(planned))
 
   expect_true(any(grepl("ENCODE search", search_output, fixed = TRUE)))
   expect_true(any(grepl("total matches", search_output, fixed = TRUE)))
@@ -71,13 +66,8 @@ test_that("print methods expose stable concise diagnostics", {
   expect_true(any(grepl("ENCODE selected files", selected_output, fixed = TRUE)))
   expect_false(any(grepl("Exclusion reasons", selected_output, fixed = TRUE)))
   expect_true(any(grepl("Exclusion reasons", selected_verbose_output, fixed = TRUE)))
-  expect_true(any(grepl("ENCODE download plan", plan_output, fixed = TRUE)))
-  expect_true(any(grepl("unknown-size files", plan_output, fixed = TRUE)))
-  expect_false(any(grepl("checksums available", plan_output, fixed = TRUE)))
-  expect_true(any(grepl("checksums available", plan_verbose_output, fixed = TRUE)))
-  expect_true(any(grepl("ENCODE matrix", matrix_output, fixed = TRUE)))
-  expect_true(any(grepl("biosample_type", matrix_output, fixed = TRUE)))
-  expect_false(any(grepl("biosample_classification", matrix_output, fixed = TRUE)))
+  expect_true(any(grepl("ENCODE files", planned_output, fixed = TRUE)))
+  expect_true(any(grepl("file_size", planned_output, fixed = TRUE)))
 })
 
 test_that("encode_read validates table input and format overrides", {

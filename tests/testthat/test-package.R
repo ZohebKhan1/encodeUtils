@@ -367,42 +367,6 @@ test_that("encode_count returns live totals without returned rows", {
   testthat::expect_match(count$query_url, "/search/", fixed = TRUE)
 })
 
-test_that("encode_get returns compact summaries while preserving raw objects", {
-  local_mock_options()
-  result <- httr2::with_mocked_responses(
-    function(req) mock_json_response(experiment_object_json),
-    encode_get("ENCSR000AAA", quiet = TRUE)
-  )
-
-  testthat::expect_s3_class(result, "encode_object")
-  testthat::expect_equal(result$type, "Experiment")
-  testthat::expect_equal(result$summary$accession[[1]], "ENCSR000AAA")
-  testthat::expect_equal(result$summary$target[[1]], "POLR2A")
-  testthat::expect_true(is.na(result$summary$control_type[[1]]))
-  testthat::expect_equal(result$summary$sex[[1]], "female")
-  testthat::expect_equal(result$summary$institution[[1]], "Example University")
-  testthat::expect_equal(result$data$accession, "ENCSR000AAA")
-  testthat::expect_match(encode_query_url(result), "/experiments/ENCSR000AAA/", fixed = TRUE)
-})
-
-test_that("encode_matrix flattens nested matrix counts", {
-  local_mock_options()
-  result <- httr2::with_mocked_responses(
-    function(req) mock_json_response(matrix_json),
-    encode_matrix(filters = list("control_type!=" = "*"), quiet = TRUE)
-  )
-
-  testthat::expect_s3_class(result, "encode_matrix_result")
-  testthat::expect_equal(result$total, 3)
-  testthat::expect_equal(nrow(result$matrix), 2)
-  testthat::expect_false("matrix_long" %in% names(result))
-  testthat::expect_null(result$assays)
-  testthat::expect_null(result$biosamples)
-  testthat::expect_equal(result$matrix$n, c(2L, 1L))
-  testthat::expect_equal(result$assay_summary$assay_title, c("total RNA-seq", "ChIP-seq"))
-  testthat::expect_equal(result$biosample_summary$biosample_term_name[[1]], "heart")
-})
-
 test_that("encode_list_files normalizes file metadata from experiments", {
   local_mock_options()
   files <- httr2::with_mocked_responses(
@@ -820,35 +784,6 @@ test_that("encode_download preserves successful rows when later rows fail", {
   testthat::expect_true(result$md5_verified[[1]])
   testthat::expect_false(result$md5_verified[[2]])
   testthat::expect_match(result$failure_reason[[2]], "failed size or MD5")
-})
-
-test_that("encode_preview_download summarizes plan and required overrides", {
-  destination <- withr::local_tempdir()
-  files <- data.frame(
-    file_accession = c("ENCFF000AAA", "ENCFF000AAB"),
-    href = c(
-      "/files/ENCFF000AAA/@@download/ENCFF000AAA.txt",
-      "/files/ENCFF000AAB/@@download/ENCFF000AAB.txt"
-    ),
-    file_size = c(3, NA),
-    md5sum = c("900150983cd24fb0d6963f7d28e17f72", NA_character_),
-    stringsAsFactors = FALSE
-  )
-
-  plan <- encode_preview_download(
-    files,
-    directory = destination,
-    max_file_size = "2B",
-    max_total_size = "2B"
-  )
-
-  testthat::expect_s3_class(plan, "encode_download_plan")
-  testthat::expect_equal(plan$summary$n_files, 2)
-  testthat::expect_equal(plan$summary$known_total_size, 3)
-  testthat::expect_equal(plan$summary$unknown_size_count, 1)
-  testthat::expect_true("allow_unknown_size = TRUE" %in% plan$required_overrides$override)
-  testthat::expect_true("increase max_file_size" %in% plan$required_overrides$override)
-  testthat::expect_true("increase max_total_size" %in% plan$required_overrides$override)
 })
 
 test_that("encode_read loads safe text and JSON files and returns local-file objects otherwise", {

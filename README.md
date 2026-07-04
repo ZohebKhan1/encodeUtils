@@ -14,12 +14,6 @@ workflows.
 
 <img src="man/figures/encode-database-overview.svg" width="780" alt="Released ENCODE RNA-seq, ChIP-seq, and ATAC-seq experiment counts with species, tissue, life-stage, and histone-target summaries.">
 
-Regenerate the figures with:
-
-```r
-source("scripts/plot_encode_database_summary.R")
-```
-
 ## Installation
 
 ```r
@@ -92,15 +86,8 @@ manifest <- encode_manifest(
 - `encode_read()` reads supported local ENCODE files or downloaded file tables.
 - `encode_manifest()` records queries, selected files, downloads, and ENCODE attribution metadata.
 
-## Additional Helpers
-
-- `encode_get()` retrieves one ENCODE record by accession, path, or URL.
-- `encode_matrix()` summarizes ENCODE record counts by assay and biosample.
-- `encode_preview_download()` is retained for older code that wants a separate plan object.
-
 ## References
 
 - ENCODE REST API: <https://www.encodeproject.org/help/rest-api/>
 - ENCODE Search: <https://www.encodeproject.org/search/>
-- ENCODE Matrix: <https://www.encodeproject.org/matrix/>
 - ENCODE attribution guidance: <https://www.encodeproject.org/help/citing-encode/>

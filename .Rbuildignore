@@ -12,7 +12,6 @@
 ^\.Rprofile$
 ^.*\.Rproj$
 ^tools$
-^scripts$
 ^tmp$
 ^\.codex$
 ^.*\.Rcheck$

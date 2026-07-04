@@ -8,8 +8,7 @@
 #' experiments.
 #'
 #' @param x Experiment accession(s), experiment path(s), a search result from
-#'   `encode_search()`, a record from `encode_get()`, or a data frame containing
-#'   experiment identifiers.
+#'   `encode_search()`, or a data frame containing experiment identifiers.
 #' @param file_format Optional file format filter, such as `"fastq"`, `"bed"`,
 #'   `"bigWig"`, or `"tsv"`.
 #' @param output_type Optional ENCODE output type filter, such as `"reads"` or

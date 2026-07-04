@@ -22,19 +22,9 @@ test_that("download planning uses cache/temp defaults without project-root write
   expect_false(startsWith(cache_plan$local_path[[1]], getwd()))
 })
 
-test_that("preview and download can limit rows with n", {
+test_that("download dry-run can limit rows with n", {
   files <- fixture_download_files()
   destination <- withr::local_tempdir()
-
-  plan <- encode_preview_download(
-    files,
-    n = 2,
-    directory = destination,
-    quiet = TRUE
-  )
-  expect_equal(plan$summary$n_files, 2)
-  expect_equal(nrow(plan$files), 2)
-  expect_equal(plan$files$file_accession, files$file_accession[1:2])
 
   dry <- encode_download(
     files,
@@ -47,24 +37,15 @@ test_that("preview and download can limit rows with n", {
   expect_equal(dry$file_accession, files$file_accession[1:2])
 
   expect_error(
-    encode_preview_download(files, n = 1.5, directory = destination, quiet = TRUE),
+    encode_download(files, n = 1.5, directory = destination, dry_run = TRUE, quiet = TRUE),
     "positive whole number"
   )
 })
 
-test_that("preview and download can select exact file accessions", {
+test_that("download dry-run can select exact file accessions", {
   files <- fixture_download_files()
   destination <- withr::local_tempdir()
   wanted <- rev(files$file_accession[1:2])
-
-  plan <- encode_preview_download(
-    files,
-    file_accession = wanted,
-    directory = destination,
-    quiet = TRUE
-  )
-  expect_equal(plan$summary$n_files, 2)
-  expect_equal(plan$files$file_accession, wanted)
 
   dry <- encode_download(
     files,
@@ -76,10 +57,11 @@ test_that("preview and download can select exact file accessions", {
   expect_equal(dry$file_accession, wanted)
 
   expect_error(
-    encode_preview_download(
+    encode_download(
       files,
       file_accession = "ENCFFDOESNOTEXIST",
       directory = destination,
+      dry_run = TRUE,
       quiet = TRUE
     ),
     "not found"

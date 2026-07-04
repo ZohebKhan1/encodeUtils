@@ -11,11 +11,6 @@ names.encode_object <- function(x) {
 }
 
 #' @export
-names.encode_matrix_result <- function(x) {
-  c("matrix", "assay_summary", "biosample_summary", "total_results", "query_url")
-}
-
-#' @export
 names.encode_schema_result <- function(x) {
   c("properties", "title", "id", "query_url")
 }
@@ -23,11 +18,6 @@ names.encode_schema_result <- function(x) {
 #' @export
 names.encode_selected_files <- function(x) {
   c("files", "excluded", "criteria")
-}
-
-#' @export
-names.encode_download_plan <- function(x) {
-  c("files", "summary", "largest_files", "required_overrides")
 }
 
 #' @export
@@ -64,19 +54,6 @@ print.encode_object <- function(x, ..., verbose = FALSE) {
   encode_print_table("Summary", encode_result_display(x$summary))
   if (isTRUE(verbose)) {
     cli::cli_text("URL: {x$url}")
-  }
-  invisible(x)
-}
-
-#' @export
-print.encode_matrix_result <- function(x, ..., verbose = FALSE) {
-  cli::cli_text("ENCODE matrix")
-  cli::cli_text("- total represented: {.val {x$total}}")
-  encode_print_table("Top assays", utils::head(x$assay_summary, 10L))
-  encode_print_table("Top biosamples", encode_matrix_biosample_display(x$biosample_summary))
-  if (isTRUE(verbose)) {
-    cli::cli_text("- URL: {x$query_url %||% x$url}")
-    encode_print_table("Active filters", x$filters)
   }
   invisible(x)
 }
@@ -121,29 +98,6 @@ print.encode_selected_files <- function(x, ..., verbose = FALSE) {
   if (isTRUE(verbose)) {
     encode_print_table("Criteria", encode_filter_table(x$criteria))
     encode_print_table("Exclusion reasons", encode_exclusion_summary(x$excluded))
-  }
-  invisible(x)
-}
-
-#' @export
-print.encode_download_plan <- function(x, ..., verbose = FALSE) {
-  cli::cli_text("ENCODE download plan")
-  cli::cli_text("- files: {.val {x$summary$n_files}}")
-  cli::cli_text("- known total size: {.val {x$summary$known_total_size_pretty}}")
-  cli::cli_text("- unknown-size files: {.val {x$summary$unknown_size_count}}")
-  if (NROW(x$required_overrides) == 0L) {
-    cli::cli_text("- required overrides: none")
-  } else {
-    encode_print_table("Required overrides", x$required_overrides)
-  }
-  encode_print_table(
-    "Largest files",
-    encode_display_columns(x$largest_files, encode_file_display_columns())
-  )
-  if (isTRUE(verbose)) {
-    cli::cli_text("- checksums available: {.val {x$summary$checksums_available}}")
-    cli::cli_text("- destination directories: {.val {x$summary$destination_count}}")
-    encode_print_table("Files", encode_display_columns(x$files, encode_file_display_columns()))
   }
   invisible(x)
 }
@@ -297,18 +251,6 @@ encode_result_display <- function(x) {
 
 encode_experiment_display <- function(x) {
   encode_display_columns(x, encode_experiment_display_columns())
-}
-
-encode_matrix_biosample_display <- function(x) {
-  encode_display_columns(
-    x,
-    c(
-      biosample_type = "biosample_classification",
-      biosample = "biosample_term_name",
-      n = "n",
-      biosample_type_n = "classification_n"
-    )
-  )
 }
 
 encode_display_columns <- function(x, columns) {

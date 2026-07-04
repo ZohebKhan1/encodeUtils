@@ -2,7 +2,7 @@
 
 NEW FEATURES
 
-    o Query ENCODE search, matrix, and object endpoints from R.
+    o Query ENCODE search endpoints from R.
 
     o List file metadata for ENCODE experiments, including file accessions,
       formats, output types, assemblies, file sizes, checksums, download URLs,
@@ -15,8 +15,8 @@ NEW FEATURES
       FASTQ files, RNA-seq gene quantification tables, ATAC-seq peaks,
       ChIP-seq IDR peaks, and ChIP-seq signal bigWig files.
 
-    o Preview downloads before transfer, including destination paths, known
-      total size, unknown-size counts, largest files, and checksum availability.
+    o Check downloads before transfer with encode_download(dry_run = TRUE),
+      including destination paths, known total size, and unknown-size counts.
 
     o Download selected files with existing-file checks, temporary partial files,
       file-size verification, and MD5 verification when metadata are available.
@@ -36,13 +36,12 @@ USER-VISIBLE CHANGES
     o The README includes ENCODE database overview figures for common RNA-seq,
       ChIP-seq, and ATAC-seq experiment metadata.
 
-    o encode_search() and encode_get() default to metadata = "full" so common
+    o encode_search() defaults to metadata = "full" so common
       lab, organism, biosample, target, control, and release-date fields are
       available in printed tables.
 
     o encode_download() refuses real downloads with missing file_size metadata
-      unless allow_unknown_size = TRUE. Dry-runs and previews still report those
-      files.
+      unless allow_unknown_size = TRUE. Dry-runs still report those files.
 
     o encode_manifest() records the query, selected files, downloads, and
       ENCODE attribution metadata.

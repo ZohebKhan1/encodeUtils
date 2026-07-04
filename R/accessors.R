@@ -4,11 +4,10 @@
 #' Use it before filtering, joining, writing a CSV, or passing rows to another
 #' function.
 #'
-#' @param x An object returned by `encode_search()`, `encode_get()`,
-#'   `encode_matrix()`, `encode_list_files()`, `encode_select_files()`,
-#'   `encode_preview_download()`, or `encode_download()`.
-#' @param component For `encode_matrix()` results, which table to extract:
-#'   `"matrix"`, `"assays"`, or `"biosamples"`. Ignored for other result types.
+#' @param x An object returned by `encode_search()`, `encode_list_files()`,
+#'   `encode_select_files()`, `encode_download()`, or `encode_read()`.
+#' @param component Reserved for compatibility. Ignored for current result
+#'   objects.
 #'
 #' @return A data frame.
 #' @export
@@ -16,28 +15,17 @@
 #' @examples
 #' # res <- encode_search(type = "Experiment", search = "mouse heart ChIP-seq")
 #' # experiments <- encode_results(res)
-encode_results <- function(x, component = c("matrix", "assays", "biosamples")) {
-  component <- match.arg(component)
+encode_results <- function(x, component = NULL) {
   if (inherits(x, "encode_search_result")) {
     return(x$results)
   }
   if (inherits(x, "encode_object")) {
     return(x$summary)
   }
-  if (inherits(x, "encode_matrix_result")) {
-    return(switch(component,
-      matrix = x$matrix,
-      assays = x$assay_summary,
-      biosamples = x$biosample_summary
-    ))
-  }
   if (inherits(x, "encode_schema_result")) {
     return(x$properties)
   }
   if (inherits(x, "encode_selected_files")) {
-    return(x$files)
-  }
-  if (inherits(x, "encode_download_plan")) {
     return(x$files)
   }
   if (inherits(x, "encode_loaded_files")) {
@@ -51,8 +39,8 @@ encode_results <- function(x, component = c("matrix", "assays", "biosamples")) {
 
 #' Extract the ENCODE query URL from a result object
 #'
-#' @param x An object returned by `encode_search()`, `encode_matrix()`,
-#'   `encode_list_files()`, `encode_select_files()`, or `encode_download()`.
+#' @param x An object returned by `encode_search()`, `encode_list_files()`,
+#'   `encode_select_files()`, or `encode_download()`.
 #'
 #' @return A single URL string, or `NA_character_` when no query URL is
 #'   available.

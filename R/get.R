@@ -1,23 +1,7 @@
-#' Retrieve one ENCODE record
-#'
-#' Retrieve metadata for one ENCODE record, such as an experiment or file. This
-#' function retrieves metadata only; it does not download file contents.
-#'
-#' @param x One ENCODE accession, portal path, or full portal URL.
-#' @param metadata Amount of linked metadata to request. `"full"` gives richer
-#'   linked fields. `"basic"` requests fewer fields.
-#' @param quiet If `FALSE`, print a concise status message.
-#'
-#' @return One ENCODE record. `encode_results()` extracts the summary table.
-#' @export
-#'
-#' @examples
-#' # experiment <- encode_get("ENCSR284QGB")
-#' # encode_results(experiment)
-encode_get <- function(
-                       x,
-                       metadata = c("full", "basic"),
-                       quiet = FALSE) {
+encode_get_record <- function(
+                              x,
+                              metadata = c("full", "basic"),
+                              quiet = TRUE) {
   metadata_request <- encode_metadata_request(metadata)
   frame <- metadata_request$frame
   metadata <- metadata_request$metadata

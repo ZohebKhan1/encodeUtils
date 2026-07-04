@@ -22,13 +22,6 @@ encode_summary <- function(x, ...) {
       stringsAsFactors = FALSE
     ))
   }
-  if (inherits(x, "encode_matrix_result")) {
-    return(list(
-      total_results = x$total,
-      assay_summary = x$assay_summary,
-      biosample_summary = x$biosample_summary
-    ))
-  }
   if (inherits(x, "encode_selected_files")) {
     return(encode_file_summary(x$files))
   }

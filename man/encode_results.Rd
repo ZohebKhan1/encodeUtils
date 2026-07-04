@@ -4,15 +4,14 @@
 \alias{encode_results}
 \title{Extract the main table from an ENCODE result}
 \usage{
-encode_results(x, component = c("matrix", "assays", "biosamples"))
+encode_results(x, component = NULL)
 }
 \arguments{
-\item{x}{An object returned by `encode_search()`, `encode_get()`,
-`encode_matrix()`, `encode_list_files()`, `encode_select_files()`,
-`encode_preview_download()`, or `encode_download()`.}
+\item{x}{An object returned by `encode_search()`, `encode_list_files()`,
+`encode_select_files()`, `encode_download()`, or `encode_read()`.}
 
-\item{component}{For `encode_matrix()` results, which table to extract:
-`"matrix"`, `"assays"`, or `"biosamples"`. Ignored for other result types.}
+\item{component}{Reserved for compatibility. Ignored for current result
+objects.}
 }
 \value{
 A data frame.

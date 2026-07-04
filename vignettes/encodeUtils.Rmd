@@ -77,30 +77,6 @@ experiments <- encode_search(
 encode_results(experiments)
 ```
 
-# One record
-
-`encode_get()` retrieves one ENCODE record by accession, portal path, or URL.
-
-```{r get}
-experiment <- encode_get("ENCSR284QGB")
-encode_results(experiment)
-```
-
-# Availability counts
-
-`encode_matrix()` returns ENCODE availability counts by assay and biosample.
-Use it when you want a high-level view before writing a narrower search.
-
-```{r matrix}
-mat <- encode_matrix(
-  filters = list("control_type!=" = "*", perturbed = "false")
-)
-
-encode_results(mat)
-encode_results(mat, component = "assays")
-encode_results(mat, component = "biosamples")
-```
-
 # Files
 
 `encode_list_files()` lists downloadable files attached to experiments. It does
