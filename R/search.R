@@ -492,10 +492,10 @@ encode_search_file_dataset_chunks <- function(experiment_paths,
   experiment_paths <- unique(experiment_paths[!is.na(experiment_paths) & nzchar(experiment_paths)])
   chunk_size <- encode_file_search_chunk_size()
   chunks <- split(experiment_paths, ceiling(seq_along(experiment_paths) / chunk_size))
-  all_graph <- list()
+  graphs <- vector("list", length(chunks))
   total <- 0L
-  responses <- list()
-  queries <- list()
+  responses <- vector("list", length(chunks))
+  queries <- vector("list", length(chunks))
   remaining <- if (identical(limit, "all")) {
     Inf
   } else {
@@ -519,7 +519,7 @@ encode_search_file_dataset_chunks <- function(experiment_paths,
     )
     response <- encode_perform_json("/search/", query = query, allow_search_404 = TRUE)
     graph <- response$data$`@graph` %||% list()
-    all_graph <- c(all_graph, graph)
+    graphs[[i]] <- graph
     total <- total + encode_total(response$data, graph)
     responses[[i]] <- response
     queries[[i]] <- query
@@ -530,6 +530,7 @@ encode_search_file_dataset_chunks <- function(experiment_paths,
 
   response <- responses[[1L]]
   query <- queries[[1L]]
+  all_graph <- unlist(graphs, recursive = FALSE, use.names = FALSE)
   raw <- response$data
   raw$`@graph` <- all_graph
   raw$total <- total
@@ -682,7 +683,7 @@ encode_search_files_direct_fallback <- function(filters,
 
 encode_direct_file_standard_filters <- function(filters) {
   if ("assay_term_name" %in% names(filters) &&
-      identical(filters$assay_term_name, "ChIP-seq")) {
+    identical(filters$assay_term_name, "ChIP-seq")) {
     filters$assay_term_name <- NULL
     filters$assay_title <- c("TF ChIP-seq", "Histone ChIP-seq")
   }

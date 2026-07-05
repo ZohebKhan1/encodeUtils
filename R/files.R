@@ -137,7 +137,8 @@ encode_fetch_experiment_metadata_for_files <- function(experiment_paths, metadat
     return(encode_empty_results("Experiment"))
   }
   chunks <- split(accessions, ceiling(seq_along(accessions) / 100L))
-  results <- lapply(chunks, function(chunk) {
+  results <- lapply(seq_along(chunks), function(i) {
+    chunk <- chunks[[i]]
     result <- tryCatch(
       encode_search(
         type = "Experiment",
@@ -149,19 +150,38 @@ encode_fetch_experiment_metadata_for_files <- function(experiment_paths, metadat
         quiet = TRUE
       ),
       error = function(cnd) {
-        NULL
+        return(list(
+          data = encode_empty_results("Experiment"),
+          error = conditionMessage(cnd)
+        ))
       }
     )
-    if (is.null(result)) {
-      return(encode_empty_results("Experiment"))
+    if (is.list(result) && !is.null(result$error)) {
+      return(result)
     }
-    encode_results(result)
+    list(data = encode_results(result), error = NA_character_)
   })
-  experiments <- encode_bind_rows(results, names(encode_empty_results("Experiment")))
-  if (nrow(experiments) == 0L) {
-    return(encode_empty_results("Experiment"))
+  errors <- unique(vapply(results, `[[`, character(1L), "error"))
+  errors <- errors[!is.na(errors) & nzchar(errors)]
+  if (length(errors) > 0L) {
+    cli::cli_warn(c(
+      "Could not retrieve parent experiment metadata for some ENCODE file records.",
+      "i" = "File rows are still returned, but provenance columns may be incomplete.",
+      "x" = errors[[1L]]
+    ))
   }
-  experiments[!duplicated(experiments$accession), , drop = FALSE]
+  experiments <- encode_bind_rows(
+    lapply(results, `[[`, "data"),
+    names(encode_empty_results("Experiment"))
+  )
+  if (nrow(experiments) == 0L) {
+    experiments <- encode_empty_results("Experiment")
+    attr(experiments, "metadata_enrichment_error") <- errors
+    return(experiments)
+  }
+  experiments <- experiments[!duplicated(experiments$accession), , drop = FALSE]
+  attr(experiments, "metadata_enrichment_error") <- errors
+  experiments
 }
 
 encode_enrich_file_table_from_parent_experiments <- function(files, metadata = "basic") {
@@ -173,7 +193,12 @@ encode_enrich_file_table_from_parent_experiments <- function(files, metadata = "
   }
   experiment_paths <- encode_experiment_paths_from_file_table(files)
   experiments <- encode_fetch_experiment_metadata_for_files(experiment_paths, metadata = "full")
-  encode_fill_file_experiment_metadata(files, experiments)
+  files <- encode_fill_file_experiment_metadata(files, experiments)
+  errors <- attr(experiments, "metadata_enrichment_error", exact = TRUE)
+  if (!is.null(errors) && length(errors) > 0L) {
+    attr(files, "metadata_enrichment_error") <- errors
+  }
+  files
 }
 
 encode_file_table_needs_parent_metadata <- function(files) {
@@ -208,9 +233,9 @@ encode_experiment_paths_from_file_table <- function(files) {
 
 encode_fill_file_experiment_metadata <- function(files, experiments) {
   if (!is.data.frame(files) || nrow(files) == 0L ||
-      !is.data.frame(experiments) || nrow(experiments) == 0L ||
-      !"experiment_accession" %in% names(files) ||
-      !"accession" %in% names(experiments)) {
+    !is.data.frame(experiments) || nrow(experiments) == 0L ||
+    !"experiment_accession" %in% names(files) ||
+    !"accession" %in% names(experiments)) {
     return(files)
   }
   experiment_rows <- match(files$experiment_accession, experiments$accession)

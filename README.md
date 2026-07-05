@@ -94,7 +94,8 @@ dry_run <- encode_download(
 )
 
 # Run the same call without dry_run = TRUE to transfer the selected files.
-# downloaded <- encode_download(rna_files, directory = "~/encode-data/rna-seq")
+# directory = NULL uses the package cache under tools::R_user_dir().
+# downloaded <- encode_download(rna_files, directory = NULL)
 # loaded <- encode_read(downloaded, values = c("raw_counts", "TPM"))
 
 manifest <- encode_manifest(
@@ -120,8 +121,10 @@ chip_experiments <- encode_search(
 ```
 
 `directory = NULL` uses `tools::R_user_dir("encodeUtils", "cache")`, so users
-can rely on the package cache instead of writing downloads into a package source
-tree. A single local path or one downloaded-file row returns the native object
+can rely on a standard R user-cache location instead of writing downloads into a
+package source tree, working directory, or home-directory example path. Set
+`cache = FALSE` or `directory = tempdir()` for non-persistent downloads. A
+single local path or one downloaded-file row returns the native object
 for that file. A multi-row downloaded-file table returns an `encode_loaded_files`
 collection. Its primary components are `metadata`, `data`, `matrices`, and
 `by_experiment`. The `files`, `raw_counts`, and `tpm` components are convenience

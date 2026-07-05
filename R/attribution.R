@@ -82,21 +82,25 @@ encode_attribution_from_character <- function(x, quiet = FALSE) {
   if (length(other) > 0L) {
     cli::cli_abort("Character input currently supports ENCSR and ENCFF accessions/URLs.")
   }
-  rows <- list()
-  if (length(file_ids) > 0L) {
-    rows[[length(rows) + 1L]] <- encode_attribution_from_file_table(
+  file_rows <- if (length(file_ids) > 0L) {
+    encode_attribution_from_file_table(
       encode_file_table_from_input(file_ids, status = NULL),
       enrich = TRUE
     )
+  } else {
+    NULL
   }
-  if (length(experiment_ids) > 0L) {
+  experiment_rows <- if (length(experiment_ids) > 0L) {
     experiments <- lapply(experiment_ids, function(id) {
       encode_get_record(id, metadata = "full", quiet = TRUE)$summary
     })
-    rows[[length(rows) + 1L]] <- encode_attribution_from_experiment_table(
+    encode_attribution_from_experiment_table(
       encode_bind_rows(experiments)
     )
+  } else {
+    NULL
   }
+  rows <- Filter(Negate(is.null), list(file_rows, experiment_rows))
   if (!isTRUE(quiet)) {
     cli::cli_inform("Built ENCODE attribution metadata for {length(x)} input id(s).")
   }

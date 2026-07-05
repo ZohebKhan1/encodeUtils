@@ -1,7 +1,7 @@
 Package: encodeUtils
 Type: Package
 Title: Query and Retrieve ENCODE Portal Metadata and Files
-Version: 0.99.0
+Version: 0.99.1
 Authors@R: person(
     given = "Zoheb",
     family = "Khan",

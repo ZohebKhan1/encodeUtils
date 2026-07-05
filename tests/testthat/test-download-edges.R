@@ -22,6 +22,22 @@ test_that("download planning uses cache/temp defaults without project-root write
   expect_false(startsWith(cache_plan$local_path[[1]], getwd()))
 })
 
+test_that("download defaults are bounded for review-safe transfers", {
+  expect_equal(formals(encode_download)$max_file_size, "250MB")
+  expect_equal(formals(encode_download)$max_total_size, "500MB")
+})
+
+test_that("direct ENCSR real downloads require an explicit file narrowing", {
+  expect_error(
+    encode_download(
+      "ENCSR000AAA",
+      directory = withr::local_tempdir(),
+      quiet = TRUE
+    ),
+    "Refusing to download all files"
+  )
+})
+
 test_that("download dry-run can limit rows with n", {
   files <- fixture_download_files()
   destination <- withr::local_tempdir()

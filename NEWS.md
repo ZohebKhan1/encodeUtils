@@ -1,3 +1,33 @@
+## CHANGES IN VERSION 0.99.1
+
+USER-VISIBLE CHANGES
+
+    o encode_download() now uses smaller default transfer safety limits:
+      max_file_size = "250MB" and max_total_size = "500MB". Larger transfers
+      remain possible by explicitly increasing these arguments.
+
+    o encode_download() now refuses unrestricted real downloads from ENCSR
+      experiment accessions. Use dry_run = TRUE to inspect the full plan, or
+      narrow real downloads with file_format, output_type, file_accession, or n.
+
+    o Download examples now use the package cache or tempdir() rather than a
+      home-directory path.
+
+BUG FIXES
+
+    o Retry-exhaustion errors now include the request URL and final connection
+      error in the top-level message.
+
+    o File metadata enrichment now warns when parent experiment metadata cannot
+      be retrieved and records the enrichment error on the returned table.
+
+    o File and experiment organism extraction now reads nested biosample
+      organism metadata and recognizes common non-human ENCODE organisms such as
+      Caenorhabditis elegans.
+
+    o Internal file-search and attribution assembly avoid append-style list
+      growth for broad result sets.
+
 ## CHANGES IN VERSION 0.99.0
 
 NEW FEATURES

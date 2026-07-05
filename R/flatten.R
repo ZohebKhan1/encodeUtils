@@ -50,24 +50,24 @@ encode_facets <- function(x) {
     ))
   }
 
-  rows <- list()
-  for (facet in facets) {
+  rows <- lapply(facets, function(facet) {
     field <- encode_scalar(facet$field)
     title <- encode_scalar(facet$title)
     terms <- facet$terms %||% list()
     if (length(terms) == 0L) {
-      next
+      return(list())
     }
-    for (term in terms) {
-      rows[[length(rows) + 1L]] <- data.frame(
+    lapply(terms, function(term) {
+      data.frame(
         field = field,
         term = encode_scalar(term$key %||% term$term),
         count = encode_integer(term$doc_count %||% term$count),
         title = title,
         stringsAsFactors = FALSE
       )
-    }
-  }
+    })
+  })
+  rows <- unlist(rows, recursive = FALSE)
 
   if (length(rows) == 0L) {
     return(data.frame(
@@ -351,27 +351,100 @@ encode_file_organism <- function(item) {
   if (!is.na(organism)) {
     return(organism)
   }
-  organism <- encode_scalar(encode_pluck(item, c("biosample_ontology", "organism", "scientific_name")))
+  organism <- encode_first_nested_organism(item, list(
+    c("biosample_ontology", "organism"),
+    c("dataset", "organism"),
+    c("library", "biosample", "organism"),
+    c("replicates", "library", "biosample", "organism"),
+    c("dataset", "replicates", "library", "biosample", "organism")
+  ))
   if (!is.na(organism)) {
     return(organism)
   }
-  organism <- encode_scalar(encode_pluck(item, c("dataset", "organism")))
-  if (!is.na(organism)) {
-    return(organism)
+  summary <- encode_first_nested_scalar(item, list(
+    c("simple_biosample_summary"),
+    c("biosample_summary"),
+    c("dataset", "simple_biosample_summary"),
+    c("dataset", "biosample_summary"),
+    c("library", "biosample", "simple_summary"),
+    c("library", "biosample", "summary"),
+    c("replicates", "library", "biosample", "simple_summary"),
+    c("replicates", "library", "biosample", "summary")
+  ))
+  encode_organism_from_summary(summary)
+}
+
+encode_nested_values <- function(x, path) {
+  if (length(path) == 0L) {
+    return(list(x))
   }
-  summary <- encode_scalar(item$simple_biosample_summary %||%
-    item$biosample_summary %||%
-    encode_pluck(item, c("dataset", "simple_biosample_summary")) %||%
-    encode_pluck(item, c("dataset", "biosample_summary")) %||%
-    encode_pluck(item, c("replicates", "library", "biosample", "simple_summary")) %||%
-    encode_pluck(item, c("replicates", "library", "biosample", "summary")))
-  if (!is.na(summary) && grepl("^Homo sapiens", summary)) {
-    return("Homo sapiens")
+  if (!is.list(x)) {
+    return(list())
   }
-  if (!is.na(summary) && grepl("^Mus musculus", summary)) {
-    return("Mus musculus")
+  name <- path[[1L]]
+  rest <- path[-1L]
+  if (!is.null(x[[name]])) {
+    return(encode_nested_values(x[[name]], rest))
+  }
+  unlist(
+    lapply(x, encode_nested_values, path = path),
+    recursive = FALSE,
+    use.names = FALSE
+  )
+}
+
+encode_first_nested_organism <- function(item, paths) {
+  for (path in paths) {
+    values <- encode_nested_values(item, path)
+    organisms <- vapply(values, encode_organism, character(1L))
+    organisms <- organisms[!is.na(organisms) & nzchar(organisms)]
+    if (length(organisms) > 0L) {
+      return(organisms[[1L]])
+    }
   }
   NA_character_
+}
+
+encode_first_nested_scalar <- function(item, paths) {
+  for (path in paths) {
+    values <- encode_nested_values(item, path)
+    values <- vapply(values, encode_scalar, character(1L))
+    values <- values[!is.na(values) & nzchar(values)]
+    if (length(values) > 0L) {
+      return(values[[1L]])
+    }
+  }
+  NA_character_
+}
+
+encode_organism_from_summary <- function(summary) {
+  summary <- encode_scalar(summary)
+  if (is.na(summary) || !nzchar(summary)) {
+    return(NA_character_)
+  }
+  species <- c(
+    "Homo sapiens",
+    "Mus musculus",
+    "Caenorhabditis elegans",
+    "C. elegans",
+    "Drosophila melanogaster",
+    "Danio rerio",
+    "Rattus norvegicus",
+    "Saccharomyces cerevisiae",
+    "Schizosaccharomyces pombe"
+  )
+  matched <- species[vapply(
+    species,
+    function(prefix) startsWith(summary, prefix),
+    logical(1L)
+  )]
+  if (length(matched) == 0L) {
+    return(NA_character_)
+  }
+  if (identical(matched[[1L]], "C. elegans")) {
+    return("Caenorhabditis elegans")
+  }
+  matched[[1L]]
 }
 
 encode_audit_warnings <- function(audit) {
@@ -527,21 +600,18 @@ encode_experiment_organism <- function(item) {
     return(organism)
   }
 
-  replicate_organism <- encode_pluck(
-    item,
-    c("replicates", "library", "biosample", "organism", "scientific_name")
-  )
-  organism <- encode_scalar(replicate_organism)
+  organism <- encode_first_nested_organism(item, list(
+    c("biosample_ontology", "organism"),
+    c("replicates", "library", "biosample", "organism")
+  ))
   if (!is.na(organism)) {
     return(organism)
   }
 
-  summary <- encode_scalar(item$biosample_summary)
-  if (!is.na(summary) && grepl("^Homo sapiens", summary)) {
-    return("Homo sapiens")
-  }
-  if (!is.na(summary) && grepl("^Mus musculus", summary)) {
-    return("Mus musculus")
-  }
-  NA_character_
+  summary <- encode_first_nested_scalar(item, list(
+    c("biosample_summary"),
+    c("replicates", "library", "biosample", "summary"),
+    c("replicates", "library", "biosample", "simple_summary")
+  ))
+  encode_organism_from_summary(summary)
 }

@@ -21,9 +21,13 @@
 #'   experiment accession.
 #' @param n Optional number of files to use from the top of `x`.
 #' @param directory Destination directory. If `NULL`, a package cache directory
-#'   from `tools::R_user_dir("encodeUtils", "cache")` is used.
+#'   from `tools::R_user_dir("encodeUtils", "cache")` is used. Use `tempdir()`
+#'   for non-persistent example or testing downloads.
 #' @param cache Whether `directory = NULL` should use the package cache. If
-#'   `FALSE`, a session temporary directory is used.
+#'   `FALSE`, a session temporary directory is used. The default cache uses a
+#'   standard R user-cache location with accession-derived file names and
+#'   size/MD5 verification, avoiding writes to the package, working, or home
+#'   directory.
 #' @param max_file_size Maximum allowed size per file, as bytes or a string like
 #'   `"500MB"`.
 #' @param max_total_size Maximum allowed total size, as bytes or a string.
@@ -85,7 +89,7 @@
 #' #   file_format = "tsv",
 #' #   output_type = "gene quantifications",
 #' #   assembly = "mm10",
-#' #   directory = "~/encode-data/rna-seq",
+#' #   directory = NULL,
 #' #   read = TRUE
 #' # )
 encode_download <- function(
@@ -98,8 +102,8 @@ encode_download <- function(
                             n = NULL,
                             directory = NULL,
                             cache = TRUE,
-                            max_file_size = "2GB",
-                            max_total_size = "5GB",
+                            max_file_size = "250MB",
+                            max_total_size = "500MB",
                             allow_unknown_size = FALSE,
                             overwrite = FALSE,
                             dry_run = FALSE,
@@ -126,6 +130,14 @@ encode_download <- function(
   if (isTRUE(read) && isTRUE(dry_run)) {
     cli::cli_abort("Use either {.code dry_run = TRUE} or {.code read = TRUE}, not both.")
   }
+  encode_check_experiment_download_scope(
+    x,
+    dry_run = dry_run,
+    file_accession = file_accession,
+    file_format = file_format,
+    output_type = output_type,
+    n = n
+  )
   files <- encode_download_file_table(
     x,
     file_format = file_format,
@@ -283,6 +295,37 @@ encode_download_file_table <- function(x, file_format = NULL, output_type = NULL
     )
   }
   encode_file_table_from_input(x, status = NULL)
+}
+
+encode_check_experiment_download_scope <- function(x,
+                                                   dry_run,
+                                                   file_accession,
+                                                   file_format,
+                                                   output_type,
+                                                   n) {
+  if (isTRUE(dry_run) || !encode_is_direct_experiment_download_input(x)) {
+    return(invisible(NULL))
+  }
+  narrowed <- !is.null(file_accession) ||
+    !is.null(file_format) ||
+    !is.null(output_type) ||
+    !is.null(n)
+  if (narrowed) {
+    return(invisible(NULL))
+  }
+  cli::cli_abort(c(
+    "Refusing to download all files for an ENCODE experiment accession without narrowing the request.",
+    "i" = "Run {.code encode_download(x, dry_run = TRUE)} to inspect the full plan.",
+    "i" = "For real downloads, provide {.arg file_format}, {.arg output_type}, {.arg file_accession}, or {.arg n}."
+  ))
+}
+
+encode_is_direct_experiment_download_input <- function(x) {
+  if (!is.character(x) || length(x) == 0L) {
+    return(FALSE)
+  }
+  accessions <- vapply(x, encode_normalize_accession, character(1L))
+  all(encode_is_experiment_accession(accessions))
 }
 
 encode_abort_no_matching_download_files <- function(x,

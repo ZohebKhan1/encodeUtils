@@ -14,8 +14,8 @@ encode_download(
   n = NULL,
   directory = NULL,
   cache = TRUE,
-  max_file_size = "2GB",
-  max_total_size = "5GB",
+  max_file_size = "250MB",
+  max_total_size = "500MB",
   allow_unknown_size = FALSE,
   overwrite = FALSE,
   dry_run = FALSE,
@@ -60,10 +60,14 @@ experiment accession.}
 \item{n}{Optional number of files to use from the top of `x`.}
 
 \item{directory}{Destination directory. If `NULL`, a package cache directory
-from `tools::R_user_dir("encodeUtils", "cache")` is used.}
+from `tools::R_user_dir("encodeUtils", "cache")` is used. Use `tempdir()`
+for non-persistent example or testing downloads.}
 
 \item{cache}{Whether `directory = NULL` should use the package cache. If
-`FALSE`, a session temporary directory is used.}
+`FALSE`, a session temporary directory is used. The default cache uses a
+standard R user-cache location with accession-derived file names and
+size/MD5 verification, avoiding writes to the package, working, or home
+directory.}
 
 \item{max_file_size}{Maximum allowed size per file, as bytes or a string like
 `"500MB"`.}
@@ -151,7 +155,7 @@ encode_download(files, directory = tempdir(), dry_run = TRUE, quiet = TRUE)
 #   file_format = "tsv",
 #   output_type = "gene quantifications",
 #   assembly = "mm10",
-#   directory = "~/encode-data/rna-seq",
+#   directory = NULL,
 #   read = TRUE
 # )
 }

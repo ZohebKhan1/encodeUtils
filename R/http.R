@@ -262,7 +262,9 @@ encode_perform_with_retry <- function(req, path = NULL) {
       cli::cli_abort(
         c(
           "ENCODE request failed.",
-          "x" = "The request could not be completed after {max_tries} attempts."
+          "x" = "The request could not be completed after {max_tries} attempts.",
+          "i" = "URL: {req$url}",
+          "i" = "Last error: {conditionMessage(last_error)}"
         ),
         parent = last_error
       )

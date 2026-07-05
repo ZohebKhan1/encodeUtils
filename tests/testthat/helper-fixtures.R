@@ -8,8 +8,11 @@ encode_test_internal <- function(name) {
 
 encode_browse <- encode_test_internal("encode_browse")
 encode_count <- encode_test_internal("encode_count")
+encode_experiment_organism <- encode_test_internal("encode_experiment_organism")
 encode_facets <- encode_test_internal("encode_facets")
+encode_fetch_experiment_metadata_for_files <- encode_test_internal("encode_fetch_experiment_metadata_for_files")
 encode_file_preset <- encode_test_internal("encode_file_preset")
+encode_file_organism <- encode_test_internal("encode_file_organism")
 encode_file_summary <- encode_test_internal("encode_file_summary")
 encode_filter_results <- encode_test_internal("encode_filter_results")
 encode_filters <- encode_test_internal("encode_filters")

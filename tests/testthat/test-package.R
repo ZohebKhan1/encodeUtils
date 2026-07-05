@@ -417,6 +417,54 @@ test_that("direct File searches enrich missing provenance from parent experiment
   testthat::expect_equal(files$assay_title[[1]], "total RNA-seq")
 })
 
+test_that("file metadata enrichment warns when parent lookup fails", {
+  testthat::local_mocked_bindings(
+    encode_search = function(...) stop("temporary ENCODE outage")
+  )
+  expect_warning(
+    experiments <- encode_fetch_experiment_metadata_for_files(
+      "/experiments/ENCSR000AAA/"
+    ),
+    "Could not retrieve parent experiment metadata"
+  )
+  testthat::expect_equal(nrow(experiments), 0L)
+  testthat::expect_match(
+    attr(experiments, "metadata_enrichment_error"),
+    "temporary ENCODE outage"
+  )
+})
+
+test_that("organism extraction handles non-human model organisms", {
+  file_item <- list(
+    accession = "ENCFF220IXB",
+    replicates = list(list(
+      library = list(
+        biosample = list(
+          organism = list(scientific_name = "Caenorhabditis elegans"),
+          summary = "C. elegans embryo"
+        )
+      )
+    ))
+  )
+  summary_item <- list(simple_biosample_summary = "C. elegans embryo")
+  experiment_item <- list(
+    biosample_summary = "Caenorhabditis elegans embryo"
+  )
+
+  testthat::expect_equal(
+    encode_file_organism(file_item),
+    "Caenorhabditis elegans"
+  )
+  testthat::expect_equal(
+    encode_file_organism(summary_item),
+    "Caenorhabditis elegans"
+  )
+  testthat::expect_equal(
+    encode_experiment_organism(experiment_item),
+    "Caenorhabditis elegans"
+  )
+})
+
 test_that("direct ENCFF inputs keep enriched provenance metadata", {
   local_mock_options()
   observed_urls <- character()
