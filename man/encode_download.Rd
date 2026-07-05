@@ -131,8 +131,11 @@ verification.}
 \item{quiet}{If `FALSE`, print concise progress messages.}
 }
 \value{
-A download-result table with local paths, download status, observed
-  file sizes, and verification columns.
+An `encode_download_result` data frame. Dry runs return planned rows
+  with destination `local_path`, known-size totals, unknown-size counts, and
+  `download_status = "planned"`. Real downloads return one row per file with
+  `download_status`, `downloaded_size`, expected and observed MD5 values,
+  size/MD5 verification flags, and `failure_reason` for failed transfers.
 }
 \description{
 Download files from an ENCODE file table, selected-file object, file search,

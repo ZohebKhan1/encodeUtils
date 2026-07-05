@@ -294,6 +294,8 @@ encode_annotate_loaded_data <- function(data, files) {
     encode_gene_annotation_package(files[i, , drop = FALSE])
   }, character(1L))
 
+  ## Annotation is opportunistic. Missing organism annotation packages should
+  ## not prevent the original quantification table from being returned.
   for (package in unique(stats::na.omit(packages))) {
     indexes <- which(packages == package)
     requested <- unique(unlist(gene_ids[indexes], use.names = FALSE))
@@ -554,6 +556,8 @@ encode_tabular_matrices <- function(data, files, values = "raw_counts") {
   if (any(vapply(data, encode_is_interval_table, logical(1L)))) {
     return(encode_empty_matrix_list())
   }
+  ## Build expression matrices only when all tabular files share a unique
+  ## feature key. Interval tables and unrelated tables stay as file-level data.
   keyed <- encode_matrix_feature_key(data)
   data <- keyed$data
   feature <- keyed$feature

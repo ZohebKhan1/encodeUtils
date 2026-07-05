@@ -35,8 +35,11 @@
 #'   path or URL.
 #' @param explain If `FALSE`, suppress the concise selection message.
 #'
-#' @return Selected files. If `files = NULL`, returns the same preset
-#'   information as `encode_file_presets()`.
+#' @return An `encode_selected_files` object with `files`, the selected
+#'   `encode_file_table`; `excluded`, a table of non-selected rows and reasons;
+#'   `criteria`, the applied filters and preset settings; `query_url`; and
+#'   `retrieved_at`. If `files = NULL`, returns the same preset information as
+#'   `encode_file_presets()`.
 #' @export
 #'
 #' @examples
@@ -215,7 +218,7 @@ encode_select_files <- function(
     return(result)
   }
   cli::cli_inform(c(
-    "ENCODE file selection successfully selected {nrow(selected)} of {nrow(files)} file(s).",
+    "ENCODE file selection kept {nrow(selected)} of {nrow(files)} file(s).",
     "i" = "Returned selected files. Print the result to view them, or use {.code encode_results()} for selected file rows."
   ))
   result
@@ -228,8 +231,10 @@ encode_select_files <- function(
 #'
 #' @param preset Preset name, or `NULL` to list all preset names.
 #'
-#' @return Character vector of preset names when `preset = NULL`; otherwise a
-#'   list describing file-format and output-type preferences for one preset.
+#' @return A character vector of preset names when `preset = NULL`. For one
+#'   preset, returns a list with `file_format` and `output_type_priority`, which
+#'   are passed to `encode_select_files()` when the corresponding explicit
+#'   arguments are not supplied.
 #' @export
 #'
 #' @examples

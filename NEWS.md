@@ -1,3 +1,17 @@
+## CHANGES IN VERSION 0.99.2
+
+DOCUMENTATION
+
+    o Clarify exported return-value contracts for search, file listing, file
+      selection, download, read, manifest, and result-accessor functions.
+
+    o Tighten README and DESCRIPTION wording around the read-only,
+      accession-aware ENCODE workflow.
+
+    o Add targeted maintainer comments for ENCODE file-search fallbacks,
+      conservative download handling, optional genomic import behavior, and
+      expression-matrix construction.
+
 ## CHANGES IN VERSION 0.99.1
 
 USER-VISIBLE CHANGES

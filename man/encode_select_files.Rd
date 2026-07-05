@@ -58,8 +58,11 @@ path or URL.}
 \item{explain}{If `FALSE`, suppress the concise selection message.}
 }
 \value{
-Selected files. If `files = NULL`, returns the same preset
-  information as `encode_file_presets()`.
+An `encode_selected_files` object with `files`, the selected
+  `encode_file_table`; `excluded`, a table of non-selected rows and reasons;
+  `criteria`, the applied filters and preset settings; `query_url`; and
+  `retrieved_at`. If `files = NULL`, returns the same preset information as
+  `encode_file_presets()`.
 }
 \description{
 Choose files from an `encode_list_files()` table using explicit filters or a

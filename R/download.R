@@ -70,8 +70,11 @@
 #'   verification.
 #' @param quiet If `FALSE`, print concise progress messages.
 #'
-#' @return A download-result table with local paths, download status, observed
-#'   file sizes, and verification columns.
+#' @return An `encode_download_result` data frame. Dry runs return planned rows
+#'   with destination `local_path`, known-size totals, unknown-size counts, and
+#'   `download_status = "planned"`. Real downloads return one row per file with
+#'   `download_status`, `downloaded_size`, expected and observed MD5 values,
+#'   size/MD5 verification flags, and `failure_reason` for failed transfers.
 #' @export
 #'
 #' @examples
@@ -209,6 +212,8 @@ encode_download <- function(
   }
 
   if (unknown_size > 0L && !isTRUE(allow_unknown_size)) {
+    ## Unknown-size files are refused by default because the dry run cannot
+    ## bound the transfer before content is requested from ENCODE.
     cli::cli_abort(c(
       "Refusing to download {unknown_size} ENCODE file(s) with unknown file size.",
       "i" = "Run {.fun encode_download} with {.code dry_run = TRUE} to inspect the plan.",
@@ -428,6 +433,8 @@ encode_prepare_download_table <- function(files, directory, cache, prefer_cloud)
   local_name[no_accession] <- paste(files$file_accession[no_accession], local_name[no_accession], sep = "_")
 
   files$download_url <- download_url
+  ## ENCODE href basenames can collide across rows. Preserve one local path per
+  ## file accession so verification and manifests remain unambiguous.
   files$local_path <- encode_unique_paths(
     file.path(directory, local_name),
     accessions = files$file_accession
@@ -509,6 +516,8 @@ encode_download_one <- function(file, overwrite, verify, quiet, index = NULL, to
     cli::cli_inform("Downloading{progress} {.val {accession}}.")
   }
   tmp_path <- paste0(path, ".part")
+  ## Write through a temporary .part path so interrupted transfers are not
+  ## mistaken for complete downloaded files on later runs.
   if (file.exists(tmp_path)) {
     unlink(tmp_path)
   }

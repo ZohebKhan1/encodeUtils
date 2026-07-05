@@ -13,7 +13,13 @@
 #'   written to disk.
 #' @param pretty Whether to pretty-print JSON when `path` is supplied.
 #'
-#' @return A manifest list.
+#' @return An `encode_manifest` list. Components include `package`,
+#'   `retrieval`, `filters`, and `object_type`. Depending on input, the manifest
+#'   also includes `experiments`, `selected_files`, `excluded_files`,
+#'   `downloaded_files`, `files`, `object`, or `accessions`. When requested and
+#'   available, it includes ENCODE `attribution` and captured R `session`
+#'   information. If `path` is supplied, the same manifest is written as JSON
+#'   and the path is stored as an attribute.
 #' @export
 #'
 #' @examples

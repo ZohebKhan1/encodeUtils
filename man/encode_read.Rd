@@ -61,16 +61,19 @@ one-file and many-file reads with the same object shape.}
 \item{...}{Additional arguments passed to table readers where applicable.}
 }
 \value{
-The return type depends on the file format. Text tables return data
-  frames; JSON returns a list; FASTA returns a `DNAStringSet` when
-  `Biostrings` is installed; BED-like intervals return `GRanges` when
-  the optional genomic reader stack can parse the file, with a data-frame
-  fallback for ENCODE peak files with extra nonstandard columns unless
-  `as = "GRanges"` is requested; GFF/GTF, BigWig, and BigBed return
-  `rtracklayer` imports when available; conservative raw sequencing and
-  alignment formats return `encode_local_file` path objects by default.
-  Multi-row downloaded-file tables, and any downloaded-file table read with
-  `as_collection = TRUE`, return an `encode_loaded_files` object.
+The return type depends on input shape and file format. A local path
+  or one-row downloaded-file table returns the native object for that file:
+  text tables return data frames, JSON returns a list, FASTA returns a
+  `DNAStringSet` when `Biostrings` is installed, BED-like intervals return
+  `GRanges` when the optional genomic reader stack can parse the file, and
+  GFF/GTF, BigWig, and BigBed return `rtracklayer` imports when available.
+  ENCODE peak files with extra nonstandard columns may fall back to a data
+  frame unless `as = "GRanges"` is requested. FASTQ and alignment formats
+  return `encode_local_file` path objects by default. Multi-row
+  downloaded-file tables, and any downloaded-file table read with
+  `as_collection = TRUE`, return an `encode_loaded_files` object with
+  `metadata`, `data`, `matrices`, and `by_experiment` components plus
+  documented convenience aliases.
 }
 \description{
 Read one or more files that are already on disk. Small tabular and JSON files

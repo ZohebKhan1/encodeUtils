@@ -20,11 +20,16 @@
 #' @param metadata Amount of linked metadata to request. `"basic"` keeps
 #'   responses smaller. `"full"` adds more display columns.
 #' @param max_experiments Maximum number of experiments accepted without
-#'   `allow_many = TRUE`.
+#'   `allow_many = TRUE`. This guard prevents accidental broad file-listing
+#'   queries.
 #' @param allow_many Whether to allow many experiment datasets in one query.
 #' @param quiet If `FALSE`, print a concise status message.
 #'
-#' @return A file metadata table.
+#' @return An `encode_file_table` data frame. Common columns include
+#'   `file_accession`, `experiment_accession`, `dataset_accession`,
+#'   `file_format`, `output_type`, `assembly`, `file_size`, `md5sum`, `href`,
+#'   `cloud_url`, and parent experiment metadata when available. The function
+#'   lists metadata only; it does not download file contents.
 #' @export
 #'
 #' @examples
@@ -120,7 +125,7 @@ encode_list_files <- function(
       ))
     } else {
       cli::cli_inform(
-        "ENCODE file listing successfully found {nrow(files)} file record(s) ({encode_pretty_bytes(known_size)} with known sizes)."
+        "ENCODE file listing returned {nrow(files)} file record(s) ({encode_pretty_bytes(known_size)} with known sizes)."
       )
       cli::cli_inform(
         "Returned a file metadata table. Print the result to view files, or use {.code encode_results()} for the table."

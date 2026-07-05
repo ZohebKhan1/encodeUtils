@@ -161,6 +161,8 @@ encode_parse_search_404 <- function(body, status, allow_search_404) {
   if (!is_search_response) {
     return(NULL)
   }
+  ## ENCODE can report empty search results as HTTP 404 while still returning
+  ## search-response structure. Treat only those payloads as empty searches.
   parsed
 }
 

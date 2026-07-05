@@ -1,7 +1,7 @@
 # encodeUtils
 
-`encodeUtils` queries ENCODE metadata from R and helps choose, download, read,
-and record the files used in an analysis.
+`encodeUtils` queries ENCODE metadata from R, selects files, plans downloads,
+reads supported local files, and records the files used in an analysis.
 
 The package is read-only. It searches ENCODE, lists file metadata, checks
 downloads, downloads selected files, reads supported local files, and records

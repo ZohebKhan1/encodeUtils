@@ -1,7 +1,7 @@
 Package: encodeUtils
 Type: Package
 Title: Query and Retrieve ENCODE Portal Metadata and Files
-Version: 0.99.1
+Version: 0.99.2
 Authors@R: person(
     given = "Zoheb",
     family = "Khan",
@@ -10,11 +10,10 @@ Authors@R: person(
     comment = c(ORCID = "0000-0002-0266-8886")
     )
 Description: Provides an R interface for querying ENCODE Portal metadata and
-    working with files attached to ENCODE experiments. The package helps users
-    search for datasets, list and select files, inspect planned downloads, read
-    supported local files, and record reproducibility manifests. It is designed
-    for scripted, accession-aware workflows that need to find and retrieve
-    high-throughput sequencing data without leaving R.
+    working with files attached to ENCODE experiments. The package supports
+    scripted, accession-aware workflows for searching datasets, listing and
+    selecting files, inspecting download plans, reading supported local files,
+    and recording reproducibility manifests.
 License: Artistic-2.0
 URL: https://github.com/ZohebKhan1/encodeUtils, https://zohebkhan1.github.io/encodeUtils/
 BugReports: https://github.com/ZohebKhan1/encodeUtils/issues

@@ -11,12 +11,15 @@ encode_results(x)
 `encode_select_files()`, `encode_download()`, or `encode_read()`.}
 }
 \value{
-A data frame.
+A data frame. For `encode_search()` and `encode_list_files()` output,
+  this is the record or file table. For `encode_select_files()`, it is the
+  selected file table. For `encode_download()`, it is the download-result
+  table. For `encode_read()` collection output, it is the loaded-file
+  metadata table. For schema objects, it is the schema-property table.
 }
 \description{
-`encode_results()` returns the main data frame from an ENCODE result object.
-Use it before filtering, joining, writing a CSV, or passing rows to another
-function.
+`encode_results()` returns the main table from an encodeUtils object. Use it
+before filtering, joining, writing a CSV, or passing rows to another function.
 }
 \examples{
 tbl <- data.frame(

@@ -10,8 +10,10 @@ encode_file_presets(preset = NULL)
 \item{preset}{Preset name, or `NULL` to list all preset names.}
 }
 \value{
-Character vector of preset names when `preset = NULL`; otherwise a
-  list describing file-format and output-type preferences for one preset.
+A character vector of preset names when `preset = NULL`. For one
+  preset, returns a list with `file_format` and `output_type_priority`, which
+  are passed to `encode_select_files()` when the corresponding explicit
+  arguments are not supplied.
 }
 \description{
 File-selection presets provide common file-format and output-type

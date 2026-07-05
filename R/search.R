@@ -8,6 +8,11 @@
 #' table. Use `print(x, verbose = TRUE)` to show the query URL, active filters,
 #' and ENCODE facets.
 #'
+#' File searches with biological filters such as organism, biosample, organ,
+#' target, or assay first search matching ENCODE Experiment records and then
+#' query files attached to those experiments. File-format filters are applied
+#' to the attached File records.
+#'
 #' @param type ENCODE object type to search, such as `"Experiment"` or `"File"`.
 #'   Use `"Experiment"` to find datasets and `"File"` to find individual files.
 #'   Use `NULL` only for mixed free-text searches.
@@ -64,7 +69,13 @@
 #'   object for verbose printing.
 #' @param quiet If `FALSE`, print a concise query status message.
 #'
-#' @return Search results. `encode_results()` extracts the result table.
+#' @return An `encode_search_result` object. The object contains `results`, the
+#'   flattened result table; `raw`, the parsed ENCODE response including
+#'   `@graph`; `total`, the total number of matching records reported by
+#'   ENCODE; `filters`, the active filter table; `facets`, ENCODE facet counts
+#'   when requested; `columns`, response column metadata; `query_url`;
+#'   `metadata`; `frame`; and request metadata. Use `encode_results()` to
+#'   extract `results`.
 #' @export
 #'
 #' @examples
@@ -275,7 +286,7 @@ encode_search <- function(
   class(result) <- c("encode_search_result", "list")
   if (!isTRUE(quiet)) {
     cli::cli_inform(
-      "ENCODE search successfully returned {nrow(results)} of {result$total} matching record(s)."
+      "ENCODE search returned {nrow(results)} of {result$total} matching record(s)."
     )
     cli::cli_inform(
       "Returned {encode_result_kind(type)}. Print the result to view records, or use {.code encode_results()} for the result table."
@@ -381,6 +392,8 @@ encode_search_files_via_experiments <- function(filters,
       "Querying ENCODE experiments first to support file searches with biological filters."
     )
   }
+  ## Search experiments first so biological filters use ENCODE dataset fields
+  ## before file-format filters are applied to attached files.
   experiment_result <- encode_search(
     type = "Experiment",
     filters = list(),
@@ -452,6 +465,9 @@ encode_search_files_via_experiments <- function(filters,
     experiments = experiments
   )
   if (nrow(result$results) == 0L) {
+    ## Some File endpoint filters do not match the equivalent Experiment
+    ## endpoint terms. The bounded fallback queries files directly and keeps
+    ## only rows that still satisfy local provenance filters.
     direct_result <- encode_search_files_direct_fallback(
       filters = filters,
       organism = organism,
@@ -675,7 +691,7 @@ encode_search_files_direct_fallback <- function(filters,
   class(result) <- c("encode_search_result", "list")
   if (!isTRUE(quiet) && nrow(results) > 0L) {
     cli::cli_inform(
-      "Direct ENCODE file search returned {nrow(results)} locally filtered file record(s)."
+      "Direct ENCODE file-search fallback returned {nrow(results)} locally filtered file record(s)."
     )
   }
   result
@@ -1151,7 +1167,7 @@ encode_count <- function(
   )
   class(out) <- c("encode_count_result", "list")
   if (!isTRUE(quiet)) {
-    cli::cli_inform("ENCODE count successfully found {out$total} matching record(s).")
+    cli::cli_inform("ENCODE count found {out$total} matching record(s).")
     cli::cli_inform(
       "Returned a query count. Print the result to view it."
     )

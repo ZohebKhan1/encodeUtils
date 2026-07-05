@@ -38,14 +38,19 @@ encode_list_files(
 responses smaller. `"full"` adds more display columns.}
 
 \item{max_experiments}{Maximum number of experiments accepted without
-`allow_many = TRUE`.}
+`allow_many = TRUE`. This guard prevents accidental broad file-listing
+queries.}
 
 \item{allow_many}{Whether to allow many experiment datasets in one query.}
 
 \item{quiet}{If `FALSE`, print a concise status message.}
 }
 \value{
-A file metadata table.
+An `encode_file_table` data frame. Common columns include
+  `file_accession`, `experiment_accession`, `dataset_accession`,
+  `file_format`, `output_type`, `assembly`, `file_size`, `md5sum`, `href`,
+  `cloud_url`, and parent experiment metadata when available. The function
+  lists metadata only; it does not download file contents.
 }
 \description{
 Return file metadata for one or more ENCODE experiments. The table includes

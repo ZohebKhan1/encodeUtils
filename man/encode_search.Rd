@@ -120,7 +120,13 @@ object for verbose printing.}
 \item{quiet}{If `FALSE`, print a concise query status message.}
 }
 \value{
-Search results. `encode_results()` extracts the result table.
+An `encode_search_result` object. The object contains `results`, the
+  flattened result table; `raw`, the parsed ENCODE response including
+  `@graph`; `total`, the total number of matching records reported by
+  ENCODE; `filters`, the active filter table; `facets`, ENCODE facet counts
+  when requested; `columns`, response column metadata; `query_url`;
+  `metadata`; `frame`; and request metadata. Use `encode_results()` to
+  extract `results`.
 }
 \description{
 Find ENCODE experiments, files, or other records. The search returns matching
@@ -131,6 +137,11 @@ files.
 The result prints as a compact table. Use `encode_results()` to extract the
 table. Use `print(x, verbose = TRUE)` to show the query URL, active filters,
 and ENCODE facets.
+
+File searches with biological filters such as organism, biosample, organ,
+target, or assay first search matching ENCODE Experiment records and then
+query files attached to those experiments. File-format filters are applied
+to the attached File records.
 }
 \examples{
 res <- try(

@@ -45,16 +45,19 @@
 #'   one-file and many-file reads with the same object shape.
 #' @param ... Additional arguments passed to table readers where applicable.
 #'
-#' @return The return type depends on the file format. Text tables return data
-#'   frames; JSON returns a list; FASTA returns a `DNAStringSet` when
-#'   `Biostrings` is installed; BED-like intervals return `GRanges` when
-#'   the optional genomic reader stack can parse the file, with a data-frame
-#'   fallback for ENCODE peak files with extra nonstandard columns unless
-#'   `as = "GRanges"` is requested; GFF/GTF, BigWig, and BigBed return
-#'   `rtracklayer` imports when available; conservative raw sequencing and
-#'   alignment formats return `encode_local_file` path objects by default.
-#'   Multi-row downloaded-file tables, and any downloaded-file table read with
-#'   `as_collection = TRUE`, return an `encode_loaded_files` object.
+#' @return The return type depends on input shape and file format. A local path
+#'   or one-row downloaded-file table returns the native object for that file:
+#'   text tables return data frames, JSON returns a list, FASTA returns a
+#'   `DNAStringSet` when `Biostrings` is installed, BED-like intervals return
+#'   `GRanges` when the optional genomic reader stack can parse the file, and
+#'   GFF/GTF, BigWig, and BigBed return `rtracklayer` imports when available.
+#'   ENCODE peak files with extra nonstandard columns may fall back to a data
+#'   frame unless `as = "GRanges"` is requested. FASTQ and alignment formats
+#'   return `encode_local_file` path objects by default. Multi-row
+#'   downloaded-file tables, and any downloaded-file table read with
+#'   `as_collection = TRUE`, return an `encode_loaded_files` object with
+#'   `metadata`, `data`, `matrices`, and `by_experiment` components plus
+#'   documented convenience aliases.
 #' @export
 #'
 #' @examples
@@ -159,6 +162,8 @@ encode_read <- function(
     return(jsonlite::fromJSON(path, simplifyVector = FALSE))
   }
   if (format %in% c("bw", "bigwig", "bb", "bigbed") && is.null(region) && !isTRUE(allow_large)) {
+    ## Indexed signal and annotation files can be very large; require an
+    ## explicit region or opt-in full import.
     return(encode_unsupported_local_file(
       path = path,
       reason = "indexed signal and annotation files require region or allow_large = TRUE",
@@ -359,6 +364,9 @@ encode_read_bed_granges <- function(path, format = "bed", unsupported = "return_
   if (!inherits(imported, "try-error")) {
     return(imported)
   }
+  ## rtracklayer handles standard BED-like files. ENCODE peak files can include
+  ## additional columns, so fall back to a parsed table and construct GRanges
+  ## from chrom/start/end when possible.
   table <- encode_read_bed_table(path, format = format)
   tryCatch(
     encode_bed_table_to_granges(table),
