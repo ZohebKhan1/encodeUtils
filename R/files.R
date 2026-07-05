@@ -135,6 +135,8 @@ encode_list_files <- function(
   files
 }
 
+## Parent experiment metadata is enrichment, not the primary file result. Return
+## file rows when enrichment fails, but warn and preserve the error.
 encode_fetch_experiment_metadata_for_files <- function(experiment_paths, metadata = "basic") {
   accessions <- vapply(experiment_paths, encode_accession_from_path, character(1L))
   accessions <- unique(accessions[encode_is_experiment_accession(accessions)])
@@ -236,6 +238,8 @@ encode_experiment_paths_from_file_table <- function(files) {
   paths[grepl("^/experiments/", paths)]
 }
 
+## Fill only missing file-table provenance columns; file-level values take
+## precedence over parent experiment values.
 encode_fill_file_experiment_metadata <- function(files, experiments) {
   if (!is.data.frame(files) || nrow(files) == 0L ||
     !is.data.frame(experiments) || nrow(experiments) == 0L ||

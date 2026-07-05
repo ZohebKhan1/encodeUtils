@@ -148,6 +148,8 @@ encode_search <- function(
     output_type = output_type,
     assembly = assembly
   )
+  ## File searches with biological filters use the experiment-first path because
+  ## many biological fields live on parent datasets rather than File records.
   if (encode_use_file_experiment_search(
     type = type,
     organism = organism,
@@ -218,6 +220,8 @@ encode_search <- function(
   filters <- encode_merge_search_filters(standard, filters)
   search <- encode_search_terms(search, biosample)
 
+  ## Chunk dataset-filtered File searches so repeated dataset parameters do not
+  ## produce oversized ENCODE request URLs.
   if (encode_use_file_dataset_chunks(type, filters)) {
     return(encode_search_file_dataset_chunks(
       experiment_paths = as.character(filters$dataset),
@@ -392,8 +396,8 @@ encode_search_files_via_experiments <- function(filters,
       "Querying ENCODE experiments first to support file searches with biological filters."
     )
   }
-  ## Search experiments first so biological filters use ENCODE dataset fields
-  ## before file-format filters are applied to attached files.
+  ## This helper owns the two-stage File search: matched experiments first,
+  ## then file records attached to those experiments.
   experiment_result <- encode_search(
     type = "Experiment",
     filters = list(),
@@ -710,6 +714,8 @@ encode_direct_file_fallback_limit <- function(limit) {
   if (identical(limit, "all")) {
     return(NULL)
   }
+  ## Direct fallback over-fetches because local provenance filters can discard
+  ## rows after the ENCODE response is received.
   limit <- as.integer(limit)
   as.character(max(100L, limit * 20L))
 }
@@ -903,6 +909,8 @@ encode_standard_organism <- function(organism) {
   if (is.null(organism)) {
     return(NULL)
   }
+  ## Normalize common human/mouse aliases while allowing other ENCODE organism
+  ## names to pass through unchanged.
   aliases <- c(
     mouse = "Mus musculus",
     mice = "Mus musculus",
@@ -921,6 +929,8 @@ encode_standard_assay <- function(assay) {
   if (is.null(assay)) {
     return(NULL)
   }
+  ## Assay aliases must resolve to one ENCODE field per query. Mixing
+  ## assay_title and assay_term_name would create ambiguous OR semantics.
   values <- character()
   fields <- character()
   for (value in assay) {

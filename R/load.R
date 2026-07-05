@@ -437,6 +437,8 @@ encode_gene_annotation_for_package <- function(gene_id, package) {
   annotation
 }
 
+## Cache AnnotationDbi lookups for this R session and suppress package messages
+## so optional annotation does not dominate read output.
 encode_gene_annotation_lookup <- function(package, keytype, keys, columns) {
   keys <- unique(keys[!is.na(keys) & nzchar(keys)])
   if (length(keys) == 0L) {
@@ -556,8 +558,6 @@ encode_tabular_matrices <- function(data, files, values = "raw_counts") {
   if (any(vapply(data, encode_is_interval_table, logical(1L)))) {
     return(encode_empty_matrix_list())
   }
-  ## Build expression matrices only when all tabular files share a unique
-  ## feature key. Interval tables and unrelated tables stay as file-level data.
   keyed <- encode_matrix_feature_key(data)
   data <- keyed$data
   feature <- keyed$feature
@@ -620,6 +620,8 @@ encode_is_interval_table <- function(x) {
   all(c("chrom", "start", "end") %in% names(x))
 }
 
+## Matrix construction requires a shared unique feature key across all tables;
+## otherwise files remain independent data objects to avoid unsafe joins.
 encode_matrix_feature_key <- function(data) {
   feature <- encode_common_feature_column(data)
   if (!is.na(feature)) {

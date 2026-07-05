@@ -133,6 +133,8 @@ encode_download <- function(
   if (isTRUE(read) && isTRUE(dry_run)) {
     cli::cli_abort("Use either {.code dry_run = TRUE} or {.code read = TRUE}, not both.")
   }
+  ## Real ENCSR downloads must be narrowed before transfer; dry runs remain
+  ## unrestricted so users can inspect the complete file plan.
   encode_check_experiment_download_scope(
     x,
     dry_run = dry_run,

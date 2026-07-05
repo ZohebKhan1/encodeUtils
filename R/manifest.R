@@ -73,6 +73,9 @@ encode_manifest <- function(x,
   }
 
   if (isTRUE(include_attribution)) {
+    ## Manifest creation should not fail for materialized result objects if
+    ## optional attribution is unavailable; raw accession input still requires
+    ## attribution resolution.
     manifest$attribution <- tryCatch(
       encode_attribution(x, enrich = FALSE, quiet = TRUE),
       error = function(cnd) {

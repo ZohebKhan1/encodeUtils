@@ -215,6 +215,8 @@ encode_read <- function(
   )
 }
 
+## ENCODE quantification TSVs appear in several pipeline-specific shapes; detect
+## common count formats before generic table import.
 encode_read_tsv <- function(path, simplify_quant = TRUE, ...) {
   first_lines <- encode_read_lines(path, n = 5L)
   if (length(first_lines) == 0L) {
