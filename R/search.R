@@ -207,6 +207,19 @@ encode_search <- function(
   filters <- encode_merge_search_filters(standard, filters)
   search <- encode_search_terms(search, biosample)
 
+  if (encode_use_file_dataset_chunks(type, filters)) {
+    return(encode_search_file_dataset_chunks(
+      experiment_paths = as.character(filters$dataset),
+      filters = filters[names(filters) != "dataset"],
+      search = search,
+      status = status,
+      limit = limit,
+      frame = frame,
+      metadata = metadata,
+      include_facets = include_facets
+    ))
+  }
+
   query <- encode_search_query(
     type = type,
     filters = filters,
@@ -230,6 +243,9 @@ encode_search <- function(
     encode_facets(list())
   }
   results <- encode_flatten_search_results(graph, type = type)
+  if (identical(type, "File")) {
+    results <- encode_enrich_file_table_from_parent_experiments(results, metadata = metadata)
+  }
   filters <- encode_active_filters(raw, query)
   results <- encode_attach_metadata(
     results,
@@ -425,34 +441,17 @@ encode_search_files_via_experiments <- function(filters,
     return(result)
   }
 
-  file_filters <- c(list(dataset = experiment_paths), filters)
-  query <- encode_search_query(
-    type = "File",
-    filters = file_filters,
-    search = NULL,
+  result <- encode_search_file_dataset_chunks(
+    experiment_paths = experiment_paths,
+    filters = filters,
     status = status,
     limit = limit,
-    frame = frame
+    frame = frame,
+    metadata = metadata,
+    include_facets = include_facets,
+    experiments = experiments
   )
-  response <- encode_perform_json("/search/", query = query, allow_search_404 = TRUE)
-  raw <- response$data
-  graph <- raw$`@graph` %||% list()
-  facets <- if (isTRUE(include_facets)) {
-    encode_facets(raw)
-  } else {
-    encode_facets(list())
-  }
-  results <- encode_flatten_search_results(graph, type = "File")
-  results <- encode_fill_file_experiment_metadata(results, experiments)
-  active_filters <- encode_active_filters(raw, query)
-  results <- encode_attach_metadata(
-    results,
-    query_url = response$url,
-    retrieved_at = response$retrieved_at,
-    filters = active_filters
-  )
-  results <- encode_class_search_results(results, type = "File")
-  if (nrow(results) == 0L) {
+  if (nrow(result$results) == 0L) {
     direct_result <- encode_search_files_direct_fallback(
       filters = filters,
       organism = organism,
@@ -473,30 +472,118 @@ encode_search_files_via_experiments <- function(filters,
     }
   }
 
+  if (!isTRUE(quiet)) {
+    cli::cli_inform(
+      "ENCODE file search returned {nrow(result$results)} of {result$total} file record(s) from {length(experiment_paths)} matching experiment(s)."
+    )
+  }
+  result
+}
+
+encode_search_file_dataset_chunks <- function(experiment_paths,
+                                              filters,
+                                              search = NULL,
+                                              status = "released",
+                                              limit = 25,
+                                              frame = "embedded",
+                                              metadata = "full",
+                                              include_facets = TRUE,
+                                              experiments = NULL) {
+  experiment_paths <- unique(experiment_paths[!is.na(experiment_paths) & nzchar(experiment_paths)])
+  chunk_size <- encode_file_search_chunk_size()
+  chunks <- split(experiment_paths, ceiling(seq_along(experiment_paths) / chunk_size))
+  all_graph <- list()
+  total <- 0L
+  responses <- list()
+  queries <- list()
+  remaining <- if (identical(limit, "all")) {
+    Inf
+  } else {
+    as.integer(limit)
+  }
+
+  for (i in seq_along(chunks)) {
+    chunk_limit <- if (is.infinite(remaining)) {
+      "all"
+    } else {
+      max(0L, remaining)
+    }
+    file_filters <- c(list(dataset = chunks[[i]]), filters)
+    query <- encode_search_query(
+      type = "File",
+      filters = file_filters,
+      search = search,
+      status = status,
+      limit = chunk_limit,
+      frame = frame
+    )
+    response <- encode_perform_json("/search/", query = query, allow_search_404 = TRUE)
+    graph <- response$data$`@graph` %||% list()
+    all_graph <- c(all_graph, graph)
+    total <- total + encode_total(response$data, graph)
+    responses[[i]] <- response
+    queries[[i]] <- query
+    if (!is.infinite(remaining)) {
+      remaining <- max(0L, remaining - length(graph))
+    }
+  }
+
+  response <- responses[[1L]]
+  query <- queries[[1L]]
+  raw <- response$data
+  raw$`@graph` <- all_graph
+  raw$total <- total
+  results <- encode_flatten_search_results(all_graph, type = "File")
+  if (is.null(experiments)) {
+    experiments <- encode_fetch_experiment_metadata_for_files(experiment_paths, metadata = metadata)
+  }
+  results <- encode_fill_file_experiment_metadata(results, experiments)
+  active_filters <- encode_active_filters(response$data, query)
+  results <- encode_attach_metadata(
+    results,
+    query_url = response$url,
+    retrieved_at = response$retrieved_at,
+    filters = active_filters
+  )
+  results <- encode_class_search_results(results, type = "File")
+  facets <- if (isTRUE(include_facets)) {
+    encode_facets(response$data)
+  } else {
+    encode_facets(list())
+  }
   result <- list(
     results = results,
     raw = raw,
-    total = encode_total(raw, graph),
+    total = total,
     filters = active_filters,
     facets = facets,
-    columns = encode_columns(raw),
+    columns = encode_columns(response$data),
     url = response$url,
     query_url = response$url,
     encode_base_url = encode_base_url(),
     frame = frame,
     metadata = metadata,
     limit = limit,
-    total_results = encode_total(raw, graph),
+    total_results = total,
     requested_limit = limit,
     request = response[c("status_code", "content_type", "retrieved_at")]
   )
   class(result) <- c("encode_search_result", "list")
-  if (!isTRUE(quiet)) {
-    cli::cli_inform(
-      "ENCODE file search returned {nrow(results)} of {result$total} file record(s) from {length(experiment_paths)} matching experiment(s)."
-    )
-  }
   result
+}
+
+encode_file_search_chunk_size <- function() {
+  chunk_size <- encode_option("encodeUtils.file_search_chunk_size", 50L)
+  encode_validate_positive_whole_number(
+    chunk_size,
+    "encodeUtils.file_search_chunk_size"
+  )
+}
+
+encode_use_file_dataset_chunks <- function(type, filters) {
+  identical(type, "File") &&
+    "dataset" %in% names(filters) &&
+    length(filters$dataset) > encode_file_search_chunk_size()
 }
 
 encode_search_files_direct_fallback <- function(filters,

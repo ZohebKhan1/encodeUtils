@@ -359,7 +359,12 @@ encode_file_organism <- function(item) {
   if (!is.na(organism)) {
     return(organism)
   }
-  summary <- encode_scalar(item$biosample_summary)
+  summary <- encode_scalar(item$simple_biosample_summary %||%
+    item$biosample_summary %||%
+    encode_pluck(item, c("dataset", "simple_biosample_summary")) %||%
+    encode_pluck(item, c("dataset", "biosample_summary")) %||%
+    encode_pluck(item, c("replicates", "library", "biosample", "simple_summary")) %||%
+    encode_pluck(item, c("replicates", "library", "biosample", "summary")))
   if (!is.na(summary) && grepl("^Homo sapiens", summary)) {
     return("Homo sapiens")
   }

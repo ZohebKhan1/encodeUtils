@@ -57,3 +57,56 @@ test_that("opt-in live ENCODE smoke checks cover API drift for tiny queries", {
   expect_s3_class(schema, "encode_schema_result")
   expect_true("accession" %in% schema$properties$property)
 })
+
+test_that("opt-in live ENCODE smoke checks cover one small download/read/manifest workflow", {
+  testthat::skip_on_cran()
+  testthat::skip_if_not(
+    identical(Sys.getenv("ENCODEUTILS_LIVE_TESTS"), "true"),
+    "Set ENCODEUTILS_LIVE_TESTS=true to run live ENCODE smoke tests."
+  )
+
+  files <- encode_search(
+    type = "File",
+    organism = "mouse",
+    assay = "RNA-seq",
+    file_format = "tsv",
+    output_type = "gene quantifications",
+    status = "released",
+    limit = 10,
+    metadata = "basic",
+    quiet = TRUE
+  )
+  table <- encode_results(files)
+  table <- table[!is.na(table$file_size) & table$file_size <= 10 * 1024^2, , drop = FALSE]
+  testthat::skip_if(nrow(table) == 0L, "No size-capped live RNA-seq TSV file found.")
+  table <- table[order(table$file_size), , drop = FALSE][1, , drop = FALSE]
+  directory <- withr::local_tempdir()
+
+  plan <- encode_download(
+    table,
+    directory = directory,
+    dry_run = TRUE,
+    max_file_size = "10MB",
+    max_total_size = "10MB",
+    quiet = TRUE
+  )
+  expect_s3_class(plan, "encode_download_result")
+  expect_lte(plan$file_size[[1]], 10 * 1024^2)
+
+  downloaded <- encode_download(
+    table,
+    directory = directory,
+    max_file_size = "10MB",
+    max_total_size = "10MB",
+    quiet = TRUE
+  )
+  loaded <- encode_read(downloaded, row_names = "none")
+  manifest <- encode_manifest(downloaded, include_session = FALSE)
+
+  expect_s3_class(downloaded, "encode_download_result")
+  expect_true(file.exists(downloaded$local_path[[1]]))
+  expect_s3_class(loaded, "data.frame")
+  expect_true(any(c("gene_id", "gene_symbol", "raw_counts", "counts") %in% names(loaded)))
+  expect_s3_class(manifest, "encode_manifest")
+  expect_true("downloaded_files" %in% names(manifest))
+})

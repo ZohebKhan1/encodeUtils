@@ -154,8 +154,9 @@ names(manifest)
 
 # Live search and file listing
 
-The live ENCODE examples are not evaluated during package checks. They are shown
-as accession-aware patterns for interactive use.
+The live ENCODE examples are not evaluated during package checks so the vignette
+stays reproducible when public web resources are temporarily unavailable. They
+are shown as accession-aware patterns for interactive use.
 
 ```{r live-search, eval=FALSE}
 experiments <- encode_search(

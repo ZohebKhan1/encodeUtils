@@ -136,24 +136,74 @@ encode_fetch_experiment_metadata_for_files <- function(experiment_paths, metadat
   if (length(accessions) == 0L) {
     return(encode_empty_results("Experiment"))
   }
-  result <- tryCatch(
-    encode_search(
-      type = "Experiment",
-      filters = list(accession = accessions),
-      status = NULL,
-      limit = "all",
-      metadata = metadata,
-      include_facets = FALSE,
-      quiet = TRUE
-    ),
-    error = function(cnd) {
-      NULL
+  chunks <- split(accessions, ceiling(seq_along(accessions) / 100L))
+  results <- lapply(chunks, function(chunk) {
+    result <- tryCatch(
+      encode_search(
+        type = "Experiment",
+        filters = list(accession = chunk),
+        status = NULL,
+        limit = "all",
+        metadata = metadata,
+        include_facets = FALSE,
+        quiet = TRUE
+      ),
+      error = function(cnd) {
+        NULL
+      }
+    )
+    if (is.null(result)) {
+      return(encode_empty_results("Experiment"))
     }
-  )
-  if (is.null(result)) {
+    encode_results(result)
+  })
+  experiments <- encode_bind_rows(results, names(encode_empty_results("Experiment")))
+  if (nrow(experiments) == 0L) {
     return(encode_empty_results("Experiment"))
   }
-  encode_results(result)
+  experiments[!duplicated(experiments$accession), , drop = FALSE]
+}
+
+encode_enrich_file_table_from_parent_experiments <- function(files, metadata = "basic") {
+  if (!is.data.frame(files) || nrow(files) == 0L) {
+    return(files)
+  }
+  if (!encode_file_table_needs_parent_metadata(files)) {
+    return(files)
+  }
+  experiment_paths <- encode_experiment_paths_from_file_table(files)
+  experiments <- encode_fetch_experiment_metadata_for_files(experiment_paths, metadata = "full")
+  encode_fill_file_experiment_metadata(files, experiments)
+}
+
+encode_file_table_needs_parent_metadata <- function(files) {
+  columns <- intersect(
+    c("organism", "biosample_term_name", "biosample_type", "sample_summary", "assay_title"),
+    names(files)
+  )
+  if (length(columns) == 0L) {
+    return(FALSE)
+  }
+  any(vapply(files[columns], encode_any_missing_text, logical(1L)))
+}
+
+encode_any_missing_text <- function(x) {
+  missing <- is.na(x) | !nzchar(as.character(x))
+  any(missing, na.rm = TRUE)
+}
+
+encode_experiment_paths_from_file_table <- function(files) {
+  paths <- character()
+  if ("dataset" %in% names(files)) {
+    paths <- c(paths, as.character(files$dataset))
+  }
+  if ("experiment_accession" %in% names(files)) {
+    accessions <- as.character(files$experiment_accession)
+    accessions <- accessions[encode_is_experiment_accession(accessions)]
+    paths <- c(paths, paste0("/experiments/", accessions, "/"))
+  }
+  paths <- unique(paths[!is.na(paths) & nzchar(paths)])
+  paths[grepl("^/experiments/", paths)]
 }
 
 encode_fill_file_experiment_metadata <- function(files, experiments) {
@@ -269,6 +319,7 @@ encode_file_table_from_input <- function(x, status = "released") {
   if (inherits(x, "encode_object")) {
     if (identical(x$type, "File")) {
       files <- encode_flatten_file(x$data)
+      files <- encode_enrich_file_table_from_parent_experiments(files, metadata = "basic")
       files <- encode_attach_metadata(
         files,
         query_url = x$query_url,
@@ -301,16 +352,7 @@ encode_file_table_from_input <- function(x, status = "released") {
       metadata = "basic",
       quiet = TRUE
     )
-    files <- encode_bind_rows(
-      lapply(search_result$raw$`@graph` %||% list(), encode_flatten_file),
-      names(encode_empty_results("File"))
-    )
-    files <- encode_attach_metadata(
-      files,
-      query_url = search_result$query_url,
-      retrieved_at = search_result$request$retrieved_at,
-      filters = search_result$filters
-    )
+    files <- encode_results(search_result)
     class(files) <- c("encode_file_table", "data.frame")
     return(files)
   }

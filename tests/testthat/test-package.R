@@ -97,6 +97,49 @@ file_search_json <- paste0(
   '}'
 )
 
+file_without_parent_metadata_json <- paste0(
+  '{',
+  '"@graph":[{',
+  '"@type":["File","Item"],"accession":"ENCFF000ORG",',
+  '"@id":"/files/ENCFF000ORG/","dataset":"/experiments/ENCSR000AAA/",',
+  '"file_format":"fastq","output_type":"reads","status":"released",',
+  '"href":"/files/ENCFF000ORG/@@download/ENCFF000ORG.fastq.gz"',
+  '}],',
+  '"total":1,"filters":[],"facets":[]',
+  '}'
+)
+
+many_experiment_search_json <- function(n) {
+  rows <- vapply(seq_len(n), function(i) {
+    accession <- sprintf("ENCSR%06d", i)
+    paste0(
+      '{"accession":"', accession, '","@id":"/experiments/', accession, '/",',
+      '"assay_title":"total RNA-seq","assay_term_name":"RNA-seq",',
+      '"biosample_summary":"Homo sapiens heart tissue",',
+      '"biosample_ontology":{"classification":"tissue","term_name":"heart"},',
+      '"status":"released"}'
+    )
+  }, character(1L))
+  paste0(
+    '{"@graph":[', paste(rows, collapse = ","), '],',
+    '"total":', n, ',"filters":[],"facets":[]}'
+  )
+}
+
+chunk_file_search_json <- function(index) {
+  accession <- sprintf("ENCFF%06d", index)
+  experiment <- sprintf("ENCSR%06d", index)
+  paste0(
+    '{"@graph":[{',
+    '"@type":["File","Item"],"accession":"', accession, '",',
+    '"@id":"/files/', accession, '/","dataset":"/experiments/', experiment, '/",',
+    '"file_format":"fastq","output_type":"reads","status":"released",',
+    '"href":"/files/', accession, '/@@download/', accession, '.fastq.gz",',
+    '"simple_biosample_summary":"Homo sapiens heart tissue"',
+    '}],"total":1,"filters":[],"facets":[]}'
+  )
+}
+
 matrix_json <- paste0(
   '{',
   '"total":3,"filters":[],',
@@ -306,6 +349,93 @@ test_that("encode_search routes biological File searches through experiments", {
   testthat::expect_match(observed_urls[[2]], "type=File", fixed = TRUE)
   testthat::expect_match(observed_urls[[2]], "dataset=%2Fexperiments%2FENCSR000AAA%2F", fixed = TRUE)
   testthat::expect_match(observed_urls[[2]], "file_format=fastq", fixed = TRUE)
+})
+
+test_that("biological File searches chunk dataset filters to avoid overlong URLs", {
+  local_mock_options()
+  withr::local_options(list(encodeUtils.file_search_chunk_size = 2L))
+  observed_urls <- character()
+  file_request <- 0L
+  result <- httr2::with_mocked_responses(
+    function(req) {
+      observed_urls <<- c(observed_urls, req$url)
+      if (grepl("type=Experiment", req$url, fixed = TRUE)) {
+        return(mock_json_response(many_experiment_search_json(5L)))
+      }
+      file_request <<- file_request + 1L
+      mock_json_response(chunk_file_search_json(file_request))
+    },
+    encode_search(
+      type = "File",
+      organism = "human",
+      assay = "rna-seq",
+      file_format = "fastq",
+      limit = 3,
+      quiet = TRUE
+    )
+  )
+
+  file_urls <- observed_urls[grepl("type=File", observed_urls, fixed = TRUE)]
+  testthat::expect_length(file_urls, 3L)
+  testthat::expect_true(all(vapply(
+    file_urls,
+    function(url) {
+      matches <- gregexpr("dataset=", url, fixed = TRUE)[[1L]]
+      count <- if (identical(matches[[1L]], -1L)) 0L else length(matches)
+      count <= 2L
+    },
+    logical(1L)
+  )))
+  testthat::expect_equal(nrow(encode_results(result)), 3L)
+  testthat::expect_equal(result$total, 3L)
+})
+
+test_that("direct File searches enrich missing provenance from parent experiments", {
+  local_mock_options()
+  observed_urls <- character()
+  result <- httr2::with_mocked_responses(
+    function(req) {
+      observed_urls <<- c(observed_urls, req$url)
+      if (grepl("type=Experiment", req$url, fixed = TRUE)) {
+        return(mock_json_response(experiment_search_json))
+      }
+      mock_json_response(file_without_parent_metadata_json)
+    },
+    encode_search(
+      type = "File",
+      filters = list(accession = "ENCFF000ORG"),
+      metadata = "basic",
+      quiet = TRUE
+    )
+  )
+  files <- encode_results(result)
+
+  testthat::expect_equal(length(observed_urls), 2L)
+  testthat::expect_equal(files$file_accession[[1]], "ENCFF000ORG")
+  testthat::expect_equal(files$organism[[1]], "Homo sapiens")
+  testthat::expect_equal(files$biosample_term_name[[1]], "heart")
+  testthat::expect_equal(files$assay_title[[1]], "total RNA-seq")
+})
+
+test_that("direct ENCFF inputs keep enriched provenance metadata", {
+  local_mock_options()
+  observed_urls <- character()
+  files <- httr2::with_mocked_responses(
+    function(req) {
+      observed_urls <<- c(observed_urls, req$url)
+      if (grepl("type=Experiment", req$url, fixed = TRUE)) {
+        return(mock_json_response(experiment_search_json))
+      }
+      mock_json_response(file_without_parent_metadata_json)
+    },
+    encode_file_table_from_input("ENCFF000ORG")
+  )
+
+  testthat::expect_equal(length(observed_urls), 2L)
+  testthat::expect_s3_class(files, "encode_file_table")
+  testthat::expect_equal(files$file_accession[[1]], "ENCFF000ORG")
+  testthat::expect_equal(files$organism[[1]], "Homo sapiens")
+  testthat::expect_equal(files$biosample_term_name[[1]], "heart")
 })
 
 test_that("object frame is available but produces lean linked metadata", {
