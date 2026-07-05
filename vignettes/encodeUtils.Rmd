@@ -135,6 +135,13 @@ loaded$raw_counts
 encode_read(quant_path, simplify_quant = FALSE)
 ```
 
+A single local path or one downloaded-file row returns the native object for
+that file. A multi-row downloaded-file table returns an `encode_loaded_files`
+collection with `metadata`, `data`, `matrices`, and `by_experiment`; `files`,
+`raw_counts`, and `tpm` are convenience aliases for metadata and commonly used
+expression matrices. Printed file tables show a compact canonical subset by
+default. Use `encode_results()` to inspect the full ENCODE metadata table.
+
 # Manifest
 
 `encode_manifest()` returns a list and can also write JSON when `path` is

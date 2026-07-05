@@ -179,6 +179,15 @@ encode_row_read_format <- function(row, format) {
   if (!is.null(format)) {
     return(format)
   }
+  if ("file_format" %in% names(row) && !is.na(row$file_format[[1L]]) && nzchar(row$file_format[[1L]])) {
+    file_format <- row$file_format[[1L]]
+    indexed_or_binary <- tolower(file_format) %in% c(
+      "bigbed", "bb", "bigwig", "bw", "bam", "cram", "sam", "fastq", "fq"
+    )
+    if (isTRUE(indexed_or_binary)) {
+      return(file_format)
+    }
+  }
   if ("file_type" %in% names(row) && !is.na(row$file_type[[1L]]) && nzchar(row$file_type[[1L]])) {
     file_type <- tolower(row$file_type[[1L]])
     if (grepl("narrowpeak", file_type)) {

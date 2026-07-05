@@ -29,6 +29,7 @@ renv.lock
 
 /tools/
 /docs/
+/.github/
 
 # Local audit and Codex artifacts; keep package-only branches clean.
 AGENTS.md

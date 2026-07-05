@@ -119,6 +119,30 @@ test_that("loaded objects print compact summaries instead of nested tables", {
   expect_false(any(grepl("Gata4", experiment_output, fixed = TRUE)))
 })
 
+test_that("file table printing avoids long sample strings and paths by default", {
+  files <- data.frame(
+    file_accession = "ENCFFNOISY1",
+    experiment_accession = "ENCSRNOISY1",
+    assay_title = "Histone ChIP-seq",
+    organism = "Homo sapiens",
+    biosample_term_name = "HepG2",
+    sample_summary = paste(rep("genetically modified CRISPR sample description", 4), collapse = " "),
+    file_format = "bed",
+    output_type = "IDR thresholded peaks",
+    assembly = "GRCh38",
+    file_size_pretty = "1 MB",
+    status = "released",
+    local_path = file.path(tempdir(), paste(rep("long_path_component", 6), collapse = "_")),
+    stringsAsFactors = FALSE
+  )
+  class(files) <- c("encode_file_table", "data.frame")
+  output <- capture.output(print(files))
+
+  expect_false(any(grepl("genetically modified", output, fixed = TRUE)))
+  expect_false(any(grepl("long_path_component", output, fixed = TRUE)))
+  expect_true(max(nchar(output, type = "width")) < 140)
+})
+
 test_that("encode_read optional genomic readers either load or explain clearly", {
   bed_path <- withr::local_tempfile(fileext = ".bed")
   fasta_path <- withr::local_tempfile(fileext = ".fa")
@@ -143,4 +167,22 @@ test_that("encode_read optional genomic readers either load or explain clearly",
     expect_s3_class(fasta, "encode_local_file")
     expect_match(fasta$reason, "Biostrings")
   }
+})
+
+test_that("downloaded bigBed peak rows keep indexed binary format over file_type labels", {
+  bigbed_path <- withr::local_tempfile(fileext = ".bigBed")
+  writeBin(as.raw(c(0xeb, 0xf2, 0x89, 0x87, 0x04)), bigbed_path)
+  row <- data.frame(
+    file_accession = "ENCFFBIGBED1",
+    file_format = "bigBed",
+    file_type = "bigBed narrowPeak",
+    local_path = bigbed_path,
+    stringsAsFactors = FALSE
+  )
+  class(row) <- c("encode_download_result", "data.frame")
+
+  expect_equal(encode_row_read_format(row, NULL), "bigBed")
+  result <- encode_read(row)
+  expect_s3_class(result, "encode_local_file")
+  expect_match(result$reason, "indexed signal and annotation files require region")
 })

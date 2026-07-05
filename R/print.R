@@ -137,8 +137,9 @@ print.encode_loaded_files <- function(x, ..., verbose = FALSE) {
     cli::cli_text("- matrices: {.val {length(x$matrices)}}")
   }
   cli::cli_text("- experiments: {.val {length(x$by_experiment)}}")
-  encode_print_table("Metadata", x$metadata)
+  encode_print_table("Metadata", encode_display_columns(x$metadata, encode_loaded_display_columns()))
   if (isTRUE(verbose)) {
+    encode_print_table("Full metadata", x$metadata, n = nrow(x$metadata))
     objects <- data.frame(
       name = names(x$data),
       class = vapply(x$data, function(value) paste(class(value), collapse = ", "), character(1L)),
@@ -169,8 +170,9 @@ print.encode_loaded_experiment <- function(x, ..., verbose = FALSE) {
   if (!is.null(x$matrices) && length(x$matrices) > 0L) {
     cli::cli_text("- matrices: {.val {length(x$matrices)}}")
   }
-  encode_print_table("Metadata", x$metadata)
+  encode_print_table("Metadata", encode_display_columns(x$metadata, encode_loaded_display_columns()))
   if (isTRUE(verbose)) {
+    encode_print_table("Full metadata", x$metadata, n = nrow(x$metadata))
     print(x$data)
     print(x$matrices)
   }
@@ -265,6 +267,7 @@ encode_print_table <- function(label, table, n = 10L) {
   }
   cli::cli_text("{label}:")
   display <- utils::head(table, n)
+  display <- encode_truncate_display_strings(display)
   if (is.data.frame(display)) {
     class(display) <- "data.frame"
   }
@@ -281,25 +284,29 @@ encode_file_core_columns <- function() {
 
 encode_file_display_columns <- function() {
   c(
-    experiment = "experiment_accession",
-    dataset_type = "dataset_type",
     file = "file_accession",
+    experiment = "experiment_accession",
     assay = "assay_title",
-    target = "target",
-    control_type = "control_type",
     organism = "organism",
     biosample = "biosample_term_name",
-    biosample_type = "biosample_type",
-    age = "life_stage_age",
-    sex = "sex",
-    sample = "sample_summary",
-    treatment = "treatment",
+    format = "file_format",
+    output = "output_type",
     assembly = "assembly",
-    analysis = "analysis_accession",
     file_size = "file_size_pretty",
-    date_released = "date_released",
-    status = "status",
-    local_path = "local_path"
+    status = "status"
+  )
+}
+
+encode_loaded_display_columns <- function() {
+  c(
+    file = "file_accession",
+    experiment = "experiment_accession",
+    assay = "assay_title",
+    organism = "organism",
+    biosample = "biosample",
+    assembly = "assembly",
+    file_size = "file_size",
+    status = "status"
   )
 }
 
@@ -358,6 +365,21 @@ encode_display_columns <- function(x, columns) {
   available <- vapply(out, encode_display_column_available, logical(1L))
   out <- out[, available, drop = FALSE]
   out
+}
+
+encode_truncate_display_strings <- function(x, width = 42L) {
+  if (!is.data.frame(x)) {
+    return(x)
+  }
+  x[] <- lapply(x, function(column) {
+    if (!is.character(column)) {
+      return(column)
+    }
+    too_long <- !is.na(column) & nchar(column, type = "width") > width
+    column[too_long] <- paste0(substr(column[too_long], 1L, width - 3L), "...")
+    column
+  })
+  x
 }
 
 encode_display_column_available <- function(x) {

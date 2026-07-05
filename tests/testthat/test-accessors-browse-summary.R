@@ -30,17 +30,18 @@ test_that("file search results print as compact file tables without losing metad
 
   expect_s3_class(files, "encode_file_table")
   expect_true(all(c("file_size", "file_size_pretty", "download_url", "md5sum") %in% names(files)))
+  expect_true(all(c("dataset_type", "biosample_type", "analysis_accession") %in% names(encode_results(files))))
 
   output <- utils::capture.output(
     utils::capture.output(print(files), type = "message")
   )
   expect_true(any(grepl("ENCODE files", output, fixed = TRUE)))
   expect_true(any(grepl("experiment", output, fixed = TRUE)))
-  expect_true(any(grepl("dataset_type", output, fixed = TRUE)))
   expect_true(any(grepl("organism", output, fixed = TRUE)))
-  expect_true(any(grepl("biosample_type", output, fixed = TRUE)))
-  expect_true(any(grepl("analysis", output, fixed = TRUE)))
   expect_true(any(grepl("file_size", output, fixed = TRUE)))
+  expect_false(any(grepl("dataset_type", output, fixed = TRUE)))
+  expect_false(any(grepl("biosample_type", output, fixed = TRUE)))
+  expect_false(any(grepl("analysis", output, fixed = TRUE)))
   expect_false(any(grepl("file_size_pretty", output, fixed = TRUE)))
   expect_false(any(grepl("lab", output, fixed = TRUE)))
   expect_false(any(grepl("project", output, fixed = TRUE)))

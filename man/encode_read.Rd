@@ -59,9 +59,11 @@ preserve the raw columns from the downloaded file.}
 The return type depends on the file format. Text tables return data
   frames; JSON returns a list; FASTA returns a `DNAStringSet` when
   `Biostrings` is installed; BED-like intervals return `GRanges` when
-  `GenomicRanges` and `IRanges` are installed; GFF/GTF, BigWig, and BigBed
-  return `rtracklayer` imports when available; conservative raw sequencing
-  and alignment formats return `encode_local_file` path objects by default.
+  the optional genomic reader stack can parse the file, with a data-frame
+  fallback for ENCODE peak files with extra nonstandard columns unless
+  `as = "GRanges"` is requested; GFF/GTF, BigWig, and BigBed return
+  `rtracklayer` imports when available; conservative raw sequencing and
+  alignment formats return `encode_local_file` path objects by default.
   Multi-row downloaded-file tables return an `encode_loaded_files` object.
 }
 \description{
@@ -74,6 +76,12 @@ return a path object by default.
 When downloaded gene-quantification TSV tables are read together, the
 returned object includes sample metadata, individual file tables, and a merged
 raw-count matrix. Request TPM, FPKM, or RPKM with `values` when needed.
+A single local path or one-row downloaded-file table returns the native object
+for that file. A downloaded-file table with more than one row returns an
+`encode_loaded_files` collection with `metadata`, `data`, `matrices`, and
+`by_experiment` components. `files`, `raw_counts`, and `tpm` are convenience
+aliases for `metadata`, `matrices$raw_counts`, and `matrices$TPM` when those
+objects are available.
 }
 \examples{
 csv_path <- tempfile(fileext = ".csv")

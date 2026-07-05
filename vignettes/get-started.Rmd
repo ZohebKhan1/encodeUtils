@@ -153,6 +153,11 @@ loaded$raw_counts
 loaded$tpm
 ```
 
+For loaded collections, the canonical components are `metadata`, `data`,
+`matrices`, and `by_experiment`. The `files`, `raw_counts`, and `tpm` elements
+are convenience aliases for `metadata`, `matrices$raw_counts`, and
+`matrices$TPM` when those objects are available.
+
 Human and mouse RNA quantification tables are annotated with gene symbols,
 Ensembl IDs, and Entrez IDs when `org.Hs.eg.db` or `org.Mm.eg.db` is installed.
 If the relevant annotation package is unavailable, `encodeUtils` keeps the
@@ -207,15 +212,25 @@ encode_download(
 `encodeUtils` returns compact S3 objects that print as small tables. Use
 `encode_results()` when ordinary data-frame operations are needed.
 
+The default print methods intentionally show a compact subset of columns. For
+file tables, the user-facing columns are the file accession, experiment
+accession, assay, organism, biosample, file format, output type, assembly, file
+size, and status. The full returned table keeps the broader ENCODE metadata for
+filtering, joins, and provenance; retrieve it with `encode_results()`.
+
 For local file reading:
 
+- a single local path or one downloaded-file row returns the native object for
+  that file, whereas a multi-row downloaded-file table returns an
+  `encode_loaded_files` collection;
 - TSV and CSV files are returned as data frames;
 - ENCODE gene-quantification tables are normalized to common identifier and
   expression columns by default, and `simplify_quant = FALSE` preserves raw
   downloaded columns;
-- BED, narrowPeak, and broadPeak files are returned as `GRanges` when
-  `GenomicRanges` and `IRanges` are installed; use `as = "data.frame"` to
-  request a plain table;
+- BED, narrowPeak, and broadPeak files are returned as `GRanges` when the
+  optional genomic reader stack can parse the file; ENCODE peak files with extra
+  nonstandard columns may fall back to a plain table unless `as = "GRanges"` is
+  requested;
 - FASTA files use `Biostrings` when it is installed;
 - indexed genomic formats such as bigWig and bigBed use `rtracklayer` when it is
   installed and the requested read is small or region-limited;

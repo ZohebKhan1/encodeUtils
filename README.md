@@ -48,6 +48,12 @@ Most analyses use the same sequence:
 7. Use the returned metadata and data matrices in R.
 8. Save provenance with `encode_manifest()`.
 
+Printed ENCODE file tables show a compact canonical subset by default:
+`file_accession`, `experiment_accession`, `assay_title`, `organism`,
+`biosample_term_name`, `file_format`, `output_type`, `assembly`, file size, and
+status. Use `encode_results()` to recover the full metadata table for filtering,
+joins, or audit trails.
+
 ## Example
 
 ```r
@@ -106,13 +112,19 @@ chip_experiments <- encode_search(
 
 `directory = NULL` uses `tools::R_user_dir("encodeUtils", "cache")`, so users
 can rely on the package cache instead of writing downloads into a package source
-tree. BED-like interval files are returned as `GRanges` when `GenomicRanges`
-and `IRanges` are installed; `rtracklayer` is attempted first and
-`encodeUtils` falls back to a BED-table conversion for ENCODE peak files with
-extra columns. Use `encode_read(path, as = "data.frame")` for a plain table.
-FASTQ and alignment files are returned as paths by default because downstream
-read processing is usually handled by tools such as `ShortRead`, `Rsamtools`,
-or `GenomicAlignments`.
+tree. A single local path or one downloaded-file row returns the native object
+for that file. A multi-row downloaded-file table returns an `encode_loaded_files`
+collection with `metadata`, `data`, `matrices`, and `by_experiment`; `raw_counts`,
+`tpm`, and `files` are compatibility aliases for common matrix and metadata
+access.
+
+BED-like interval files are returned as `GRanges` when the optional genomic
+reader stack can parse the file; ENCODE peak files with extra nonstandard
+columns may fall back to a plain table unless `as = "GRanges"` is requested. Use
+`encode_read(path, as = "data.frame")` for a plain table. FASTQ and alignment
+files are returned as paths by default because downstream read processing is
+usually handled by tools such as `ShortRead`, `Rsamtools`, or
+`GenomicAlignments`.
 
 ## References
 
