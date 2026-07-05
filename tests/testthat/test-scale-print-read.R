@@ -136,7 +136,10 @@ test_that("file table printing avoids long sample strings and paths by default",
     stringsAsFactors = FALSE
   )
   class(files) <- c("encode_file_table", "data.frame")
-  output <- capture.output(print(files))
+  output <- capture.output(
+    messages <- capture.output(print(files), type = "message")
+  )
+  output <- c(messages, output)
 
   expect_false(any(grepl("genetically modified", output, fixed = TRUE)))
   expect_false(any(grepl("long_path_component", output, fixed = TRUE)))

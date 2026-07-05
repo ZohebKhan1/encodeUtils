@@ -137,7 +137,7 @@ writeLines(
   quant_path
 )
 
-downloaded <- encode_results(planned)[1, , drop = FALSE]
+downloaded <- encode_results(planned)
 downloaded$local_path <- quant_path
 downloaded$download_status <- "downloaded"
 downloaded$organism <- "Mus musculus"
