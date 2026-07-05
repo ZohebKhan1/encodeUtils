@@ -58,20 +58,21 @@ path or URL.}
 \item{explain}{If `FALSE`, suppress the concise selection message.}
 }
 \value{
-Selected files. If `files = NULL`, returns preset names or a preset
-  definition.
+Selected files. If `files = NULL`, returns the same preset
+  information as `encode_file_presets()`.
 }
 \description{
 Choose files from an `encode_list_files()` table using explicit filters or a
 preset. The result keeps the selected files for download or reading.
 }
 \details{
-Call `encode_select_files()` with no `files` argument to list available
-presets, or with `preset = "name"` to inspect one preset.
+Use `encode_file_presets()` to list available presets or inspect one preset.
+For compatibility, `encode_select_files()` with no `files` argument also
+returns preset information instead of selecting files.
 }
 \examples{
-encode_select_files()
-encode_select_files(preset = "chipseq_idr_peaks")
+encode_file_presets()
+encode_file_presets("chipseq_idr_peaks")
 
 files <- data.frame(
   file_accession = c("ENCFF000AAA", "ENCFF000AAB"),

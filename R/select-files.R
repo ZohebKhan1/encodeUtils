@@ -3,8 +3,9 @@
 #' Choose files from an `encode_list_files()` table using explicit filters or a
 #' preset. The result keeps the selected files for download or reading.
 #'
-#' Call `encode_select_files()` with no `files` argument to list available
-#' presets, or with `preset = "name"` to inspect one preset.
+#' Use `encode_file_presets()` to list available presets or inspect one preset.
+#' For compatibility, `encode_select_files()` with no `files` argument also
+#' returns preset information instead of selecting files.
 #'
 #' @param files File metadata from `encode_list_files()`, a file search result,
 #'   or another object accepted by `encode_download()`. Leave as `NULL` to
@@ -34,13 +35,13 @@
 #'   path or URL.
 #' @param explain If `FALSE`, suppress the concise selection message.
 #'
-#' @return Selected files. If `files = NULL`, returns preset names or a preset
-#'   definition.
+#' @return Selected files. If `files = NULL`, returns the same preset
+#'   information as `encode_file_presets()`.
 #' @export
 #'
 #' @examples
-#' encode_select_files()
-#' encode_select_files(preset = "chipseq_idr_peaks")
+#' encode_file_presets()
+#' encode_file_presets("chipseq_idr_peaks")
 #'
 #' files <- data.frame(
 #'   file_accession = c("ENCFF000AAA", "ENCFF000AAB"),
@@ -69,7 +70,7 @@ encode_select_files <- function(
                                 require_href = TRUE,
                                 explain = TRUE) {
   if (is.null(files)) {
-    return(encode_file_preset(preset))
+    return(encode_file_presets(preset))
   }
   replicate_policy <- match.arg(replicate_policy)
   files <- encode_file_table_from_input(files, status = status)
@@ -220,15 +221,24 @@ encode_select_files <- function(
   result
 }
 
-#' Show an ENCODE file-selection preset
+#' List or inspect ENCODE file-selection presets
+#'
+#' File-selection presets provide common file-format and output-type
+#' preferences for `encode_select_files()`.
 #'
 #' @param preset Preset name, or `NULL` to list all preset names.
 #'
-#' @return A list describing file-format and output-type preferences.
+#' @return Character vector of preset names when `preset = NULL`; otherwise a
+#'   list describing file-format and output-type preferences for one preset.
+#' @export
 #'
 #' @examples
-#' encode_select_files(preset = "peaks")
-#' @noRd
+#' encode_file_presets()
+#' encode_file_presets("peaks")
+encode_file_presets <- function(preset = NULL) {
+  encode_file_preset(preset)
+}
+
 encode_file_preset <- function(preset = NULL) {
   presets <- list(
     raw_reads = list(

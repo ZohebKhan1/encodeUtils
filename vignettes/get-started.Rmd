@@ -156,7 +156,9 @@ loaded$tpm
 For loaded collections, the canonical components are `metadata`, `data`,
 `matrices`, and `by_experiment`. The `files`, `raw_counts`, and `tpm` elements
 are convenience aliases for `metadata`, `matrices$raw_counts`, and
-`matrices$TPM` when those objects are available.
+`matrices$TPM` when those objects are available. If code should handle one-file
+and many-file reads with the same object shape, use
+`encode_read(downloaded[1, ], as_collection = TRUE)`.
 
 Human and mouse RNA quantification tables are annotated with gene symbols,
 Ensembl IDs, and Entrez IDs when `org.Hs.eg.db` or `org.Mm.eg.db` is installed.
@@ -217,6 +219,16 @@ file tables, the user-facing columns are the file accession, experiment
 accession, assay, organism, biosample, file format, output type, assembly, file
 size, and status. The full returned table keeps the broader ENCODE metadata for
 filtering, joins, and provenance; retrieve it with `encode_results()`.
+
+Common columns for downstream code:
+
+- `file_accession` identifies the ENCODE file;
+- `experiment_accession` identifies the parent experiment;
+- `organism` and `biosample_term_name` identify species and sample;
+- `file_format`, `output_type`, and `assembly` are the main file-selection
+  fields;
+- `file_size`, `md5sum`, `download_url`, and `local_path` support download
+  planning, verification, and provenance.
 
 For local file reading:
 

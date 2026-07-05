@@ -13,7 +13,8 @@
 #' `encode_loaded_files` collection with `metadata`, `data`, `matrices`, and
 #' `by_experiment` components. `files`, `raw_counts`, and `tpm` are convenience
 #' aliases for `metadata`, `matrices$raw_counts`, and `matrices$TPM` when those
-#' objects are available.
+#' objects are available. Set `as_collection = TRUE` for a downloaded-file table
+#' when you want an `encode_loaded_files` collection even for one row.
 #'
 #' @param path Local file path, downloaded-file table, or file table with a
 #'   `local_path` column.
@@ -39,6 +40,9 @@
 #' @param simplify_quant Whether ENCODE gene-quantification tables should be
 #'   normalized to common identifier and expression columns. Use `FALSE` to
 #'   preserve the raw columns from the downloaded file.
+#' @param as_collection Whether downloaded-file table input should always return
+#'   an `encode_loaded_files` collection. This is useful when code should handle
+#'   one-file and many-file reads with the same object shape.
 #' @param ... Additional arguments passed to table readers where applicable.
 #'
 #' @return The return type depends on the file format. Text tables return data
@@ -49,7 +53,8 @@
 #'   `as = "GRanges"` is requested; GFF/GTF, BigWig, and BigBed return
 #'   `rtracklayer` imports when available; conservative raw sequencing and
 #'   alignment formats return `encode_local_file` path objects by default.
-#'   Multi-row downloaded-file tables return an `encode_loaded_files` object.
+#'   Multi-row downloaded-file tables, and any downloaded-file table read with
+#'   `as_collection = TRUE`, return an `encode_loaded_files` object.
 #' @export
 #'
 #' @examples
@@ -74,6 +79,7 @@
 #' # loaded$raw_counts
 #' # loaded <- encode_read(downloaded, values = c("raw_counts", "TPM"))
 #' # loaded$tpm
+#' # one_loaded <- encode_read(downloaded[1, ], as_collection = TRUE)
 encode_read <- function(
                         path,
                         format = NULL,
@@ -85,16 +91,20 @@ encode_read <- function(
                         row_names = c("gene_symbol", "ensembl_id", "entrez_id", "none"),
                         values = "raw_counts",
                         simplify_quant = TRUE,
+                        as_collection = FALSE,
                         ...) {
   unsupported <- match.arg(unsupported)
   as <- match.arg(as)
   row_names <- match.arg(row_names)
   values <- encode_normalize_matrix_values(values)
+  if (!is.logical(as_collection) || length(as_collection) != 1L || is.na(as_collection)) {
+    cli::cli_abort("{.arg as_collection} must be {.code TRUE} or {.code FALSE}.")
+  }
   if (encode_is_read_table(path)) {
     if (!"local_path" %in% names(path)) {
       cli::cli_abort("{.arg path} table input must include {.field local_path}.")
     }
-    if (nrow(path) != 1L) {
+    if (nrow(path) != 1L || isTRUE(as_collection)) {
       return(encode_load_downloaded_files(
         path,
         max_size = max_size,
@@ -110,6 +120,8 @@ encode_read <- function(
       ))
     }
     format <- format %||% encode_row_read_format(path, NULL)
+  } else if (isTRUE(as_collection)) {
+    cli::cli_abort("{.arg as_collection} requires downloaded-file table input with a {.field local_path} column.")
   }
   path <- encode_read_path(path)
   if (!file.exists(path)) {

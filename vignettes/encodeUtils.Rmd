@@ -137,10 +137,18 @@ encode_read(quant_path, simplify_quant = FALSE)
 
 A single local path or one downloaded-file row returns the native object for
 that file. A multi-row downloaded-file table returns an `encode_loaded_files`
-collection with `metadata`, `data`, `matrices`, and `by_experiment`; `files`,
-`raw_counts`, and `tpm` are convenience aliases for metadata and commonly used
-expression matrices. Printed file tables show a compact canonical subset by
+collection. Its primary components are `metadata`, `data`, `matrices`, and
+`by_experiment`. The `files`, `raw_counts`, and `tpm` components are convenience
+aliases for metadata and commonly used expression matrices. Use
+`as_collection = TRUE` when a one-row downloaded table should return the same
+collection shape. Printed file tables show a compact canonical subset by
 default. Use `encode_results()` to inspect the full ENCODE metadata table.
+
+For scripted workflows, use `file_accession` for files,
+`experiment_accession` for parent experiments, `organism` and
+`biosample_term_name` for sample identity, `file_format`, `output_type`, and
+`assembly` for file selection, and `file_size`, `md5sum`, `download_url`, and
+`local_path` for download planning and provenance.
 
 # Manifest
 

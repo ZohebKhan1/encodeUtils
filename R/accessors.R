@@ -6,8 +6,6 @@
 #'
 #' @param x An object returned by `encode_search()`, `encode_list_files()`,
 #'   `encode_select_files()`, `encode_download()`, or `encode_read()`.
-#' @param component Reserved for compatibility. Ignored for current result
-#'   objects.
 #'
 #' @return A data frame.
 #' @export
@@ -18,7 +16,7 @@
 #'   assay_title = "ChIP-seq"
 #' )
 #' encode_results(tbl)
-encode_results <- function(x, component = NULL) {
+encode_results <- function(x) {
   if (inherits(x, "encode_search_result")) {
     return(x$results)
   }

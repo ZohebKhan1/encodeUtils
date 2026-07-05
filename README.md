@@ -54,6 +54,15 @@ Printed ENCODE file tables show a compact canonical subset by default:
 status. Use `encode_results()` to recover the full metadata table for filtering,
 joins, or audit trails.
 
+Common columns to use in scripts:
+
+- `file_accession`: stable ENCODE file identifier.
+- `experiment_accession`: parent ENCODE experiment identifier.
+- `organism` and `biosample_term_name`: species and sample identity.
+- `file_format`, `output_type`, and `assembly`: file-selection fields.
+- `file_size`, `md5sum`, `download_url`, and `local_path`: download planning,
+  verification, and provenance fields.
+
 ## Example
 
 ```r
@@ -114,9 +123,11 @@ chip_experiments <- encode_search(
 can rely on the package cache instead of writing downloads into a package source
 tree. A single local path or one downloaded-file row returns the native object
 for that file. A multi-row downloaded-file table returns an `encode_loaded_files`
-collection with `metadata`, `data`, `matrices`, and `by_experiment`; `raw_counts`,
-`tpm`, and `files` are compatibility aliases for common matrix and metadata
-access.
+collection. Its primary components are `metadata`, `data`, `matrices`, and
+`by_experiment`. The `files`, `raw_counts`, and `tpm` components are convenience
+aliases for `metadata`, `matrices$raw_counts`, and `matrices$TPM` when those
+objects are available. Use `encode_read(downloaded, as_collection = TRUE)` when
+one-row and multi-row downloaded tables should return the same collection shape.
 
 BED-like interval files are returned as `GRanges` when the optional genomic
 reader stack can parse the file; ENCODE peak files with extra nonstandard

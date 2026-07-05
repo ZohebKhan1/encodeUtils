@@ -15,6 +15,7 @@ encode_read(
   row_names = c("gene_symbol", "ensembl_id", "entrez_id", "none"),
   values = "raw_counts",
   simplify_quant = TRUE,
+  as_collection = FALSE,
   ...
 )
 }
@@ -53,6 +54,10 @@ those matrices are needed, or `"all"` to build every supported matrix.}
 normalized to common identifier and expression columns. Use `FALSE` to
 preserve the raw columns from the downloaded file.}
 
+\item{as_collection}{Whether downloaded-file table input should always return
+an `encode_loaded_files` collection. This is useful when code should handle
+one-file and many-file reads with the same object shape.}
+
 \item{...}{Additional arguments passed to table readers where applicable.}
 }
 \value{
@@ -64,7 +69,8 @@ The return type depends on the file format. Text tables return data
   `as = "GRanges"` is requested; GFF/GTF, BigWig, and BigBed return
   `rtracklayer` imports when available; conservative raw sequencing and
   alignment formats return `encode_local_file` path objects by default.
-  Multi-row downloaded-file tables return an `encode_loaded_files` object.
+  Multi-row downloaded-file tables, and any downloaded-file table read with
+  `as_collection = TRUE`, return an `encode_loaded_files` object.
 }
 \description{
 Read one or more files that are already on disk. Small tabular and JSON files
@@ -81,7 +87,8 @@ for that file. A downloaded-file table with more than one row returns an
 `encode_loaded_files` collection with `metadata`, `data`, `matrices`, and
 `by_experiment` components. `files`, `raw_counts`, and `tpm` are convenience
 aliases for `metadata`, `matrices$raw_counts`, and `matrices$TPM` when those
-objects are available.
+objects are available. Set `as_collection = TRUE` for a downloaded-file table
+when you want an `encode_loaded_files` collection even for one row.
 }
 \examples{
 csv_path <- tempfile(fileext = ".csv")
@@ -105,4 +112,5 @@ encode_read(bam_path)
 # loaded$raw_counts
 # loaded <- encode_read(downloaded, values = c("raw_counts", "TPM"))
 # loaded$tpm
+# one_loaded <- encode_read(downloaded[1, ], as_collection = TRUE)
 }
