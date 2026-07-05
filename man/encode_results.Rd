@@ -22,6 +22,9 @@ Use it before filtering, joining, writing a CSV, or passing rows to another
 function.
 }
 \examples{
-# res <- encode_search(type = "Experiment", search = "mouse heart ChIP-seq")
-# experiments <- encode_results(res)
+tbl <- data.frame(
+  accession = "ENCSR000AAA",
+  assay_title = "ChIP-seq"
+)
+encode_results(tbl)
 }

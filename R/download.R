@@ -6,10 +6,19 @@
 #' path, and size/MD5 checks are used when ENCODE provides the metadata.
 #'
 #' @param x ENCFF accession(s), file metadata table, file search result, file
-#'   object, selected-file object, or experiment object.
+#'   object, selected-file object, experiment object, or ENCSR experiment
+#'   accession(s). ENCSR input is first passed to `encode_list_files()`.
 #' @param file_accession Optional ENCODE file accession(s), such as
 #'   `"ENCFF260OJQ"`, to download from `x`. Use this when you want specific
 #'   files rather than the first `n` rows.
+#' @param file_format Optional file-format filter used when `x` is an ENCSR
+#'   experiment accession.
+#' @param output_type Optional output-type filter used when `x` is an ENCSR
+#'   experiment accession.
+#' @param assembly Optional genome-assembly filter used when `x` is an ENCSR
+#'   experiment accession.
+#' @param file_status Optional file-status filter used when `x` is an ENCSR
+#'   experiment accession.
 #' @param n Optional number of files to use from the top of `x`.
 #' @param directory Destination directory. If `NULL`, a package cache directory
 #'   from `tools::R_user_dir("encodeUtils", "cache")` is used.
@@ -36,7 +45,18 @@
 #' @param read_allow_large Whether `read = TRUE` may fully import indexed files
 #'   such as bigWig or bigBed without `read_region`.
 #' @param read_unsupported What to do when a downloaded file cannot be read
-#'   directly: return a path object or throw an error.
+#'   directly. Use `"return_path"` to return an `encode_local_file` path object,
+#'   or `"error"` to fail.
+#' @param read_as Return type passed to `encode_read()` when `read = TRUE`.
+#'   `"auto"` uses Bioconductor classes for genomic formats when available.
+#' @param read_row_names Column to use for row names when `read = TRUE`.
+#'   Use `"none"` to keep default integer row names.
+#' @param read_values Expression values to combine across files when
+#'   `read = TRUE`. Defaults to `"raw_counts"`. Use values such as `"TPM"`,
+#'   `"FPKM"`, or `"RPKM"` when those matrices are needed, or `"all"` to build
+#'   every supported expression matrix.
+#' @param read_simplify_quant Whether ENCODE gene-quantification tables should
+#'   be normalized to common expression columns when `read = TRUE`.
 #' @param assign If `TRUE`, assign loaded file objects and experiment groups
 #'   into `envir`. The default is `FALSE` so scripts stay explicit.
 #' @param envir Environment used when `assign = TRUE`.
@@ -51,28 +71,30 @@
 #' @export
 #'
 #' @examples
-#' download_marker <- paste0(intToUtf8(64), intToUtf8(64), "download")
 #' files <- data.frame(
 #'   file_accession = "ENCFF000AAA",
-#'   href = paste0(
-#'     "/files/ENCFF000AAA/",
-#'     download_marker,
-#'     "/ENCFF000AAA.txt"
-#'   ),
+#'   href = "/files/ENCFF000AAA/@@@@download/ENCFF000AAA.txt",
 #'   file_size = 3,
 #'   md5sum = NA_character_
 #' )
 #' encode_download(files, directory = tempdir(), dry_run = TRUE, quiet = TRUE)
-#' encode_download(files, n = 1, directory = tempdir(), dry_run = TRUE, quiet = TRUE)
 #'
 #' # Live ENCODE example:
-#' # files <- encode_list_files("ENCSR284QGB", file_format = "fastq")
-#' # selected <- encode_select_files(files, preset = "raw_fastq")
-#' # encode_download(selected, directory = "data/encode", dry_run = TRUE)
-#' # downloaded <- encode_download(selected, directory = "data/encode")
+#' # loaded <- encode_download(
+#' #   "ENCSR083OKX",
+#' #   file_format = "tsv",
+#' #   output_type = "gene quantifications",
+#' #   assembly = "mm10",
+#' #   directory = "~/encode-data/rna-seq",
+#' #   read = TRUE
+#' # )
 encode_download <- function(
                             x,
                             file_accession = NULL,
+                            file_format = NULL,
+                            output_type = NULL,
+                            assembly = NULL,
+                            file_status = "released",
                             n = NULL,
                             directory = NULL,
                             cache = TRUE,
@@ -87,6 +109,10 @@ encode_download <- function(
                             read_region = NULL,
                             read_allow_large = FALSE,
                             read_unsupported = c("return_path", "error"),
+                            read_as = c("auto", "data.frame", "GRanges", "path"),
+                            read_row_names = c("gene_symbol", "ensembl_id", "entrez_id", "none"),
+                            read_values = "raw_counts",
+                            read_simplify_quant = TRUE,
                             assign = FALSE,
                             envir = parent.frame(),
                             prefer_cloud = FALSE,
@@ -94,15 +120,36 @@ encode_download <- function(
                             quiet = FALSE) {
   verify <- encode_normalize_verify(verify)
   read_unsupported <- match.arg(read_unsupported)
+  read_as <- match.arg(read_as)
+  read_row_names <- match.arg(read_row_names)
+  read_values <- encode_normalize_matrix_values(read_values)
   if (isTRUE(read) && isTRUE(dry_run)) {
     cli::cli_abort("Use either {.code dry_run = TRUE} or {.code read = TRUE}, not both.")
   }
-  files <- encode_file_table_from_input(x, status = NULL)
-  files <- encode_filter_file_accessions(files, file_accession)
-  files <- encode_limit_file_rows(files, n = n, file_accession = file_accession)
+  files <- encode_download_file_table(
+    x,
+    file_format = file_format,
+    output_type = output_type,
+    assembly = assembly,
+    file_status = file_status
+  )
   if (nrow(files) == 0L) {
-    cli::cli_abort("{.arg x} did not contain any files to download.")
+    encode_abort_no_matching_download_files(
+      x,
+      file_format = file_format,
+      output_type = output_type,
+      assembly = assembly,
+      file_status = file_status
+    )
   }
+  files <- encode_filter_file_accessions(files, file_accession)
+  if (nrow(files) == 0L) {
+    cli::cli_abort(c(
+      "No ENCODE files matched {.arg file_accession}.",
+      "i" = "Use {.fun encode_results} on the file table to choose valid ENCFF accessions."
+    ))
+  }
+  files <- encode_limit_file_rows(files, n = n, file_accession = file_accession)
   files <- encode_prepare_download_table(
     files = files,
     directory = directory,
@@ -168,7 +215,9 @@ encode_download <- function(
         row,
         overwrite = overwrite,
         verify = verify,
-        quiet = quiet
+        quiet = quiet,
+        index = i,
+        total = nrow(files)
       ),
       error = function(cnd) {
         encode_failed_download_row(row, conditionMessage(cnd))
@@ -184,12 +233,17 @@ encode_download <- function(
       "Failed to download or verify {sum(failed)} ENCODE file(s): {.val {paste(result$file_accession[failed], collapse = ', ')}}."
     )
   }
-  if (!isTRUE(quiet)) {
+  if (!isTRUE(quiet) && !isTRUE(read)) {
     cli::cli_inform(
       "ENCODE download completed. Print the result to view downloaded files, or use {.code encode_results()} for the table."
     )
   }
   if (isTRUE(read)) {
+    if (!isTRUE(quiet)) {
+      cli::cli_inform(
+        "File transfer completed. Reading downloaded files into R."
+      )
+    }
     return(encode_load_downloaded_files(
       result,
       max_size = read_max_size,
@@ -197,12 +251,64 @@ encode_download <- function(
       region = read_region,
       allow_large = read_allow_large,
       unsupported = read_unsupported,
+      as = read_as,
+      row_names = read_row_names,
+      matrix_values = read_values,
+      simplify_quant = read_simplify_quant,
       assign = assign,
       envir = envir,
       quiet = quiet
     ))
   }
   result
+}
+
+encode_download_file_table <- function(x, file_format = NULL, output_type = NULL, assembly = NULL, file_status = "released") {
+  experiment_input <- is.character(x) && all(encode_is_experiment_accession(vapply(x, encode_normalize_accession, character(1L))))
+  filters_requested <- !is.null(file_format) || !is.null(output_type) || !is.null(assembly)
+  if (experiment_input) {
+    return(encode_list_files(
+      x,
+      file_format = file_format,
+      output_type = output_type,
+      assembly = assembly,
+      status = file_status,
+      limit = "all",
+      quiet = TRUE
+    ))
+  }
+  if (filters_requested) {
+    cli::cli_abort(
+      "{.arg file_format}, {.arg output_type}, and {.arg assembly} can only be used when {.arg x} is an ENCSR experiment accession."
+    )
+  }
+  encode_file_table_from_input(x, status = NULL)
+}
+
+encode_abort_no_matching_download_files <- function(x,
+                                                    file_format = NULL,
+                                                    output_type = NULL,
+                                                    assembly = NULL,
+                                                    file_status = "released") {
+  if (is.character(x) && any(encode_is_experiment_accession(vapply(x, encode_normalize_accession, character(1L))))) {
+    filters <- c(
+      if (!is.null(file_format)) paste0("file_format = ", paste(file_format, collapse = ", ")),
+      if (!is.null(output_type)) paste0("output_type = ", paste(output_type, collapse = ", ")),
+      if (!is.null(assembly)) paste0("assembly = ", paste(assembly, collapse = ", ")),
+      if (!is.null(file_status)) paste0("status = ", paste(file_status, collapse = ", "))
+    )
+    details <- if (length(filters) > 0L) paste(filters, collapse = "; ") else "no file filters"
+    cli::cli_abort(c(
+      "No ENCODE files matched this experiment download request.",
+      "i" = "Input: {.val {paste(x, collapse = ', ')}}.",
+      "i" = "Filters: {details}.",
+      "i" = "Run {.code encode_list_files(x)} to inspect available files, then choose file accessions with {.arg file_accession}."
+    ))
+  }
+  cli::cli_abort(c(
+    "{.arg x} did not contain any files to download.",
+    "i" = "Use {.fun encode_results} to inspect the object before downloading."
+  ))
 }
 
 encode_limit_file_rows <- function(files, n = NULL, file_accession = NULL) {
@@ -334,7 +440,7 @@ encode_unknown_size_count <- function(files) {
   sum(is.na(sizes))
 }
 
-encode_download_one <- function(file, overwrite, verify, quiet) {
+encode_download_one <- function(file, overwrite, verify, quiet, index = NULL, total = NULL) {
   path <- file$local_path[[1L]]
   accession <- file$file_accession[[1L]]
   if (file.exists(path) && !isTRUE(overwrite)) {
@@ -352,7 +458,12 @@ encode_download_one <- function(file, overwrite, verify, quiet) {
   }
 
   if (!isTRUE(quiet)) {
-    cli::cli_inform("Downloading {.val {accession}}.")
+    progress <- if (!is.null(index) && !is.null(total)) {
+      paste0(" (", index, "/", total, ")")
+    } else {
+      ""
+    }
+    cli::cli_inform("Downloading{progress} {.val {accession}}.")
   }
   tmp_path <- paste0(path, ".part")
   if (file.exists(tmp_path)) {

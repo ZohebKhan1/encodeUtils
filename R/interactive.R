@@ -13,7 +13,9 @@
 #' @examples
 #' # browsed <- encode_browse(
 #' #   type = "Experiment",
-#' #   search = "mouse heart ChIP-seq",
+#' #   organism = "mouse",
+#' #   assay = "histone chip-seq",
+#' #   organ = "heart",
 #' #   limit = 10
 #' # )
 #' # encode_results(browsed)

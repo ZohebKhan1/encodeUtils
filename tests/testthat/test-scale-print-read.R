@@ -79,10 +79,44 @@ test_that("encode_read validates table input and format overrides", {
   read_many <- encode_read(rbind(table_input, table_input), format = "tsv")
   expect_s3_class(read_many, "encode_loaded_files")
   expect_equal(length(read_many$data), 2L)
+  expect_equal(names(read_many), c("metadata", "data", "by_experiment"))
+  expect_equal(read_many$files, read_many$metadata)
   missing_local_path <- data.frame(path = tsv_path)
   class(missing_local_path) <- c("encode_download_result", "data.frame")
   expect_error(encode_read(missing_local_path), "local_path")
   expect_error(encode_read(withr::local_tempfile()), "does not exist")
+})
+
+test_that("loaded objects print compact summaries instead of nested tables", {
+  tsv_path <- withr::local_tempfile(fileext = ".tsv")
+  writeLines(c("gene_id\tcount", "Gata4\t10", "Tbx5\t20"), tsv_path)
+  table_input <- data.frame(
+    file_accession = c("ENCFFPRINT1", "ENCFFPRINT2"),
+    experiment_accession = "ENCSRPRINT1",
+    file_format = "tsv",
+    local_path = tsv_path,
+    download_status = "downloaded",
+    stringsAsFactors = FALSE
+  )
+  class(table_input) <- c("encode_download_result", "data.frame")
+
+  loaded <- encode_read(table_input)
+  capture_print <- function(expr) {
+    stdout <- capture.output(messages <- capture.output(force(expr), type = "message"))
+    c(messages, stdout)
+  }
+  loaded_output <- capture_print(print(loaded))
+  data_output <- capture_print(print(loaded$data))
+  matrix_output <- capture_print(print(loaded$matrices))
+  experiment_output <- capture_print(print(loaded$by_experiment$ENCSRPRINT1))
+
+  expect_true(any(grepl("ENCODE loaded files", loaded_output, fixed = TRUE)))
+  expect_true(any(grepl("ENCODE loaded data", data_output, fixed = TRUE)))
+  expect_true(any(grepl("ENCODE matrices", matrix_output, fixed = TRUE)))
+  expect_true(any(grepl("ENCODE loaded experiment", experiment_output, fixed = TRUE)))
+  expect_false(any(grepl("Gata4", data_output, fixed = TRUE)))
+  expect_false(any(grepl("Gata4", matrix_output, fixed = TRUE)))
+  expect_false(any(grepl("Gata4", experiment_output, fixed = TRUE)))
 })
 
 test_that("encode_read optional genomic readers either load or explain clearly", {
@@ -97,9 +131,11 @@ test_that("encode_read optional genomic readers either load or explain clearly",
   if (requireNamespace("rtracklayer", quietly = TRUE)) {
     expect_s4_class(bed, "GRanges")
   } else {
-    expect_s3_class(bed, "encode_local_file")
-    expect_match(bed$reason, "rtracklayer")
+    expect_s3_class(bed, "data.frame")
   }
+  bed_table <- encode_read(bed_path, as = "data.frame")
+  expect_s3_class(bed_table, "data.frame")
+  expect_equal(names(bed_table)[1:4], c("chrom", "start", "end", "name"))
 
   if (requireNamespace("Biostrings", quietly = TRUE)) {
     expect_s4_class(fasta, "DNAStringSet")

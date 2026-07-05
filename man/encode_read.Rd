@@ -11,6 +11,10 @@ encode_read(
   region = NULL,
   allow_large = FALSE,
   unsupported = c("return_path", "error"),
+  as = c("auto", "data.frame", "GRanges", "path"),
+  row_names = c("gene_symbol", "ensembl_id", "entrez_id", "none"),
+  values = "raw_counts",
+  simplify_quant = TRUE,
   ...
 )
 }
@@ -28,15 +32,37 @@ as `which` for indexed genomic formats.}
 \item{allow_large}{Whether to allow full import of indexed formats such as
 bigWig or bigBed without `region`.}
 
-\item{unsupported}{What to do for unsupported formats: return a path object
-or throw an error.}
+\item{unsupported}{What to do for unsupported formats. Use `"return_path"`
+to return an `encode_local_file` path object, or `"error"` to fail.}
+
+\item{as}{Return type. `"auto"` uses Bioconductor classes for genomic
+formats when the optional reader package is installed, including
+`GRanges` for BED-like intervals when `GenomicRanges` and `IRanges` are
+installed. Use `"data.frame"` to force tabular BED-like output,
+`"GRanges"` to require genomic ranges for BED-like formats, or `"path"` to
+return an `encode_local_file` path object.}
+
+\item{row_names}{Column to use for row names in loaded expression tables.
+Use `"none"` to keep default integer row names.}
+
+\item{values}{Expression values to combine across files. Defaults to
+`"raw_counts"`. Use values such as `"TPM"`, `"FPKM"`, or `"RPKM"` when
+those matrices are needed, or `"all"` to build every supported matrix.}
+
+\item{simplify_quant}{Whether ENCODE gene-quantification tables should be
+normalized to common identifier and expression columns. Use `FALSE` to
+preserve the raw columns from the downloaded file.}
 
 \item{...}{Additional arguments passed to table readers where applicable.}
 }
 \value{
-A data frame, list, optional Bioconductor object,
-  `encode_local_file` object, or `encode_loaded_files` object for multi-row
-  download tables.
+The return type depends on the file format. Text tables return data
+  frames; JSON returns a list; FASTA returns a `DNAStringSet` when
+  `Biostrings` is installed; BED-like intervals return `GRanges` when
+  `GenomicRanges` and `IRanges` are installed; GFF/GTF, BigWig, and BigBed
+  return `rtracklayer` imports when available; conservative raw sequencing
+  and alignment formats return `encode_local_file` path objects by default.
+  Multi-row downloaded-file tables return an `encode_loaded_files` object.
 }
 \description{
 Read one or more files that are already on disk. Small tabular and JSON files
@@ -44,10 +70,19 @@ are loaded directly. Genomic interval and sequence formats use optional
 Bioconductor readers when they are installed. Large or unsupported formats
 return a path object by default.
 }
+\details{
+When downloaded gene-quantification TSV tables are read together, the
+returned object includes sample metadata, individual file tables, and a merged
+raw-count matrix. Request TPM, FPKM, or RPKM with `values` when needed.
+}
 \examples{
 csv_path <- tempfile(fileext = ".csv")
 writeLines(c("gene,value", "MYC,2.5"), csv_path)
 encode_read(csv_path)
+
+bed_path <- tempfile(fileext = ".bed")
+writeLines("chr1\t0\t10\tpeak1\t100\t+", bed_path)
+encode_read(bed_path, as = "data.frame")
 
 bam_path <- tempfile(fileext = ".bam")
 writeBin(charToRaw("placeholder"), bam_path)
@@ -57,4 +92,9 @@ encode_read(bam_path)
 # Use with downloaded rows:
 # downloaded <- encode_download(encode_results(selected)[1, ], directory = tempdir())
 # encode_read(downloaded[1, ])
+# loaded <- encode_read(downloaded)
+# loaded$metadata
+# loaded$raw_counts
+# loaded <- encode_read(downloaded, values = c("raw_counts", "TPM"))
+# loaded$tpm
 }

@@ -1,10 +1,3 @@
-## References
-
-- ENCODE REST API: <https://www.encodeproject.org/help/rest-api/>
-- ENCODE attribution guidance: <https://www.encodeproject.org/help/citing-encode/>
-
-Kagda MS, Lam B, Litton C, Small C, Sloan CA, Spragins E, Tanaka F, Whaling I, Gabdank I, Youngworth I, Strattan JS, Hilton J, Jou J, Au J, Lee JW, Andreeva K, Graham K, Lin K, Simison M, Jolanki O, Sud P, Assis P, Adenekan P, Miyasato S, Zhong W, Luo Y, Myers Z, Cherry JM, Hitz BC. Data navigation on the ENCODE portal. Nat Commun. 2025 Oct 30;16(1):9592. doi: 10.1038/s41467-025-64343-9. PMID: 41168159; PMCID: PMC12575607.
-  
 # encodeUtils
 
 `encodeUtils` queries ENCODE metadata from R and helps choose, download, read,
@@ -24,7 +17,20 @@ workflows.
 ## Installation
 
 ```r
-# install.packages("pak")
+if (!requireNamespace("BiocManager", quietly = TRUE)) {
+  install.packages("BiocManager")
+}
+
+BiocManager::install("encodeUtils")
+```
+
+The development version can be installed from GitHub when needed:
+
+```r
+if (!requireNamespace("pak", quietly = TRUE)) {
+  install.packages("pak")
+}
+
 pak::pak("ZohebKhan1/encodeUtils")
 ```
 
@@ -37,8 +43,9 @@ Most analyses use the same sequence:
 3. List files for selected experiments with `encode_list_files()`.
 4. Select files with `encode_select_files()`.
 5. Check file paths and sizes with `encode_download(dry_run = TRUE)`.
-6. Download with `encode_download()`.
-7. Read supported downloaded files with `encode_read()` or `encode_download(read = TRUE)`.
+6. Download with `encode_download()`, or use `encode_download(read = TRUE)` to
+   download and read supported files in one step.
+7. Use the returned metadata and data matrices in R.
 8. Save provenance with `encode_manifest()`.
 
 ## Example
@@ -48,7 +55,9 @@ library(encodeUtils)
 
 experiments <- encode_search(
   type = "Experiment",
-  search = "mouse heart total RNA-seq",
+  organism = "mouse",
+  assay = "rna-seq",
+  biosample = "heart",
   status = "released",
   limit = 10
 )
@@ -60,24 +69,53 @@ files <- encode_list_files(
   assembly = "mm10"
 )
 
+rna_files <- encode_results(files)
+rna_files <- rna_files[seq_len(min(2, nrow(rna_files))), ]
+
 dry_run <- encode_download(
-  files,
-  file_accession = c("ENCFF260OJQ", "ENCFF090VKE"),
+  rna_files,
   directory = tempdir(),
   dry_run = TRUE
 )
 
-downloaded <- encode_download(
-  files,
-  file_accession = c("ENCFF260OJQ", "ENCFF090VKE"),
-  directory = "data/encode/rna-seq"
-)
-
-loaded <- encode_read(downloaded)
+# Run the same call without dry_run = TRUE to transfer the selected files.
+# downloaded <- encode_download(rna_files, directory = "~/encode-data/rna-seq")
+# loaded <- encode_read(downloaded, values = c("raw_counts", "TPM"))
 
 manifest <- encode_manifest(
-  downloaded,
+  dry_run,
   include_session = FALSE,
   path = file.path(tempdir(), "encode-rna-manifest.json")
 )
 ```
+
+For ChIP-seq searches, use `exclude_controls = TRUE` when you want target
+experiments and not input-control experiments:
+
+```r
+chip_experiments <- encode_search(
+  type = "Experiment",
+  organism = "mouse",
+  assay = "histone chip-seq",
+  organ = "heart",
+  target = "H3K27ac",
+  exclude_controls = TRUE,
+  limit = 10
+)
+```
+
+`directory = NULL` uses `tools::R_user_dir("encodeUtils", "cache")`, so users
+can rely on the package cache instead of writing downloads into a package source
+tree. BED-like interval files are returned as `GRanges` when `GenomicRanges`
+and `IRanges` are installed; `rtracklayer` is attempted first and
+`encodeUtils` falls back to a BED-table conversion for ENCODE peak files with
+extra columns. Use `encode_read(path, as = "data.frame")` for a plain table.
+FASTQ and alignment files are returned as paths by default because downstream
+read processing is usually handled by tools such as `ShortRead`, `Rsamtools`,
+or `GenomicAlignments`.
+
+## References
+
+- ENCODE REST API: <https://www.encodeproject.org/help/rest-api/>
+- ENCODE attribution guidance: <https://www.encodeproject.org/help/citing-encode/>
+- Kagda MS, Lam B, Litton C, Small C, Sloan CA, Spragins E, Tanaka F, Whaling I, Gabdank I, Youngworth I, Strattan JS, Hilton J, Jou J, Au J, Lee JW, Andreeva K, Graham K, Lin K, Simison M, Jolanki O, Sud P, Assis P, Adenekan P, Miyasato S, Zhong W, Luo Y, Myers Z, Cherry JM, Hitz BC. Data navigation on the ENCODE portal. Nat Commun. 2025;16:9592. doi: 10.1038/s41467-025-64343-9.

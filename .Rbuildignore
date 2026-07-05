@@ -17,3 +17,7 @@
 ^.*\.Rcheck$
 ^.*\.BiocCheck$
 ^\.Rproj\.user$
+^bioconductor_review_audit_.*[.]md$
+^external_bioconductor_audit_encodeUtils[.]md$
+^.*_bioconductor_audit.*[.]md$
+^.*_audit_encodeUtils[.]md$

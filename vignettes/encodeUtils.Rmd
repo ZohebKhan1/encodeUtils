@@ -15,8 +15,7 @@ vignette: >
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>",
-  eval = FALSE
+  comment = "#>"
 )
 ```
 
@@ -24,121 +23,162 @@ knitr::opts_chunk$set(
 library(encodeUtils)
 ```
 
-# Core workflow
+# Core functions
 
-The core workflow is:
+The main functions are:
 
-```{r core-workflow}
-experiments <- encode_search(
-  type = "Experiment",
-  search = "mouse heart total RNA-seq",
-  status = "released",
-  limit = 10
-)
+- `encode_search()` to query ENCODE metadata;
+- `encode_results()` to extract the main data frame from result objects;
+- `encode_list_files()` to list files attached to experiment accessions;
+- `encode_select_files()` to narrow file tables;
+- `encode_download()` to plan or perform file downloads;
+- `encode_read()` to read supported local files;
+- `encode_manifest()` to record provenance.
 
-files <- encode_list_files(
-  experiments,
-  file_format = "tsv",
-  output_type = "gene quantifications",
-  assembly = "mm10"
-)
+The evaluated examples use small local records so the vignette remains stable
+during package checks.
 
-file_ids <- c("ENCFF090VKE", "ENCFF260OJQ")
+# Extract results
 
-checked <- encode_download(
-  files,
-  file_accession = file_ids,
-  directory = "data/encode/rna-seq",
-  dry_run = TRUE
-)
+`encode_results()` returns the main table from an `encodeUtils` result object.
+It also accepts plain data frames.
 
-downloaded <- encode_download(
-  files,
-  file_accession = file_ids,
-  directory = "data/encode/rna-seq"
-)
-
-loaded <- encode_read(downloaded)
-manifest <- encode_manifest(downloaded, include_session = FALSE)
-```
-
-# Search
-
-`encode_search()` finds ENCODE records and returns a compact result object.
-
-```{r search}
-experiments <- encode_search(
-  type = "Experiment",
-  search = "mouse heart ChIP-seq",
-  status = "released",
-  limit = 10
+```{r results}
+experiments <- data.frame(
+  accession = c("ENCSR000AAA", "ENCSR000AAB"),
+  assay_title = c("total RNA-seq", "ATAC-seq"),
+  biosample_term_name = c("heart", "heart"),
+  stringsAsFactors = FALSE
 )
 
 encode_results(experiments)
 ```
 
-# Files
+# Select files
 
-`encode_list_files()` lists downloadable files attached to experiments. It does
-not download file contents.
+`encode_select_files()` can use explicit filters or presets for common ENCODE
+outputs.
 
-```{r files}
+```{r select}
+files <- data.frame(
+  experiment_accession = c("ENCSR000AAA", "ENCSR000AAA", "ENCSR000AAB"),
+  file_accession = c("ENCFF000AAA", "ENCFF000AAB", "ENCFF000AAC"),
+  file_format = c("tsv", "bed", "bigWig"),
+  output_type = c(
+    "gene quantifications",
+    "IDR thresholded peaks",
+    "signal p-value"
+  ),
+  assembly = c("mm10", "mm10", "mm10"),
+  status = c("released", "released", "released"),
+  file_size = c(120, 300, 5000000),
+  md5sum = NA_character_,
+  href = c(
+    "/files/ENCFF000AAA/@@download/ENCFF000AAA.tsv",
+    "/files/ENCFF000AAB/@@download/ENCFF000AAB.bed",
+    "/files/ENCFF000AAC/@@download/ENCFF000AAC.bigWig"
+  ),
+  stringsAsFactors = FALSE
+)
+
+rna_selected <- encode_select_files(files, preset = "rnaseq_gene_quant")
+peak_selected <- encode_select_files(files, preset = "atacseq_peaks")
+
+encode_results(rna_selected)
+encode_results(peak_selected)
+```
+
+# Plan downloads
+
+Use `dry_run = TRUE` before transferring any file. The dry run reports planned
+paths, sizes, and status without downloading contents.
+
+```{r download-plan}
+planned <- encode_download(
+  rna_selected,
+  directory = tempdir(),
+  dry_run = TRUE,
+  quiet = TRUE
+)
+
+encode_results(planned)[, c("file_accession", "download_status", "local_path")]
+```
+
+# Read Files
+
+`encode_read()` can read small local tabular files directly. Gene
+quantification tables are normalized to common identifier and expression columns
+by default; set `simplify_quant = FALSE` to keep the raw downloaded columns.
+BED-like interval files return `GRanges` when `GenomicRanges` and `IRanges` are
+available, or a plain data frame when called with `as = "data.frame"`.
+
+```{r read}
+quant_path <- tempfile(fileext = ".tsv")
+writeLines(
+  c(
+    "gene_id\tTPM\tFPKM\traw_counts",
+    "ENSMUSG00000000001\t4.5\t2.1\t11",
+    "ENSMUSG00000000028\t8.2\t4.4\t27"
+  ),
+  quant_path
+)
+
+downloaded <- encode_results(planned)
+downloaded$local_path <- quant_path
+downloaded$download_status <- "downloaded"
+downloaded$organism <- "Mus musculus"
+
+loaded <- encode_read(downloaded, values = c("raw_counts", "TPM"))
+loaded$metadata
+loaded$raw_counts
+
+encode_read(quant_path, simplify_quant = FALSE)
+```
+
+# Manifest
+
+`encode_manifest()` returns a list and can also write JSON when `path` is
+provided.
+
+```{r manifest}
+manifest <- encode_manifest(downloaded, include_session = FALSE)
+names(manifest)
+```
+
+# Live search and file listing
+
+The live ENCODE examples are not evaluated during package checks. They are shown
+as accession-aware patterns for interactive use.
+
+```{r live-search, eval=FALSE}
+experiments <- encode_search(
+  type = "Experiment",
+  organism = "mouse",
+  assay = "histone chip-seq",
+  organ = "heart",
+  exclude_controls = TRUE,
+  status = "released",
+  limit = 5
+)
+
 files <- encode_list_files(
   experiments,
   file_format = "bed",
-  assembly = "mm10"
+  assembly = "mm10",
+  allow_many = TRUE
 )
 
-encode_results(files)
-```
-
-# Selection
-
-`encode_select_files()` narrows a file table. Use file accessions when you know
-the exact files, or a preset when selecting a standard processed output.
-
-```{r select}
 selected <- encode_select_files(
   files,
   preset = "chipseq_idr_peaks",
   assembly = "mm10"
 )
 
-encode_results(selected)
+encode_download(selected, directory = tempdir(), dry_run = TRUE)
 ```
 
-# Download and read
+# Session information
 
-Use `dry_run = TRUE` first. Then run the same call without `dry_run` to transfer
-files. `encode_read()` reads supported downloaded files without typing paths.
-
-```{r download-read}
-checked <- encode_download(
-  selected,
-  directory = "data/encode/chip-seq",
-  dry_run = TRUE
-)
-
-downloaded <- encode_download(
-  selected,
-  directory = "data/encode/chip-seq"
-)
-
-loaded <- encode_read(downloaded)
-loaded$metadata
-```
-
-# Manifest
-
-`encode_manifest()` writes a reproducibility record for the query and files used
-in an analysis. It includes ENCODE attribution metadata by default.
-
-```{r manifest}
-manifest <- encode_manifest(
-  downloaded,
-  include_session = FALSE,
-  path = "data/encode/chip-seq/encode-manifest.json"
-)
-
-names(manifest)
+```{r session-info}
+sessionInfo()
 ```

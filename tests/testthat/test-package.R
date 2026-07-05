@@ -188,6 +188,126 @@ test_that("encode_search parses experiment results and metadata", {
   testthat::expect_true("status" %in% encode_filters(result)$field)
 })
 
+test_that("encode_search compiles biological parameters into ENCODE filters", {
+  local_mock_options()
+  observed_url <- NULL
+  result <- httr2::with_mocked_responses(
+    function(req) {
+      observed_url <<- req$url
+      mock_json_response(experiment_search_json)
+    },
+    encode_search(
+      organism = "mouse",
+      assay = "rna-seq",
+      biosample = "brain",
+      life_stage = "fetal",
+      development = TRUE,
+      limit = 25,
+      quiet = TRUE
+    )
+  )
+
+  testthat::expect_s3_class(result, "encode_search_result")
+  testthat::expect_match(observed_url, "replicates.library.biosample.organism.scientific_name=Mus%20musculus", fixed = TRUE)
+  testthat::expect_match(observed_url, "replicates.library.biosample.life_stage=embryonic", fixed = TRUE)
+  testthat::expect_match(observed_url, "related_series.%40type=OrganismDevelopmentSeries", fixed = TRUE)
+  testthat::expect_match(observed_url, "assay_title=total%20RNA-seq", fixed = TRUE)
+  testthat::expect_match(observed_url, "assay_title=polyA%20plus%20RNA-seq", fixed = TRUE)
+  testthat::expect_match(observed_url, "searchTerm=brain", fixed = TRUE)
+})
+
+test_that("encode_search supports common ENCODE facet parameters", {
+  local_mock_options()
+  observed_url <- NULL
+  result <- httr2::with_mocked_responses(
+    function(req) {
+      observed_url <<- req$url
+      mock_json_response(experiment_search_json)
+    },
+    encode_search(
+      organism = "human",
+      assay_type = "DNA accessibility",
+      assay = "atac-seq",
+      biosample_type = "primary cell",
+      organ = "brain",
+      cell = "neural cell",
+      system = "central nervous system",
+      sex = "female",
+      disease = "Alzheimer's disease",
+      treatment = "Interleukin-2",
+      cellular_component = "nucleus",
+      target_category = "histone",
+      limit = 10,
+      quiet = TRUE
+    )
+  )
+
+  testthat::expect_s3_class(result, "encode_search_result")
+  testthat::expect_match(observed_url, "replicates.library.biosample.organism.scientific_name=Homo%20sapiens", fixed = TRUE)
+  testthat::expect_match(observed_url, "assay_slims=DNA%20accessibility", fixed = TRUE)
+  testthat::expect_match(observed_url, "assay_title=ATAC-seq", fixed = TRUE)
+  testthat::expect_match(observed_url, "biosample_ontology.classification=primary%20cell", fixed = TRUE)
+  testthat::expect_match(observed_url, "biosample_ontology.organ_slims=brain", fixed = TRUE)
+  testthat::expect_match(observed_url, "biosample_ontology.cell_slims=neural%20cell", fixed = TRUE)
+  testthat::expect_match(observed_url, "biosample_ontology.system_slims=central%20nervous%20system", fixed = TRUE)
+  testthat::expect_match(observed_url, "replicates.library.biosample.sex=female", fixed = TRUE)
+  testthat::expect_match(observed_url, "replicates.library.biosample.disease_term_name=Alzheimer%27s%20disease", fixed = TRUE)
+  testthat::expect_match(observed_url, "replicates.library.biosample.treatments.treatment_term_name=Interleukin-2", fixed = TRUE)
+  testthat::expect_match(observed_url, "replicates.library.biosample.subcellular_fraction_term_name=nucleus", fixed = TRUE)
+  testthat::expect_match(observed_url, "target.investigated_as=histone", fixed = TRUE)
+})
+
+test_that("encode_search can exclude control experiments without raw filter syntax", {
+  local_mock_options()
+  observed_url <- NULL
+  httr2::with_mocked_responses(
+    function(req) {
+      observed_url <<- req$url
+      mock_json_response('{"@graph":[],"total":0}')
+    },
+    encode_search(
+      assay = "chip-seq",
+      exclude_controls = TRUE,
+      quiet = TRUE
+    )
+  )
+
+  testthat::expect_match(observed_url, "assay_term_name=ChIP-seq", fixed = TRUE)
+  testthat::expect_match(observed_url, "control_type%21=%2A", fixed = TRUE)
+})
+
+test_that("encode_search routes biological File searches through experiments", {
+  local_mock_options()
+  observed_urls <- character()
+  httr2::with_mocked_responses(
+    function(req) {
+      observed_urls <<- c(observed_urls, req$url)
+      if (grepl("type=Experiment", req$url, fixed = TRUE)) {
+        return(mock_json_response(experiment_search_json))
+      }
+      mock_json_response(file_search_json)
+    },
+    encode_search(
+      type = "File",
+      organism = "human",
+      assay = "chip-seq",
+      file_format = "fastq",
+      exclude_controls = TRUE,
+      limit = 1,
+      quiet = TRUE
+    )
+  )
+
+  testthat::expect_length(observed_urls, 2L)
+  testthat::expect_match(observed_urls[[1]], "type=Experiment", fixed = TRUE)
+  testthat::expect_match(observed_urls[[1]], "replicates.library.biosample.organism.scientific_name=Homo%20sapiens", fixed = TRUE)
+  testthat::expect_match(observed_urls[[1]], "assay_term_name=ChIP-seq", fixed = TRUE)
+  testthat::expect_match(observed_urls[[1]], "control_type%21=%2A", fixed = TRUE)
+  testthat::expect_match(observed_urls[[2]], "type=File", fixed = TRUE)
+  testthat::expect_match(observed_urls[[2]], "dataset=%2Fexperiments%2FENCSR000AAA%2F", fixed = TRUE)
+  testthat::expect_match(observed_urls[[2]], "file_format=fastq", fixed = TRUE)
+})
+
 test_that("object frame is available but produces lean linked metadata", {
   local_mock_options()
   observed_url <- NULL
@@ -391,6 +511,35 @@ test_that("encode_list_files normalizes file metadata from experiments", {
   testthat::expect_equal(files$file_size_pretty[[1]], "3 B")
   testthat::expect_match(attr(files, "url"), "dataset=%2Fexperiments%2FENCSR000AAA%2F", fixed = TRUE)
   testthat::expect_match(encode_query_url(files), "/search/", fixed = TRUE)
+})
+
+test_that("encode_list_files fills missing organism from experiment metadata", {
+  local_mock_options()
+  file_without_organism_json <- paste0(
+    '{',
+    '"@graph":[{',
+    '"@type":["File","Item"],"accession":"ENCFF000ORG",',
+    '"@id":"/files/ENCFF000ORG/","dataset":"/experiments/ENCSR000AAA/",',
+    '"file_format":"fastq","output_type":"reads","status":"released",',
+    '"href":"/files/ENCFF000ORG/@@download/ENCFF000ORG.fastq.gz"',
+    '}],',
+    '"total":1,"filters":[],"facets":[]',
+    '}'
+  )
+  files <- httr2::with_mocked_responses(
+    function(req) {
+      if (grepl("type=Experiment", req$url, fixed = TRUE)) {
+        return(mock_json_response(experiment_search_json))
+      }
+      mock_json_response(file_without_organism_json)
+    },
+    encode_list_files("ENCSR000AAA", file_format = "fastq", quiet = TRUE)
+  )
+
+  testthat::expect_equal(files$file_accession[[1]], "ENCFF000ORG")
+  testthat::expect_equal(files$experiment_accession[[1]], "ENCSR000AAA")
+  testthat::expect_equal(files$organism[[1]], "Homo sapiens")
+  testthat::expect_equal(files$assay_title[[1]], "total RNA-seq")
 })
 
 test_that("file metadata preserves non-experiment dataset identity", {
@@ -789,12 +938,35 @@ test_that("encode_read loads safe text and JSON files and returns local-file obj
   testthat::expect_s3_class(encode_read(csv_path, max_size = 1), "encode_local_file")
 })
 
-test_that("optional Bioconductor readers load small local files when installed", {
-  testthat::skip_if_not_installed("rtracklayer")
+test_that("BED files load as GRanges by default and tables on request", {
   bed_path <- withr::local_tempfile(fileext = ".bed")
   writeLines("chr1\t0\t10\tpeak1", bed_path)
   bed <- encode_read(bed_path)
-  testthat::expect_s4_class(bed, "GRanges")
+  if (requireNamespace("rtracklayer", quietly = TRUE)) {
+    testthat::expect_s4_class(bed, "GRanges")
+  } else {
+    testthat::expect_s3_class(bed, "data.frame")
+  }
+
+  table <- encode_read(bed_path, as = "data.frame")
+  testthat::expect_s3_class(table, "data.frame")
+  testthat::expect_equal(names(table)[1:4], c("chrom", "start", "end", "name"))
+  testthat::expect_equal(table$name[[1]], "peak1")
+})
+
+test_that("quantification table simplification can preserve raw columns", {
+  tsv_path <- withr::local_tempfile(fileext = ".tsv")
+  writeLines(c(
+    "gene_id\texpected_count\tTPM\textra_column",
+    "ENSG000001\t5\t2.5\tkeep"
+  ), tsv_path)
+
+  simplified <- encode_read(tsv_path)
+  raw <- encode_read(tsv_path, simplify_quant = FALSE)
+
+  testthat::expect_true(all(c("ensembl_id", "raw_counts", "TPM") %in% names(simplified)))
+  testthat::expect_equal(names(raw), c("gene_id", "expected_count", "TPM", "extra_column"))
+  testthat::expect_equal(raw$extra_column[[1]], "keep")
 })
 
 test_that("optional FASTA reader loads small local files when installed", {

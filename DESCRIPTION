@@ -6,20 +6,24 @@ Authors@R: person(
     given = "Zoheb",
     family = "Khan",
     email = "zohebkhan600@gmail.com",
-    role = c("aut", "cre")
+    role = c("aut", "cre"),
+    comment = c(ORCID = "0000-0002-0266-8886")
     )
-Description: Provides an R interface for querying ENCODE Portal metadata,
-    listing files attached to experiments, selecting files, previewing
-    downloads, downloading selected files, reading supported local files, and
-    recording reproducibility manifests.
+Description: Provides an R interface for querying ENCODE Portal metadata and
+    working with files attached to ENCODE experiments. The package helps users
+    search for datasets, list and select files, inspect planned downloads, read
+    supported local files, and record reproducibility manifests. It is designed
+    for scripted, accession-aware workflows that need to find and retrieve
+    high-throughput sequencing data without leaving R.
 License: Artistic-2.0
 URL: https://github.com/ZohebKhan1/encodeUtils, https://zohebkhan1.github.io/encodeUtils/
 BugReports: https://github.com/ZohebKhan1/encodeUtils/issues
-biocViews: DataImport, FunctionalGenomics, Sequencing
+biocViews: DataImport, FunctionalGenomics, GeneExpression, GenomeAssembly, RNASeq, Sequencing
 Encoding: UTF-8
 Depends:
     R (>= 4.6.0)
 Imports:
+    AnnotationDbi,
     cli,
     httr2,
     jsonlite,
@@ -29,7 +33,11 @@ Imports:
 Suggests:
     BiocStyle,
     Biostrings,
+    GenomicRanges,
+    IRanges,
     knitr,
+    org.Hs.eg.db,
+    org.Mm.eg.db,
     rmarkdown,
     rtracklayer,
     testthat (>= 3.0.0),

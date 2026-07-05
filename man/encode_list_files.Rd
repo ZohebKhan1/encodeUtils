@@ -57,8 +57,17 @@ The default `limit = "all"` requests the complete file list for the selected
 experiments.
 }
 \examples{
-# experiments <- encode_search(type = "Experiment", search = "mouse heart ChIP-seq")
-# encode_list_files(experiments, file_format = "bed", assembly = "mm10")
-
-# encode_list_files("ENCSR284QGB", file_format = "fastq")
+files <- try(
+  encode_list_files(
+    "ENCSR083OKX",
+    file_format = "tsv",
+    output_type = "gene quantifications",
+    assembly = "mm10",
+    quiet = TRUE
+  ),
+  silent = TRUE
+)
+if (!inherits(files, "try-error")) {
+  encode_results(files)
+}
 }

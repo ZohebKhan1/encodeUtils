@@ -4,6 +4,10 @@ NEW FEATURES
 
     o Query ENCODE search endpoints from R.
 
+    o Search common ENCODE biology fields with direct arguments such as
+      organism, assay, biosample, organ, system, life_stage, target,
+      target_category, and exclude_controls.
+
     o List file metadata for ENCODE experiments, including file accessions,
       formats, output types, assemblies, file sizes, checksums, download URLs,
       biosample fields, targets, controls, and analysis accessions when present.
@@ -21,8 +25,17 @@ NEW FEATURES
     o Download selected files with existing-file checks, temporary partial files,
       file-size verification, and MD5 verification when metadata are available.
 
+    o Download and read supported files in one step with
+      encode_download(read = TRUE). RNA-seq gene-quantification tables can be
+      merged into raw-count, TPM, FPKM, or RPKM matrices.
+
     o Read supported local text, table, JSON, interval, and sequence files.
-      Optional Bioconductor readers are used for genomic formats when installed.
+      BED-like interval files use GRanges via rtracklayer when available, and
+      users can request plain tables with encode_read(as = "data.frame").
+
+    o Preserve raw ENCODE gene-quantification columns with
+      encode_read(simplify_quant = FALSE) when the normalized expression-column
+      view is not desired.
 
     o Create reproducibility manifests with ENCODE dataset and file attribution.
 

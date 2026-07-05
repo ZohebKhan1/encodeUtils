@@ -22,7 +22,29 @@ names.encode_selected_files <- function(x) {
 
 #' @export
 names.encode_loaded_files <- function(x) {
-  c("files", "metadata", "data", "matrices", "by_experiment")
+  encode_loaded_names(x, include_by_experiment = TRUE)
+}
+
+#' @export
+names.encode_loaded_experiment <- function(x) {
+  encode_loaded_names(x, include_by_experiment = FALSE)
+}
+
+encode_loaded_names <- function(x, include_by_experiment = TRUE) {
+  names <- c("metadata", "data")
+  if (!is.null(x$raw_counts)) {
+    names <- c(names, "raw_counts")
+  }
+  if (!is.null(x$tpm)) {
+    names <- c(names, "tpm")
+  }
+  if (!is.null(x$matrices) && length(x$matrices) > 0L) {
+    names <- c(names, "matrices")
+  }
+  if (isTRUE(include_by_experiment) && !is.null(x$by_experiment)) {
+    names <- c(names, "by_experiment")
+  }
+  names
 }
 
 #' @export
@@ -103,11 +125,19 @@ print.encode_selected_files <- function(x, ..., verbose = FALSE) {
 #' @export
 print.encode_loaded_files <- function(x, ..., verbose = FALSE) {
   cli::cli_text("ENCODE loaded files")
-  cli::cli_text("- files: {.val {nrow(x$files)}}")
+  cli::cli_text("- files: {.val {nrow(x$metadata)}}")
   cli::cli_text("- file objects: {.val {length(x$data)}}")
-  cli::cli_text("- matrices: {.val {length(x$matrices)}}")
+  if (!is.null(x$raw_counts)) {
+    cli::cli_text("- raw counts: available")
+  }
+  if (!is.null(x$tpm)) {
+    cli::cli_text("- TPM: available")
+  }
+  if (!is.null(x$matrices) && length(x$matrices) > 0L) {
+    cli::cli_text("- matrices: {.val {length(x$matrices)}}")
+  }
   cli::cli_text("- experiments: {.val {length(x$by_experiment)}}")
-  encode_print_table("Metadata", encode_display_columns(x$metadata, encode_file_display_columns()))
+  encode_print_table("Metadata", x$metadata)
   if (isTRUE(verbose)) {
     objects <- data.frame(
       name = names(x$data),
@@ -116,6 +146,69 @@ print.encode_loaded_files <- function(x, ..., verbose = FALSE) {
     )
     encode_print_table("Loaded objects", objects, n = length(objects$name))
   }
+  invisible(x)
+}
+
+#' @export
+print.encode_loaded_experiment <- function(x, ..., verbose = FALSE) {
+  experiment <- if ("experiment_accession" %in% names(x$metadata) && nrow(x$metadata) > 0L) {
+    unique(x$metadata$experiment_accession)[[1L]]
+  } else {
+    "unknown"
+  }
+  cli::cli_text("ENCODE loaded experiment")
+  cli::cli_text("- experiment: {.val {experiment}}")
+  cli::cli_text("- files: {.val {nrow(x$metadata)}}")
+  cli::cli_text("- file objects: {.val {length(x$data)}}")
+  if (!is.null(x$raw_counts)) {
+    cli::cli_text("- raw counts: available")
+  }
+  if (!is.null(x$tpm)) {
+    cli::cli_text("- TPM: available")
+  }
+  if (!is.null(x$matrices) && length(x$matrices) > 0L) {
+    cli::cli_text("- matrices: {.val {length(x$matrices)}}")
+  }
+  encode_print_table("Metadata", x$metadata)
+  if (isTRUE(verbose)) {
+    print(x$data)
+    print(x$matrices)
+  }
+  invisible(x)
+}
+
+#' @export
+print.encode_data_list <- function(x, ...) {
+  cli::cli_text("ENCODE loaded data")
+  cli::cli_text("- file objects: {.val {length(x)}}")
+  if (length(x) == 0L) {
+    return(invisible(x))
+  }
+  objects <- data.frame(
+    file = names(x),
+    rows = vapply(x, NROW, integer(1L)),
+    columns = vapply(x, NCOL, integer(1L)),
+    class = vapply(x, function(value) paste(class(value), collapse = ", "), character(1L)),
+    stringsAsFactors = FALSE
+  )
+  encode_print_table("Objects", objects, n = nrow(objects))
+  invisible(x)
+}
+
+#' @export
+print.encode_matrix_list <- function(x, ...) {
+  cli::cli_text("ENCODE matrices")
+  cli::cli_text("- matrices: {.val {length(x)}}")
+  if (length(x) == 0L) {
+    return(invisible(x))
+  }
+  matrices <- data.frame(
+    matrix = names(x),
+    rows = vapply(x, NROW, integer(1L)),
+    columns = vapply(x, NCOL, integer(1L)),
+    stringsAsFactors = FALSE
+  )
+  encode_print_table("Matrices", matrices, n = nrow(matrices))
   invisible(x)
 }
 
@@ -201,10 +294,6 @@ encode_file_display_columns <- function() {
     sex = "sex",
     sample = "sample_summary",
     treatment = "treatment",
-    lab = "lab",
-    project = "project",
-    format = "file_format",
-    output = "output_type",
     assembly = "assembly",
     analysis = "analysis_accession",
     file_size = "file_size_pretty",

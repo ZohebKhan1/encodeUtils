@@ -13,8 +13,11 @@
 #' @export
 #'
 #' @examples
-#' # res <- encode_search(type = "Experiment", search = "mouse heart ChIP-seq")
-#' # experiments <- encode_results(res)
+#' tbl <- data.frame(
+#'   accession = "ENCSR000AAA",
+#'   assay_title = "ChIP-seq"
+#' )
+#' encode_results(tbl)
 encode_results <- function(x, component = NULL) {
   if (inherits(x, "encode_search_result")) {
     return(x$results)

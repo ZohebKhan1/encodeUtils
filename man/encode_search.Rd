@@ -8,6 +8,26 @@ encode_search(
   type = "Experiment",
   filters = list(),
   search = NULL,
+  organism = NULL,
+  assay = NULL,
+  assay_type = NULL,
+  biosample = NULL,
+  biosample_type = NULL,
+  organ = NULL,
+  cell = NULL,
+  system = NULL,
+  life_stage = NULL,
+  sex = NULL,
+  disease = NULL,
+  treatment = NULL,
+  cellular_component = NULL,
+  development = FALSE,
+  exclude_controls = FALSE,
+  target = NULL,
+  target_category = NULL,
+  file_format = NULL,
+  output_type = NULL,
+  assembly = NULL,
   status = "released",
   limit = 25,
   metadata = c("full", "basic"),
@@ -24,6 +44,66 @@ Use `NULL` only for mixed free-text searches.}
 dot notation, and negated filters such as `"control_type!="` are accepted.}
 
 \item{search}{Optional free-text search term.}
+
+\item{organism}{Optional organism filter. Common values such as `"mouse"`,
+`"human"`, `"Mus musculus"`, and `"Homo sapiens"` are accepted.}
+
+\item{assay}{Optional assay filter. Common values such as `"rna-seq"`,
+`"atac-seq"`, `"chip-seq"`, `"histone chip-seq"`, and `"tf chip-seq"`
+are expanded to ENCODE assay names.}
+
+\item{assay_type}{Optional broad assay category, such as `"Transcription"`,
+`"DNA accessibility"`, or `"DNA binding"`.}
+
+\item{biosample}{Optional biosample or tissue term. This is added to the
+free-text query so broader terms such as `"brain"` can find forebrain,
+midbrain, hindbrain, cortex, and related ENCODE biosample terms.}
+
+\item{biosample_type}{Optional biosample class, such as `"tissue"`,
+`"cell line"`, `"primary cell"`, or `"organoid"`.}
+
+\item{organ}{Optional organ facet, such as `"brain"`, `"heart"`, or
+`"liver"`.}
+
+\item{cell}{Optional cell facet, such as `"T cell"`, `"neural cell"`, or
+`"stem cell"`.}
+
+\item{system}{Optional anatomical system facet, such as `"immune system"` or
+`"central nervous system"`.}
+
+\item{life_stage}{Optional life-stage filter, such as `"embryonic"`,
+`"postnatal"`, `"adult"`, or `"fetal"`. `"fetal"` is treated as
+`"embryonic"` for ENCODE mouse development searches.}
+
+\item{sex}{Optional sex filter, such as `"female"`, `"male"`, or `"mixed"`.}
+
+\item{disease}{Optional disease term.}
+
+\item{treatment}{Optional biosample-treatment term.}
+
+\item{cellular_component}{Optional subcellular fraction term, such as
+`"nucleus"` or `"cytosol"`.}
+
+\item{development}{If `TRUE`, restrict experiments to organism-development
+series records.}
+
+\item{exclude_controls}{If `TRUE`, remove ENCODE control experiments from
+the search result.}
+
+\item{target}{Optional ChIP-seq target label, such as `"TBX5"` or
+`"H3K27ac"`.}
+
+\item{target_category}{Optional target category, such as `"histone"` or
+`"transcription factor"`.}
+
+\item{file_format}{Optional file-format filter used when `type = "File"`,
+such as `"fastq"`, `"bed"`, `"bigWig"`, or `"tsv"`.}
+
+\item{output_type}{Optional file-output filter used when `type = "File"`,
+such as `"reads"`, `"gene quantifications"`, or `"IDR ranked peaks"`.}
+
+\item{assembly}{Optional genome-assembly filter used when `type = "File"`,
+such as `"GRCh38"` or `"mm10"`.}
 
 \item{status}{Optional ENCODE status filter. The default keeps released
 records only. Use `NULL` to omit the status filter.}
@@ -53,12 +133,32 @@ table. Use `print(x, verbose = TRUE)` to show the query URL, active filters,
 and ENCODE facets.
 }
 \examples{
-# res <- encode_search(
-#   type = "Experiment",
-#   search = "mouse heart ChIP-seq",
-#   status = "released",
-#   limit = 10
-# )
-# encode_results(res)
-# files <- encode_list_files(res, file_format = "bed", assembly = "mm10")
+res <- try(
+  encode_search(
+    type = "Experiment",
+    organism = "mouse",
+    assay = "rna-seq",
+    organ = "heart",
+    limit = 1,
+    quiet = TRUE
+  ),
+  silent = TRUE
+)
+if (!inherits(res, "try-error")) {
+  encode_results(res)
+}
+
+chip <- try(
+  encode_search(
+    type = "Experiment",
+    organism = "mouse",
+    assay = "histone chip-seq",
+    target = "H3K27ac",
+    organ = "heart",
+    exclude_controls = TRUE,
+    limit = 1,
+    quiet = TRUE
+  ),
+  silent = TRUE
+)
 }

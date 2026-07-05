@@ -25,11 +25,11 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Zoheb Khan \email{zohebkhan600@gmail.com}
+\strong{Maintainer}: Zoheb Khan \email{zohebkhan600@gmail.com} (\href{https://orcid.org/0000-0002-0266-8886}{ORCID})
 
 Authors:
 \itemize{
-  \item Zoheb Khan \email{zohebkhan600@gmail.com}
+  \item Zoheb Khan \email{zohebkhan600@gmail.com} (\href{https://orcid.org/0000-0002-0266-8886}{ORCID})
 }
 
 }

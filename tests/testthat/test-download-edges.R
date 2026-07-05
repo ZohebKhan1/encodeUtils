@@ -204,33 +204,181 @@ test_that("download can read small tabular files into grouped R objects", {
     directory = destination,
     verify = NULL,
     read = TRUE,
+    read_values = c("raw_counts", "TPM"),
     quiet = TRUE
   )
 
   expect_s3_class(loaded, "encode_loaded_files")
   expect_equal(names(loaded$data), names(payloads))
   expect_s3_class(loaded$data$ENCFFLOAD001, "data.frame")
-  expect_equal(loaded$data$ENCFFLOAD001$count, c(10L, 20L))
+  expect_equal(loaded$data$ENCFFLOAD001$raw_counts, c(10L, 20L))
   expect_equal(
-    loaded$matrices$count,
+    loaded$matrices$raw_counts,
     data.frame(
-      gene_id = c("Gata4", "Tbx5"),
+      gene_symbol = c("Gata4", "Tbx5"),
+      ensembl_id = c(NA_character_, NA_character_),
+      entrez_id = c(NA_character_, NA_character_),
       ENCFFLOAD001 = c(10L, 20L),
       ENCFFLOAD002 = c(12L, 25L),
+      row.names = c("Gata4", "Tbx5"),
       check.names = FALSE
     )
   )
+  expect_equal(loaded$raw_counts, loaded$matrices$raw_counts)
   expect_equal(names(loaded$by_experiment), "ENCSRLOAD001")
   expect_equal(
-    loaded$by_experiment$ENCSRLOAD001$matrices$count,
+    loaded$by_experiment$ENCSRLOAD001$matrices$raw_counts,
     data.frame(
-      gene_id = c("Gata4", "Tbx5"),
+      gene_symbol = c("Gata4", "Tbx5"),
+      ensembl_id = c(NA_character_, NA_character_),
+      entrez_id = c(NA_character_, NA_character_),
       ENCFFLOAD001 = c(10L, 20L),
       ENCFFLOAD002 = c(12L, 25L),
+      row.names = c("Gata4", "Tbx5"),
       check.names = FALSE
     )
   )
+  expect_equal(loaded$by_experiment$ENCSRLOAD001$raw_counts, loaded$matrices$raw_counts)
   expect_equal(encode_results(loaded)$file_accession, names(payloads))
+  expect_equal(loaded$files, loaded$metadata)
+  expect_false("download_url" %in% names(loaded$files))
+})
+
+test_that("loaded RNA matrices keep gene symbols as annotation columns", {
+  local_encode_test_options()
+  destination <- withr::local_tempdir()
+  payloads <- c(
+    ENCFFLOADSYM1 = "gene_id\tgene_symbol\texpected_count\tTPM\nENSMUSG1\tGata4\t10\t1.5\nENSMUSG2\tTbx5\t20\t2.5\n",
+    ENCFFLOADSYM2 = "gene_id\tgene_symbol\texpected_count\tTPM\nENSMUSG1\tGata4\t12\t1.7\nENSMUSG2\tTbx5\t25\t2.9\nENSMUSG3\tNkx2-5\t5\t0.9\n"
+  )
+  files <- data.frame(
+    file_accession = names(payloads),
+    experiment_accession = "ENCSRLOADSYM",
+    file_format = "tsv",
+    href = paste0("/files/", names(payloads), "/@@download/", names(payloads), ".tsv"),
+    file_size = nchar(payloads, type = "bytes"),
+    md5sum = NA_character_,
+    stringsAsFactors = FALSE
+  )
+  testthat::local_mocked_bindings(
+    encode_perform_file = function(url, path, timeout = NULL) {
+      accession <- sub("^.*/(ENCFF[A-Z0-9]+)[.]tsv$", "\\1", url)
+      writeLines(payloads[[accession]], path, useBytes = TRUE)
+      list(url = url, status_code = 200L, retrieved_at = Sys.time())
+    }
+  )
+
+  loaded <- encode_download(
+    files,
+    directory = destination,
+    verify = NULL,
+    read = TRUE,
+    read_values = c("raw_counts", "TPM"),
+    quiet = TRUE
+  )
+
+  expect_equal(
+    loaded$raw_counts,
+    data.frame(
+      gene_symbol = c("Gata4", "Tbx5", "Nkx2-5"),
+      ensembl_id = c("ENSMUSG1", "ENSMUSG2", "ENSMUSG3"),
+      entrez_id = c(NA_character_, NA_character_, NA_character_),
+      ENCFFLOADSYM1 = c(10L, 20L, NA),
+      ENCFFLOADSYM2 = c(12L, 25L, 5L),
+      row.names = c("Gata4", "Tbx5", "Nkx2-5"),
+      check.names = FALSE
+    )
+  )
+  expect_equal(loaded$tpm$gene_symbol, c("Gata4", "Tbx5", "Nkx2-5"))
+  expect_equal(loaded$tpm$gene_symbol[loaded$tpm$ensembl_id == "ENSMUSG3"], "Nkx2-5")
+})
+
+test_that("loaded RNA tables keep zero-only numeric rows", {
+  local_encode_test_options()
+  destination <- withr::local_tempdir()
+  payload <- paste(
+    "gene_id\tgene_symbol\texpected_count\tTPM\tFPKM",
+    "10000\t10000\t0\t0\t0",
+    "31383\t\t2\t1.5\t1.1",
+    "11307\tAbcg1\t0\t0\t0",
+    "ENSMUSG00000000001.4\tGnai3\t10\t3.5\t2.7",
+    sep = "\n"
+  )
+  files <- data.frame(
+    file_accession = "ENCFFLOADMAP1",
+    experiment_accession = "ENCSRLOADMAP",
+    file_format = "tsv",
+    href = "/files/ENCFFLOADMAP1/@@download/ENCFFLOADMAP1.tsv",
+    file_size = nchar(payload, type = "bytes"),
+    md5sum = NA_character_,
+    stringsAsFactors = FALSE
+  )
+  testthat::local_mocked_bindings(
+    encode_perform_file = function(url, path, timeout = NULL) {
+      writeLines(payload, path, useBytes = TRUE)
+      list(url = url, status_code = 200L, retrieved_at = Sys.time())
+    }
+  )
+
+  loaded <- encode_download(
+    files,
+    directory = destination,
+    verify = NULL,
+    read = TRUE,
+    read_values = c("raw_counts", "TPM"),
+    quiet = TRUE
+  )
+
+  expect_true("10000" %in% loaded$data$ENCFFLOADMAP1$entrez_id)
+  expect_true("31383" %in% loaded$data$ENCFFLOADMAP1$entrez_id)
+  expect_equal(names(loaded$data$ENCFFLOADMAP1)[1:3], c("gene_symbol", "ensembl_id", "entrez_id"))
+  expect_equal(names(loaded$tpm)[1:3], c("gene_symbol", "ensembl_id", "entrez_id"))
+  expect_true("10000" %in% loaded$tpm$entrez_id)
+  expect_true("31383" %in% loaded$tpm$entrez_id)
+  expect_true("Abcg1" %in% loaded$tpm$gene_symbol)
+  expect_true("Gnai3" %in% loaded$tpm$gene_symbol)
+})
+
+test_that("loaded RNA tables keep numeric rows without symbols", {
+  local_encode_test_options()
+  destination <- withr::local_tempdir()
+  payload <- paste(
+    "gene_id\texpected_count\tTPM\tFPKM",
+    "10000\t0\t0\t0",
+    "10001\t0\t0\t0",
+    "ENSMUSG00000000001.4\t10\t3.5\t2.7",
+    sep = "\n"
+  )
+  files <- data.frame(
+    file_accession = "ENCFFLOADNOSYM1",
+    experiment_accession = "ENCSRLOADNOSYM",
+    file_format = "tsv",
+    href = "/files/ENCFFLOADNOSYM1/@@download/ENCFFLOADNOSYM1.tsv",
+    file_size = nchar(payload, type = "bytes"),
+    md5sum = NA_character_,
+    stringsAsFactors = FALSE
+  )
+  testthat::local_mocked_bindings(
+    encode_perform_file = function(url, path, timeout = NULL) {
+      writeLines(payload, path, useBytes = TRUE)
+      list(url = url, status_code = 200L, retrieved_at = Sys.time())
+    },
+    encode_gene_annotation = function(gene_id, file) NULL
+  )
+
+  loaded <- encode_download(
+    files,
+    directory = destination,
+    verify = NULL,
+    read = TRUE,
+    read_values = c("raw_counts", "TPM"),
+    quiet = TRUE
+  )
+
+  expect_equal(loaded$data$ENCFFLOADNOSYM1$entrez_id[1:2], c("10000", "10001"))
+  expect_equal(loaded$data$ENCFFLOADNOSYM1$ensembl_id[[3]], "ENSMUSG00000000001.4")
+  expect_equal(loaded$tpm$entrez_id[1:2], c("10000", "10001"))
+  expect_equal(loaded$tpm$ensembl_id[[3]], "ENSMUSG00000000001.4")
 })
 
 test_that("downloaded rows can be read later without typing file paths", {
@@ -264,7 +412,80 @@ test_that("downloaded rows can be read later without typing file paths", {
 
   expect_s3_class(loaded, "encode_loaded_files")
   expect_equal(length(loaded$data), 2L)
-  expect_equal(loaded$data[[1]]$gene_id, "Gata4")
+  expect_equal(loaded$data[[1]]$gene_symbol, "Gata4")
+  expect_equal(loaded$data[[1]]$raw_counts, 10L)
+})
+
+test_that("download can list and read matching files from an experiment accession", {
+  local_encode_test_options()
+  destination <- withr::local_tempdir()
+  payload <- "gene_id\tgene_symbol\texpected_count\tTPM\nENSMUSG1\tGata4\t10\t1.5\n"
+  files <- data.frame(
+    file_accession = "ENCFFEXPRNA1",
+    experiment_accession = "ENCSREXPRNA",
+    file_format = "tsv",
+    output_type = "gene quantifications",
+    assembly = "mm10",
+    href = "/files/ENCFFEXPRNA1/@@download/ENCFFEXPRNA1.tsv",
+    file_size = nchar(payload, type = "bytes"),
+    md5sum = NA_character_,
+    stringsAsFactors = FALSE
+  )
+  class(files) <- c("encode_file_table", "data.frame")
+  testthat::local_mocked_bindings(
+    encode_list_files = function(x, file_format = NULL, output_type = NULL, assembly = NULL, status = NULL, limit = NULL, quiet = NULL, ...) {
+      expect_equal(x, "ENCSREXPRNA")
+      expect_equal(file_format, "tsv")
+      expect_equal(output_type, "gene quantifications")
+      expect_equal(assembly, "mm10")
+      files
+    },
+    encode_perform_file = function(url, path, timeout = NULL) {
+      writeLines(payload, path, useBytes = TRUE)
+      list(url = url, status_code = 200L, retrieved_at = Sys.time())
+    }
+  )
+
+  loaded <- encode_download(
+    "ENCSREXPRNA",
+    file_format = "tsv",
+    output_type = "gene quantifications",
+    assembly = "mm10",
+    directory = destination,
+    verify = NULL,
+    read = TRUE,
+    read_row_names = "none",
+    quiet = TRUE
+  )
+
+  expect_equal(names(loaded), c("metadata", "data", "raw_counts", "matrices", "by_experiment"))
+  expect_equal(loaded$raw_counts$gene_symbol, "Gata4")
+  expect_equal(row.names(loaded$raw_counts), "1")
+})
+
+test_that("download gives a specific error when experiment file filters match nothing", {
+  local_encode_test_options()
+  empty <- data.frame(stringsAsFactors = FALSE)
+  class(empty) <- c("encode_file_table", "data.frame")
+  testthat::local_mocked_bindings(
+    encode_list_files = function(x, file_format = NULL, output_type = NULL, assembly = NULL, status = NULL, limit = NULL, quiet = NULL, ...) {
+      expect_equal(x, "ENCSRNOFILES")
+      expect_equal(file_format, "tsv")
+      expect_equal(output_type, "gene quantifications")
+      empty
+    }
+  )
+
+  expect_error(
+    encode_download(
+      "ENCSRNOFILES",
+      file_format = "tsv",
+      output_type = "gene quantifications",
+      directory = tempdir(),
+      quiet = TRUE
+    ),
+    "No ENCODE files matched this experiment download request"
+  )
 })
 
 test_that("download read mode is explicit about dry-run and assignment", {

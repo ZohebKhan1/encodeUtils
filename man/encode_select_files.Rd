@@ -73,7 +73,6 @@ presets, or with `preset = "name"` to inspect one preset.
 encode_select_files()
 encode_select_files(preset = "chipseq_idr_peaks")
 
-download_marker <- paste0(intToUtf8(64), intToUtf8(64), "download")
 files <- data.frame(
   file_accession = c("ENCFF000AAA", "ENCFF000AAB"),
   experiment_accession = "ENCSR000AAA",
@@ -81,13 +80,9 @@ files <- data.frame(
   output_type = c("optimal IDR thresholded peaks", "replicated peaks"),
   assembly = c("GRCh38", "hg19"),
   status = c("released", "released"),
-  href = paste0(
-    "/files/",
-    c("ENCFF000AAA", "ENCFF000AAB"),
-    "/",
-    download_marker,
-    "/",
-    c("a.bed", "b.bed")
+  href = c(
+    "/files/ENCFF000AAA/@@download/ENCFF000AAA.bed",
+    "/files/ENCFF000AAB/@@download/ENCFF000AAB.bed"
   )
 )
 selected <- encode_select_files(files, preset = "peaks", assembly = "GRCh38")

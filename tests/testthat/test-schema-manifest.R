@@ -38,17 +38,19 @@ test_that("encode_list_files validates input variants and many-experiment guard"
     function(req) fixture_json_response("search-embedded-experiments.json"),
     encode_search(limit = 2, quiet = TRUE)
   )
-  observed_url <- NULL
+  observed_urls <- character()
   files <- httr2::with_mocked_responses(
     function(req) {
-      observed_url <<- req$url
+      observed_urls <<- c(observed_urls, req$url)
       fixture_json_response("file-search-mixed.json")
     },
     encode_list_files(search_result, status = NULL, quiet = TRUE)
   )
   expect_s3_class(files, "encode_file_table")
   expect_equal(nrow(files), 3)
-  expect_match(observed_url, "dataset=%2Fexperiments%2FENCSRREAL01%2F", fixed = TRUE)
+  expect_match(observed_urls[[1]], "dataset=%2Fexperiments%2FENCSRREAL01%2F", fixed = TRUE)
+  expect_match(observed_urls[[2]], "type=Experiment", fixed = TRUE)
+  expect_match(observed_urls[[2]], "accession=ENCSRREAL01", fixed = TRUE)
 })
 
 test_that("manifests preserve branch-specific payloads and JSON round trips", {

@@ -28,10 +28,19 @@
 #' @export
 #'
 #' @examples
-#' # experiments <- encode_search(type = "Experiment", search = "mouse heart ChIP-seq")
-#' # encode_list_files(experiments, file_format = "bed", assembly = "mm10")
-#'
-#' # encode_list_files("ENCSR284QGB", file_format = "fastq")
+#' files <- try(
+#'   encode_list_files(
+#'     "ENCSR083OKX",
+#'     file_format = "tsv",
+#'     output_type = "gene quantifications",
+#'     assembly = "mm10",
+#'     quiet = TRUE
+#'   ),
+#'   silent = TRUE
+#' )
+#' if (!inherits(files, "try-error")) {
+#'   encode_results(files)
+#' }
 encode_list_files <- function(
                               x,
                               file_format = NULL,
@@ -91,6 +100,8 @@ encode_list_files <- function(
     retrieved_at = search_result$request$retrieved_at,
     filters = search_result$filters
   )
+  experiment_metadata <- encode_fetch_experiment_metadata_for_files(experiment_paths, metadata = metadata)
+  files <- encode_fill_file_experiment_metadata(files, experiment_metadata)
   class(files) <- c("encode_file_table", "data.frame")
   attr(files, "total") <- search_result$total
   attr(files, "total_results") <- search_result$total
@@ -102,12 +113,84 @@ encode_list_files <- function(
 
   if (!isTRUE(quiet)) {
     known_size <- encode_size(files)
-    cli::cli_inform(
-      "ENCODE file listing successfully found {nrow(files)} file record(s) ({encode_pretty_bytes(known_size)} with known sizes)."
-    )
-    cli::cli_inform(
-      "Returned a file metadata table. Print the result to view files, or use {.code encode_results()} for the table."
-    )
+    if (nrow(files) == 0L) {
+      cli::cli_inform(c(
+        "ENCODE file listing found no matching file records.",
+        "i" = "Try loosening {.arg file_format}, {.arg output_type}, {.arg assembly}, or {.arg status}."
+      ))
+    } else {
+      cli::cli_inform(
+        "ENCODE file listing successfully found {nrow(files)} file record(s) ({encode_pretty_bytes(known_size)} with known sizes)."
+      )
+      cli::cli_inform(
+        "Returned a file metadata table. Print the result to view files, or use {.code encode_results()} for the table."
+      )
+    }
+  }
+  files
+}
+
+encode_fetch_experiment_metadata_for_files <- function(experiment_paths, metadata = "basic") {
+  accessions <- vapply(experiment_paths, encode_accession_from_path, character(1L))
+  accessions <- unique(accessions[encode_is_experiment_accession(accessions)])
+  if (length(accessions) == 0L) {
+    return(encode_empty_results("Experiment"))
+  }
+  result <- tryCatch(
+    encode_search(
+      type = "Experiment",
+      filters = list(accession = accessions),
+      status = NULL,
+      limit = "all",
+      metadata = metadata,
+      include_facets = FALSE,
+      quiet = TRUE
+    ),
+    error = function(cnd) {
+      NULL
+    }
+  )
+  if (is.null(result)) {
+    return(encode_empty_results("Experiment"))
+  }
+  encode_results(result)
+}
+
+encode_fill_file_experiment_metadata <- function(files, experiments) {
+  if (!is.data.frame(files) || nrow(files) == 0L ||
+      !is.data.frame(experiments) || nrow(experiments) == 0L ||
+      !"experiment_accession" %in% names(files) ||
+      !"accession" %in% names(experiments)) {
+    return(files)
+  }
+  experiment_rows <- match(files$experiment_accession, experiments$accession)
+  mapped <- c(
+    assay_title = "assay_title",
+    assay_term_name = "assay_term_name",
+    target = "target",
+    control_type = "control_type",
+    organism = "organism",
+    sample_summary = "sample_summary",
+    life_stage_age = "life_stage_age",
+    sex = "sex",
+    treatment = "treatment",
+    biosample_summary = "biosample_summary",
+    biosample_type = "biosample_classification",
+    biosample_term_name = "biosample_term_name",
+    lab = "lab",
+    institution = "institution",
+    project = "project",
+    award = "award"
+  )
+  for (file_column in names(mapped)) {
+    experiment_column <- mapped[[file_column]]
+    if (!file_column %in% names(files) || !experiment_column %in% names(experiments)) {
+      next
+    }
+    values <- experiments[[experiment_column]][experiment_rows]
+    replace <- is.na(files[[file_column]]) | !nzchar(as.character(files[[file_column]]))
+    replace[is.na(replace)] <- TRUE
+    files[[file_column]][replace] <- values[replace]
   }
   files
 }
