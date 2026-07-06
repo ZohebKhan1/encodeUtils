@@ -9,12 +9,12 @@ Authors@R: person(
     role = c("aut", "cre"),
     comment = c(ORCID = "0000-0002-0266-8886")
     )
-Description: Provides an R workflow for discovering ENCODE Portal datasets
-    through the ENCODE REST API and converting ENCODE JSON metadata into
-    analysis-ready tables. Supports scripted searches for RNA-seq, ChIP-seq,
-    and ATAC-seq experiments, accession-aware file listing and selection,
-    download planning, supported local file readers, and reproducibility
-    manifests.
+Description: Provides an unofficial R workflow for discovering ENCODE Portal
+    datasets through the ENCODE REST API and converting ENCODE JSON metadata
+    into analysis-ready, traceable file tables. Supports scripted searches for
+    RNA-seq, ChIP-seq, and ATAC-seq experiments, accession-aware file listing
+    and selection, download planning, supported local file readers, and
+    reproducibility manifests for downstream R and Bioconductor analyses.
 License: Artistic-2.0
 URL: https://github.com/ZohebKhan1/encodeUtils, https://zohebkhan1.github.io/encodeUtils/
 BugReports: https://github.com/ZohebKhan1/encodeUtils/issues

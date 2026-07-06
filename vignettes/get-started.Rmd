@@ -25,23 +25,63 @@ library(encodeUtils)
 
 # Introduction
 
-`encodeUtils` provides an R workflow for finding ENCODE datasets and converting
-ENCODE Portal metadata into file tables that can be filtered, downloaded, read,
-and recorded in reproducible analyses. It queries the
+`encodeUtils` is an unofficial R package for convenient, traceable analysis of
+ENCODE datasets. It queries the
 [ENCODE REST API](https://www.encodeproject.org/help/rest-api/), parses the JSON
-returned by experiment and file searches, and standardizes fields such as
-accessions, assay, biosample, organism, target, assembly, output type, file
-size, checksums, and download URLs.
+returned by experiment and file searches, and converts ENCODE Portal metadata
+into file tables that can be filtered, downloaded, read, and recorded in
+reproducible analyses. Standardized fields include accessions, assay,
+biosample, organism, target, assembly, output type, file size, checksums, and
+download URLs.
 
 The package is designed for RNA-seq, ChIP-seq, and ATAC-seq workflows where
-users need to move from an ENCODE accession or search result to the files used
-in R. It keeps ENCODE discovery and download bookkeeping in R and delegates
-supported genomic file imports to packages such as `rtracklayer` and
-`Biostrings` when those packages are installed. BED-like
+users need to move from an ENCODE accession or search result to files and
+metadata that can be used in R. It keeps ENCODE discovery and download
+bookkeeping in R and delegates supported genomic file imports to packages such
+as `rtracklayer` and `Biostrings` when those packages are installed. The
+resulting tables and objects can be used with downstream packages such as
+`ChIPpeakAnno`, `edgeR`, `DESeq2`, and `GenomicRanges`. BED-like
 interval files are returned as `GRanges` by default when `GenomicRanges` and
 `IRanges` are available, and raw sequencing or alignment files are returned as
 paths for use with downstream tools such as `ShortRead`, `Rsamtools`, or
 `GenomicAlignments`.
+
+The package is not officially affiliated with the ENCODE Project. It started as
+a personal research utility to make ENCODE data discovery, download planning,
+and R-based analysis faster and easier for day-to-day workflows.
+
+# ENCODE REST API background
+
+The ENCODE Portal exposes records through ordinary URLs. An accession such as a
+biosample, experiment, or file can be requested over HTTP, and the response can
+be returned as JSON. `encodeUtils` wraps that process from R: it sends GET
+requests, parses the JSON response, flattens nested ENCODE fields into useful
+tables, and keeps enough metadata to trace which records and files were used.
+
+For debugging or learning the underlying API, two tools are helpful:
+
+- A browser JSON viewer, such as JSONView for Chrome or Firefox, or json-lite
+  for Safari.
+- `curl`, which is included with macOS and most Linux/Unix systems. If it is
+  not installed, use an SSL-aware build from the curl project.
+
+For example, this command requests a biosample record as JSON:
+
+```sh
+curl -H "Accept: application/json" \
+  https://www.encodeproject.org/biosamples/ENCBS000AAA/
+```
+
+The same idea is used by scripts: build a URL for an ENCODE object or search
+endpoint, request JSON, parse it, and convert it into native data structures.
+In `encodeUtils`, those native structures are R lists, data frames, file tables,
+and analysis-ready objects.
+
+The ENCODE REST API documentation asks programmatic users to stay at or below
+10 GET requests per second for a single user, group, company, or lab. Exceeding
+that limit can lead to IP-based blocking. `encodeUtils` uses a conservative
+default throttle of 5 requests per second; advanced users can change it with
+`options(encodeUtils.rate_per_second = ...)`.
 
 # Installation
 

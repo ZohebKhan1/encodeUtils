@@ -1,17 +1,56 @@
 # encodeUtils
 
-`encodeUtils` helps R users find ENCODE datasets and turn ENCODE Portal
-metadata into analysis-ready file tables. It queries the
+`encodeUtils` is an unofficial R package for convenient, traceable analysis of
+ENCODE datasets. It queries the
 [ENCODE REST API](https://www.encodeproject.org/help/rest-api/), parses the
-JSON returned by experiment and file searches, and standardizes the fields
-needed for scripted analysis, including accessions, assay, biosample, organism,
+JSON returned by experiment and file searches, and turns ENCODE Portal metadata
+into analysis-ready file tables with accessions, assay, biosample, organism,
 target, assembly, output type, file size, checksums, and download URLs.
 
 Use it to search RNA-seq, ChIP-seq, and ATAC-seq experiments, list files from
 ENCODE accessions, select common outputs such as RNA-seq gene quantification
 tables, ChIP-seq peaks or signal tracks, and ATAC-seq peaks, preview downloads
-before transfer, read supported local files into R, and write reproducibility
-manifests.
+before transfer, load supported files into native R objects, and write
+reproducibility manifests. The returned tables and objects are intended to fit
+directly into downstream R and Bioconductor workflows with packages such as
+`rtracklayer`, `ChIPpeakAnno`, `edgeR`, `DESeq2`, and `GenomicRanges`.
+
+This package is not officially affiliated with the ENCODE Project. It started
+as a personal research utility to make ENCODE data discovery, download planning,
+and R-based analysis faster and easier for day-to-day workflows.
+
+## ENCODE REST API background
+
+The ENCODE Portal exposes records through ordinary URLs. An accession such as a
+biosample, experiment, or file can be requested over HTTP, and the response can
+be returned as JSON. `encodeUtils` wraps that process from R: it sends GET
+requests, parses the JSON response, flattens nested ENCODE fields into useful
+tables, and keeps enough metadata to trace which records and files were used.
+
+For debugging or learning the underlying API, two tools are helpful:
+
+- A browser JSON viewer, such as JSONView for Chrome or Firefox, or json-lite
+  for Safari.
+- `curl`, which is included with macOS and most Linux/Unix systems. If it is
+  not installed, use an SSL-aware build from the curl project.
+
+For example, this command requests a biosample record as JSON:
+
+```sh
+curl -H "Accept: application/json" \
+  https://www.encodeproject.org/biosamples/ENCBS000AAA/
+```
+
+The same idea is used by scripts: build a URL for an ENCODE object or search
+endpoint, request JSON, parse it, and convert it into native data structures.
+In `encodeUtils`, those native structures are R lists, data frames, file tables,
+and analysis-ready objects.
+
+The ENCODE REST API documentation asks programmatic users to stay at or below
+10 GET requests per second for a single user, group, company, or lab. Exceeding
+that limit can lead to IP-based blocking. `encodeUtils` uses a conservative
+default throttle of 5 requests per second; advanced users can change it with
+`options(encodeUtils.rate_per_second = ...)`.
 
 ## ENCODE Overview
 
