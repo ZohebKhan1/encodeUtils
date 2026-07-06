@@ -27,8 +27,11 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          bioc-version: release
-          extra-packages: any::covr
+          dependencies: '"hard"'
+          extra-packages: |
+            any::covr
+            any::testthat
+            any::withr
           needs: coverage
 
       - name: Test coverage
