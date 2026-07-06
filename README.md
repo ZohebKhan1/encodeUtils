@@ -1,11 +1,17 @@
 # encodeUtils
 
-`encodeUtils` queries ENCODE metadata from R, selects files, plans downloads,
-reads supported local files, and records the files used in an analysis.
+`encodeUtils` helps R users find ENCODE datasets and turn ENCODE Portal
+metadata into analysis-ready file tables. It queries the
+[ENCODE REST API](https://www.encodeproject.org/help/rest-api/), parses the
+JSON returned by experiment and file searches, and standardizes the fields
+needed for scripted analysis, including accessions, assay, biosample, organism,
+target, assembly, output type, file size, checksums, and download URLs.
 
-The package is read-only. It searches ENCODE, lists file metadata, checks
-downloads, downloads selected files, reads supported local files, and records
-provenance. It does not submit or modify ENCODE records.
+Use it to search RNA-seq, ChIP-seq, and ATAC-seq experiments, list files from
+ENCODE accessions, select common outputs such as RNA-seq gene quantification
+tables, ChIP-seq peaks or signal tracks, and ATAC-seq peaks, preview downloads
+before transfer, read supported local files into R, and write reproducibility
+manifests.
 
 ## ENCODE Overview
 

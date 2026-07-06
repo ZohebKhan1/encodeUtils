@@ -25,16 +25,19 @@ library(encodeUtils)
 
 # Introduction
 
-`encodeUtils` provides a small R-native workflow for finding ENCODE datasets,
-inspecting the files attached to those datasets, planning safe downloads,
-reading supported local files, and recording provenance. The package is intended
-for scripted high-throughput sequencing workflows where users need to move from
-an ENCODE accession or search result to files that can be used in R.
+`encodeUtils` provides an R workflow for finding ENCODE datasets and converting
+ENCODE Portal metadata into file tables that can be filtered, downloaded, read,
+and recorded in reproducible analyses. It queries the
+[ENCODE REST API](https://www.encodeproject.org/help/rest-api/), parses the JSON
+returned by experiment and file searches, and standardizes fields such as
+accessions, assay, biosample, organism, target, assembly, output type, file
+size, checksums, and download URLs.
 
-The package complements the ENCODE web portal and REST API. It does not replace
-Bioconductor import tools; instead, it keeps ENCODE discovery and download
-bookkeeping in R and delegates supported genomic file imports to packages such
-as `rtracklayer` and `Biostrings` when those packages are installed. BED-like
+The package is designed for RNA-seq, ChIP-seq, and ATAC-seq workflows where
+users need to move from an ENCODE accession or search result to the files used
+in R. It keeps ENCODE discovery and download bookkeeping in R and delegates
+supported genomic file imports to packages such as `rtracklayer` and
+`Biostrings` when those packages are installed. BED-like
 interval files are returned as `GRanges` by default when `GenomicRanges` and
 `IRanges` are available, and raw sequencing or alignment files are returned as
 paths for use with downstream tools such as `ShortRead`, `Rsamtools`, or
