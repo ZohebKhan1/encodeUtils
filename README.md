@@ -7,17 +7,17 @@ JSON returned by experiment and file searches, and turns ENCODE Portal metadata
 into analysis-ready file tables with accessions, assay, biosample, organism,
 target, assembly, output type, file size, checksums, and download URLs.
 
-Use it to search RNA-seq, ChIP-seq, and ATAC-seq experiments, list files from
-ENCODE accessions, select common outputs such as RNA-seq gene quantification
+This package can be used search RNA-seq, ChIP-seq, and ATAC-seq experiments, 
+list files from ENCODE accessions, select common outputs such as RNA-seq gene quantification
 tables, ChIP-seq peaks or signal tracks, and ATAC-seq peaks, preview downloads
 before transfer, load supported files into native R objects, and write
-reproducibility manifests. The returned tables and objects are intended to fit
+traceable logs/citations. The returned tables and objects are intended to fit
 directly into downstream R and Bioconductor workflows with packages such as
 `rtracklayer`, `ChIPpeakAnno`, `edgeR`, `DESeq2`, and `GenomicRanges`.
 
 This package is not officially affiliated with the ENCODE Project. It started
-as a personal research utility to make ENCODE data discovery, download planning,
-and R-based analysis faster and easier for day-to-day workflows.
+as a personal research utility to make ENCODE data R-based analysis faster and 
+easier for my own workflows.
 
 ## ENCODE REST API background
 
@@ -69,16 +69,6 @@ if (!requireNamespace("pak", quietly = TRUE)) {
 }
 
 pak::pak("ZohebKhan1/encodeUtils")
-```
-
-After a Bioconductor release becomes available, install it with:
-
-```r
-if (!requireNamespace("BiocManager", quietly = TRUE)) {
-  install.packages("BiocManager")
-}
-
-BiocManager::install("encodeUtils")
 ```
 
 ## Workflow
