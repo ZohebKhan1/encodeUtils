@@ -1,0 +1,40 @@
+url: https://zohebkhan1.github.io/encodeUtils/
+
+template:
+  bootstrap: 5
+  bootswatch: flatly
+
+navbar:
+  structure:
+    left: [intro, reference, articles, news]
+    right: [search, github]
+
+home:
+  title: encodeUtils
+  description: Query ENCODE metadata, select files, and load supported ENCODE datasets into R.
+
+reference:
+  - title: Package overview
+    contents:
+      - encodeUtils-package
+  - title: Search and inspect ENCODE records
+    contents:
+      - encode_search
+      - encode_results
+      - encode_list_files
+  - title: Select, download, and read files
+    contents:
+      - encode_file_presets
+      - encode_select_files
+      - encode_download
+      - encode_read
+  - title: Reproducibility
+    contents:
+      - encode_manifest
+
+articles:
+  - title: Tutorials
+    navbar: ~
+    contents:
+      - get-started
+      - encodeUtils

@@ -1,5 +1,14 @@
 # encodeUtils
 
+[![R-CMD-check](https://github.com/ZohebKhan1/encodeUtils/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/ZohebKhan1/encodeUtils/actions/workflows/R-CMD-check.yaml)
+[![pkgdown](https://github.com/ZohebKhan1/encodeUtils/actions/workflows/pkgdown.yaml/badge.svg)](https://github.com/ZohebKhan1/encodeUtils/actions/workflows/pkgdown.yaml)
+[![tests](https://img.shields.io/github/actions/workflow/status/ZohebKhan1/encodeUtils/R-CMD-check.yaml?branch=main&label=tests)](https://github.com/ZohebKhan1/encodeUtils/actions/workflows/R-CMD-check.yaml)
+[![coverage](https://codecov.io/gh/ZohebKhan1/encodeUtils/branch/main/graph/badge.svg)](https://app.codecov.io/gh/ZohebKhan1/encodeUtils)
+[![Project Status: Active](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
+[![last commit](https://img.shields.io/github/last-commit/ZohebKhan1/encodeUtils)](https://github.com/ZohebKhan1/encodeUtils/commits/main)
+[![GitHub stars](https://img.shields.io/github/stars/ZohebKhan1/encodeUtils?style=social)](https://github.com/ZohebKhan1/encodeUtils/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/ZohebKhan1/encodeUtils?style=social)](https://github.com/ZohebKhan1/encodeUtils/network/members)
+
 `encodeUtils` is an unofficial R package for convenient, traceable analysis of
 ENCODE datasets. It queries the
 [ENCODE REST API](https://www.encodeproject.org/help/rest-api/), parses the
@@ -7,17 +16,18 @@ JSON returned by experiment and file searches, and turns ENCODE Portal metadata
 into analysis-ready file tables with accessions, assay, biosample, organism,
 target, assembly, output type, file size, checksums, and download URLs.
 
-This package can be used search RNA-seq, ChIP-seq, and ATAC-seq experiments, 
-list files from ENCODE accessions, select common outputs such as RNA-seq gene quantification
-tables, ChIP-seq peaks or signal tracks, and ATAC-seq peaks, preview downloads
-before transfer, load supported files into native R objects, and write
-traceable logs/citations. The returned tables and objects are intended to fit
-directly into downstream R and Bioconductor workflows with packages such as
-`rtracklayer`, `ChIPpeakAnno`, `edgeR`, `DESeq2`, and `GenomicRanges`.
+This package can be used to search RNA-seq, ChIP-seq, and ATAC-seq experiments,
+list files from ENCODE accessions, select common outputs such as RNA-seq gene
+quantification tables, ChIP-seq peaks or signal tracks, and ATAC-seq peaks,
+preview downloads before transfer, load supported files into native R objects,
+and write traceable logs/citations. The returned tables and objects are
+intended to fit directly into downstream R and Bioconductor workflows with
+packages such as `rtracklayer`, `ChIPpeakAnno`, `edgeR`, `DESeq2`, and
+`GenomicRanges`.
 
 This package is not officially affiliated with the ENCODE Project. It started
-as a personal research utility to make ENCODE data R-based analysis faster and 
-easier for my own workflows.
+as a personal research utility to make ENCODE data discovery and R-based
+analysis faster and easier for my own workflows.
 
 ## ENCODE REST API background
 
