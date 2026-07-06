@@ -42,7 +42,17 @@ paths for use with downstream tools such as `ShortRead`, `Rsamtools`, or
 
 # Installation
 
-Install the release version from Bioconductor:
+Install the current package from GitHub:
+
+```{r install-github, eval=FALSE}
+if (!requireNamespace("pak", quietly = TRUE)) {
+  install.packages("pak")
+}
+
+pak::pak("ZohebKhan1/encodeUtils")
+```
+
+After a Bioconductor release becomes available, install it with:
 
 ```{r install-bioc, eval=FALSE}
 if (!requireNamespace("BiocManager", quietly = TRUE)) {

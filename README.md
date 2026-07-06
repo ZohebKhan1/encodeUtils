@@ -16,15 +16,7 @@ workflows.
 
 ## Installation
 
-```r
-if (!requireNamespace("BiocManager", quietly = TRUE)) {
-  install.packages("BiocManager")
-}
-
-BiocManager::install("encodeUtils")
-```
-
-The development version can be installed from GitHub when needed:
+Install the current package from GitHub:
 
 ```r
 if (!requireNamespace("pak", quietly = TRUE)) {
@@ -32,6 +24,16 @@ if (!requireNamespace("pak", quietly = TRUE)) {
 }
 
 pak::pak("ZohebKhan1/encodeUtils")
+```
+
+After a Bioconductor release becomes available, install it with:
+
+```r
+if (!requireNamespace("BiocManager", quietly = TRUE)) {
+  install.packages("BiocManager")
+}
+
+BiocManager::install("encodeUtils")
 ```
 
 ## Workflow
