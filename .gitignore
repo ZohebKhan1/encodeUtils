@@ -4,8 +4,6 @@
 .Ruserdata
 .Renviron
 .Rprofile
-.codex/
-.r_codex_utils/
 .DS_Store
 *.Rproj
 *.tar.gz
@@ -29,11 +27,3 @@ renv.lock
 
 /tools/
 /docs/
-
-# Local audit and Codex artifacts; keep package-only branches clean.
-AGENTS.md
-coding_guidelines.md
-bioconductor_review_audit_*.md
-external_bioconductor_audit_encodeUtils.md
-*_bioconductor_audit*.md
-*_audit_encodeUtils.md

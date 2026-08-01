@@ -1,8 +1,6 @@
 ^renv\.lock$
 ^_pkgdown\.yml$
 ^pkgdown$
-^AGENTS\.md$
-^coding_guidelines\.md$
 ^docs$
 ^site$
 ^\.gitignore$
@@ -12,9 +10,6 @@
 ^.*\.Rproj$
 ^tools$
 ^tmp$
-^\.codex$
 ^.*\.Rcheck$
 ^.*\.BiocCheck$
 ^\.Rproj\.user$
-^\.r_codex_utils$
-^.*audit.*[.]md$
