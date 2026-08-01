@@ -23,8 +23,8 @@ before filtering, joining, writing a CSV, or passing rows to another function.
 }
 \examples{
 tbl <- data.frame(
-  accession = "ENCSR000AAA",
-  assay_title = "ChIP-seq"
+    accession = "ENCSR000AAA",
+    assay_title = "ChIP-seq"
 )
 encode_results(tbl)
 }

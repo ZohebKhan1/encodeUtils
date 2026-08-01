@@ -145,25 +145,25 @@ to the attached File records.
 }
 \examples{
 if (interactive()) {
-  res <- encode_search(
-    type = "Experiment",
-    organism = "mouse",
-    assay = "rna-seq",
-    organ = "heart",
-    limit = 1,
-    quiet = TRUE
-  )
-  encode_results(res)
+    res <- encode_search(
+        type = "Experiment",
+        organism = "mouse",
+        assay = "rna-seq",
+        organ = "heart",
+        limit = 1,
+        quiet = TRUE
+    )
+    encode_results(res)
 
-  chip <- encode_search(
-    type = "Experiment",
-    organism = "mouse",
-    assay = "histone chip-seq",
-    target = "H3K27ac",
-    organ = "heart",
-    exclude_controls = TRUE,
-    limit = 1,
-    quiet = TRUE
-  )
+    chip <- encode_search(
+        type = "Experiment",
+        organism = "mouse",
+        assay = "histone chip-seq",
+        target = "H3K27ac",
+        organ = "heart",
+        exclude_controls = TRUE,
+        limit = 1,
+        quiet = TRUE
+    )
 }
 }

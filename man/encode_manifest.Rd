@@ -42,11 +42,11 @@ manifest as JSON.
 }
 \examples{
 files <- data.frame(
-  file_accession = "ENCFF000AAA",
-  experiment_accession = "ENCSR000AAA",
-  file_format = "txt",
-  output_type = "metadata",
-  status = "released"
+    file_accession = "ENCFF000AAA",
+    experiment_accession = "ENCSR000AAA",
+    file_format = "txt",
+    output_type = "metadata",
+    status = "released"
 )
 path <- tempfile(fileext = ".json")
 manifest <- encode_manifest(files, include_session = FALSE, path = path)

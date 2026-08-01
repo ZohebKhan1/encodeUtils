@@ -7,37 +7,37 @@
 #'
 #' @examples
 #' files <- data.frame(
-#'   file_accession = c("ENCFF000AAA", "ENCFF000AAB"),
-#'   experiment_accession = c("ENCSR000AAA", "ENCSR000AAA"),
-#'   file_format = c("bed", "bigWig"),
-#'   output_type = c("peaks", "signal"),
-#'   assembly = c("GRCh38", "GRCh38"),
-#'   file_size = c(100, 200)
+#'     file_accession = c("ENCFF000AAA", "ENCFF000AAB"),
+#'     experiment_accession = c("ENCSR000AAA", "ENCSR000AAA"),
+#'     file_format = c("bed", "bigWig"),
+#'     output_type = c("peaks", "signal"),
+#'     assembly = c("GRCh38", "GRCh38"),
+#'     file_size = c(100, 200)
 #' )
 #' encode_file_summary(files)
 #' @noRd
 encode_file_summary <- function(files) {
-  if (inherits(files, "encode_selected_files")) {
-    files <- files$files
-  }
-  files <- as.data.frame(files, stringsAsFactors = FALSE)
-  files <- encode_ensure_columns(files, c(
-    "file_accession", "experiment_accession", "file_format", "output_type",
-    "assembly", "file_size"
-  ))
-  total_size <- encode_size(files)
-  result <- list(
-    n_files = nrow(files),
-    n_experiments = length(unique(stats::na.omit(files$experiment_accession))),
-    total_size = total_size,
-    total_size_pretty = encode_pretty_bytes(total_size),
-    formats = encode_count_values(files$file_format, "file_format"),
-    assemblies = encode_count_values(files$assembly, "assembly"),
-    output_types = encode_count_values(files$output_type, "output_type"),
-    largest_files = encode_largest_files(files, n = min(10L, nrow(files)))
-  )
-  class(result) <- c("encode_file_summary", "list")
-  result
+    if (inherits(files, "encode_selected_files")) {
+        files <- files$files
+    }
+    files <- as.data.frame(files, stringsAsFactors = FALSE)
+    files <- encode_ensure_columns(files, c(
+        "file_accession", "experiment_accession", "file_format", "output_type",
+        "assembly", "file_size"
+    ))
+    total_size <- encode_size(files)
+    result <- list(
+        n_files = nrow(files),
+        n_experiments = length(unique(stats::na.omit(files$experiment_accession))),
+        total_size = total_size,
+        total_size_pretty = encode_pretty_bytes(total_size),
+        formats = encode_count_values(files$file_format, "file_format"),
+        assemblies = encode_count_values(files$assembly, "assembly"),
+        output_types = encode_count_values(files$output_type, "output_type"),
+        largest_files = encode_largest_files(files, n = min(10L, nrow(files)))
+    )
+    class(result) <- c("encode_file_summary", "list")
+    result
 }
 
 #' Sum known ENCODE file sizes
@@ -50,11 +50,11 @@ encode_file_summary <- function(files) {
 #' encode_size(data.frame(file_size = c(100, NA, 50)))
 #' @noRd
 encode_size <- function(files) {
-  files <- as.data.frame(files, stringsAsFactors = FALSE)
-  if (!"file_size" %in% names(files)) {
-    return(0)
-  }
-  sum(encode_as_file_size(files$file_size), na.rm = TRUE)
+    files <- as.data.frame(files, stringsAsFactors = FALSE)
+    if (!"file_size" %in% names(files)) {
+        return(0)
+    }
+    sum(encode_as_file_size(files$file_size), na.rm = TRUE)
 }
 
 #' Return the largest files in an ENCODE file table
@@ -69,30 +69,32 @@ encode_size <- function(files) {
 #' encode_largest_files(files, n = 1)
 #' @noRd
 encode_largest_files <- function(files, n = 10L) {
-  files <- as.data.frame(files, stringsAsFactors = FALSE)
-  if (!"file_size" %in% names(files) || nrow(files) == 0L) {
-    return(files[0L, , drop = FALSE])
-  }
-  sizes <- encode_as_file_size(files$file_size)
-  files$file_size <- sizes
-  if ("file_size_pretty" %in% names(files)) {
-    files$file_size_pretty <- encode_pretty_bytes(sizes)
-  }
-  files <- files[order(sizes, decreasing = TRUE, na.last = TRUE), , drop = FALSE]
-  utils::head(files, n)
+    files <- as.data.frame(files, stringsAsFactors = FALSE)
+    if (!"file_size" %in% names(files) || nrow(files) == 0L) {
+        return(files[0L, , drop = FALSE])
+    }
+    sizes <- encode_as_file_size(files$file_size)
+    files$file_size <- sizes
+    if ("file_size_pretty" %in% names(files)) {
+        files$file_size_pretty <- encode_pretty_bytes(sizes)
+    }
+    files <- files[order(sizes, decreasing = TRUE, na.last = TRUE), , drop = FALSE]
+    utils::head(files, n)
 }
 
+# Summary-table helpers
+
 encode_count_values <- function(values, name) {
-  values <- values[!is.na(values) & nzchar(values)]
-  if (length(values) == 0L) {
-    return(data.frame(value = character(), n = integer()))
-  }
-  counts <- sort(table(values), decreasing = TRUE)
-  out <- data.frame(
-    value = names(counts),
-    n = as.integer(counts),
-    stringsAsFactors = FALSE
-  )
-  names(out)[[1L]] <- name
-  out
+    values <- values[!is.na(values) & nzchar(values)]
+    if (length(values) == 0L) {
+        return(data.frame(value = character(), n = integer()))
+    }
+    counts <- sort(table(values), decreasing = TRUE)
+    out <- data.frame(
+        value = names(counts),
+        n = as.integer(counts),
+        stringsAsFactors = FALSE
+    )
+    names(out)[[1L]] <- name
+    out
 }

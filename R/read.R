@@ -10,6 +10,9 @@
 #' aligned feature metadata, and numeric expression matrices. A local path
 #' returns the native object for that file. A downloaded-file table always
 #' returns an `encode_loaded_files` collection, including for a one-row table.
+#' Combined matrices are created only when every table has one complete, unique
+#' feature identifier in common; otherwise the original tables are retained
+#' without an inferred alignment.
 #'
 #' @param path Local file path, downloaded-file table, or file table with a
 #'   `local_path` column.
@@ -73,514 +76,525 @@
 #' # loaded <- encode_read(downloaded, values = c("raw_counts", "tpm"))
 #' # loaded$matrices$raw_counts
 encode_read <- function(
-                        path,
-                        format = NULL,
-                        max_size = "100MB",
-                        region = NULL,
-                        allow_large = FALSE,
-                        unsupported = c("return_path", "error"),
-                        as = c("auto", "data.frame", "GRanges", "path"),
-                        row_names = c("gene_symbol", "ensembl_id", "entrez_id", "none"),
-                        values = "raw_counts",
-                        simplify_quant = TRUE,
-                        ...) {
-  unsupported <- match.arg(unsupported)
-  as <- match.arg(as)
-  row_names <- match.arg(row_names)
-  values <- encode_normalize_matrix_values(values)
-  if (encode_is_read_table(path)) {
-    if (!"local_path" %in% names(path)) {
-      cli::cli_abort("{.arg path} table input must include {.field local_path}.")
+    path,
+    format = NULL,
+    max_size = "100MB",
+    region = NULL,
+    allow_large = FALSE,
+    unsupported = c("return_path", "error"),
+    as = c("auto", "data.frame", "GRanges", "path"),
+    row_names = c("gene_symbol", "ensembl_id", "entrez_id", "none"),
+    values = "raw_counts",
+    simplify_quant = TRUE,
+    ...
+) {
+    unsupported <- match.arg(unsupported)
+    as <- match.arg(as)
+    row_names <- match.arg(row_names)
+    values <- encode_normalize_matrix_values(values)
+    if (encode_is_read_table(path)) {
+        if (!"local_path" %in% names(path)) {
+            cli::cli_abort("{.arg path} table input must include {.field local_path}.")
+        }
+        return(encode_load_downloaded_files(
+            path,
+            max_size = max_size,
+            format = format,
+            region = region,
+            allow_large = allow_large,
+            unsupported = unsupported,
+            as = as,
+            row_names = row_names,
+            matrix_values = values,
+            simplify_quant = simplify_quant,
+            quiet = TRUE
+        ))
     }
-    return(encode_load_downloaded_files(
-      path,
-      max_size = max_size,
-      format = format,
-      region = region,
-      allow_large = allow_large,
-      unsupported = unsupported,
-      as = as,
-      row_names = row_names,
-      matrix_values = values,
-      simplify_quant = simplify_quant,
-      quiet = TRUE
-    ))
-  }
-  path <- encode_read_path(path)
-  if (!file.exists(path)) {
-    cli::cli_abort("File does not exist: {.path {path}}.")
-  }
-  if (identical(as, "path")) {
-    return(encode_unsupported_local_file(
-      path = path,
-      reason = "path return requested",
-      unsupported = "return_path"
-    ))
-  }
-  max_size <- encode_parse_size(max_size, arg = "max_size")
-  file_size <- as.numeric(file.info(path)$size)
-  if (!is.na(file_size) && file_size > max_size) {
-    return(encode_unsupported_local_file(
-      path = path,
-      reason = "file exceeds max_size",
-      unsupported = unsupported
-    ))
-  }
+    path <- encode_read_path(path)
+    if (!file.exists(path)) {
+        cli::cli_abort("File does not exist: {.path {path}}.")
+    }
+    if (identical(as, "path")) {
+        return(encode_unsupported_local_file(
+            path = path,
+            reason = "path return requested",
+            unsupported = "return_path"
+        ))
+    }
+    max_size <- encode_parse_size(max_size, arg = "max_size")
+    file_size <- as.numeric(file.info(path)$size)
+    if (!is.na(file_size) && file_size > max_size) {
+        return(encode_unsupported_local_file(
+            path = path,
+            reason = "file exceeds max_size",
+            unsupported = unsupported
+        ))
+    }
 
-  format <- format %||% encode_get_extension(path)
-  format <- tolower(format)
-  if (format %in% c("tsv", "txt")) {
-    return(encode_set_row_names(
-      encode_read_tsv(path, simplify_quant = simplify_quant, ...),
-      row_names
-    ))
-  }
-  if (format %in% c("csv")) {
-    return(utils::read.csv(path, stringsAsFactors = FALSE, ...))
-  }
-  if (format %in% c("json")) {
-    return(jsonlite::fromJSON(path, simplifyVector = FALSE))
-  }
-  if (format %in% c("bw", "bigwig", "bb", "bigbed") && is.null(region) && !isTRUE(allow_large)) {
-    ## Indexed signal and annotation files can be very large; require an
-    ## explicit region or opt-in full import.
-    return(encode_unsupported_local_file(
-      path = path,
-      reason = "indexed signal and annotation files require region or allow_large = TRUE",
-      unsupported = unsupported
-    ))
-  }
-  if (format %in% c("bed", "narrowpeak", "broadpeak")) {
-    return(encode_read_bed(path, format = format, as = as, unsupported = unsupported))
-  }
-  if (format %in% c("gff", "gtf")) {
-    return(encode_read_gff(
-      path = path,
-      format = format,
-      unsupported = unsupported,
-      region = region,
-      ...
-    ))
-  }
-  if (format %in% c("bw", "bigwig", "bb", "bigbed")) {
-    return(encode_read_with_optional_package(
-      package = "rtracklayer",
-      fun = "import",
-      path = path,
-      unsupported = unsupported,
-      reason = "rtracklayer is required for genomic interval imports",
-      region = region,
-      ...
-    ))
-  }
-  if (format %in% c("fa", "fasta")) {
-    return(encode_read_with_optional_package(
-      package = "Biostrings",
-      fun = "readDNAStringSet",
-      path = path,
-      unsupported = unsupported,
-      reason = "Biostrings is required for FASTA imports"
-    ))
-  }
-  if (format %in% c("fq", "fastq")) {
-    return(encode_unsupported_local_file(
-      path = path,
-      reason = "FASTQ files are returned as paths; use a read-processing tool for sequence data",
-      unsupported = unsupported
-    ))
-  }
-  if (format %in% c("bam", "cram", "sam")) {
-    return(encode_unsupported_local_file(
-      path = path,
-      reason = "alignment files are returned as paths; use Rsamtools or GenomicAlignments for region-based reads",
-      unsupported = unsupported
-    ))
-  }
+    format <- format %||% encode_get_extension(path)
+    format <- tolower(format)
+    if (format %in% c("tsv", "txt")) {
+        return(encode_set_row_names(
+            encode_read_tsv(path, simplify_quant = simplify_quant, ...),
+            row_names
+        ))
+    }
+    if (format %in% c("csv")) {
+        return(utils::read.csv(path, stringsAsFactors = FALSE, ...))
+    }
+    if (format %in% c("json")) {
+        return(jsonlite::fromJSON(path, simplifyVector = FALSE))
+    }
+    if (format %in% c("bw", "bigwig", "bb", "bigbed") && is.null(region) && !isTRUE(allow_large)) {
+        ## Indexed signal and annotation files can be very large; require an
+        ## explicit region or opt-in full import.
+        return(encode_unsupported_local_file(
+            path = path,
+            reason = "indexed signal and annotation files require region or allow_large = TRUE",
+            unsupported = unsupported
+        ))
+    }
+    if (format %in% c("bed", "narrowpeak", "broadpeak")) {
+        return(encode_read_bed(path, format = format, as = as, unsupported = unsupported))
+    }
+    if (format %in% c("gff", "gtf")) {
+        return(encode_read_gff(
+            path = path,
+            format = format,
+            unsupported = unsupported,
+            region = region,
+            ...
+        ))
+    }
+    if (format %in% c("bw", "bigwig", "bb", "bigbed")) {
+        return(encode_read_with_optional_package(
+            package = "rtracklayer",
+            fun = "import",
+            path = path,
+            unsupported = unsupported,
+            reason = "rtracklayer is required for genomic interval imports",
+            region = region,
+            ...
+        ))
+    }
+    if (format %in% c("fa", "fasta")) {
+        return(encode_read_with_optional_package(
+            package = "Biostrings",
+            fun = "readDNAStringSet",
+            path = path,
+            unsupported = unsupported,
+            reason = "Biostrings is required for FASTA imports"
+        ))
+    }
+    if (format %in% c("fq", "fastq")) {
+        return(encode_unsupported_local_file(
+            path = path,
+            reason = "FASTQ files are returned as paths; use a read-processing tool for sequence data",
+            unsupported = unsupported
+        ))
+    }
+    if (format %in% c("bam", "cram", "sam")) {
+        return(encode_unsupported_local_file(
+            path = path,
+            reason = "alignment files are returned as paths; use Rsamtools or GenomicAlignments for region-based reads",
+            unsupported = unsupported
+        ))
+    }
 
-  encode_unsupported_local_file(
-    path = path,
-    reason = paste0("unsupported file format: ", format),
-    unsupported = unsupported
-  )
+    encode_unsupported_local_file(
+        path = path,
+        reason = paste0("unsupported file format: ", format),
+        unsupported = unsupported
+    )
 }
+
+# Quantification-table readers
 
 ## ENCODE quantification TSVs appear in several pipeline-specific shapes; detect
 ## common count formats before generic table import.
 encode_read_tsv <- function(path, simplify_quant = TRUE, ...) {
-  first_lines <- encode_read_lines(path, n = 5L)
-  if (length(first_lines) == 0L) {
-    return(data.frame())
-  }
-  if (encode_is_featurecounts_tsv(first_lines)) {
-    return(encode_read_featurecounts(path, simplify_quant = simplify_quant))
-  }
-  if (encode_is_htseq_counts_tsv(first_lines)) {
-    return(encode_read_htseq_counts(path, simplify_quant = simplify_quant))
-  }
-  table <- utils::read.delim(path, stringsAsFactors = FALSE, check.names = FALSE, ...)
-  if (!isTRUE(simplify_quant)) {
-    return(table)
-  }
-  encode_simplify_quant_table(table)
+    first_lines <- encode_read_lines(path, n = 5L)
+    if (length(first_lines) == 0L) {
+        return(data.frame())
+    }
+    if (encode_is_featurecounts_tsv(first_lines)) {
+        return(encode_read_featurecounts(path, simplify_quant = simplify_quant))
+    }
+    if (encode_is_htseq_counts_tsv(first_lines)) {
+        return(encode_read_htseq_counts(path, simplify_quant = simplify_quant))
+    }
+    table <- utils::read.delim(path, stringsAsFactors = FALSE, check.names = FALSE, ...)
+    if (!isTRUE(simplify_quant)) {
+        return(table)
+    }
+    encode_simplify_quant_table(table)
 }
 
 encode_read_featurecounts <- function(path, simplify_quant = TRUE) {
-  table <- utils::read.delim(
-    path,
-    stringsAsFactors = FALSE,
-    check.names = FALSE,
-    comment.char = "#"
-  )
-  if (!isTRUE(simplify_quant)) {
-    return(table)
-  }
-  names(table)[names(table) == "Geneid"] <- "gene_id"
-  count_column <- utils::tail(names(table), 1L)
-  names(table)[names(table) == count_column] <- "counts"
-  table[, intersect(c("gene_id", "counts"), names(table)), drop = FALSE]
+    table <- utils::read.delim(
+        path,
+        stringsAsFactors = FALSE,
+        check.names = FALSE,
+        comment.char = "#"
+    )
+    if (!isTRUE(simplify_quant)) {
+        return(table)
+    }
+    names(table)[names(table) == "Geneid"] <- "gene_id"
+    count_column <- utils::tail(names(table), 1L)
+    names(table)[names(table) == count_column] <- "counts"
+    table[, intersect(c("gene_id", "counts"), names(table)), drop = FALSE]
 }
 
 encode_read_lines <- function(path, n) {
-  connection <- if (grepl("[.](gz|bgz)$", path, ignore.case = TRUE)) {
-    gzfile(path, open = "rt")
-  } else {
-    file(path, open = "rt")
-  }
-  on.exit(close(connection), add = TRUE)
-  readLines(connection, n = n, warn = FALSE)
+    connection <- if (grepl("[.](gz|bgz)$", path, ignore.case = TRUE)) {
+        gzfile(path, open = "rt")
+    } else {
+        file(path, open = "rt")
+    }
+    on.exit(close(connection), add = TRUE)
+    readLines(connection, n = n, warn = FALSE)
 }
 
 encode_read_gff <- function(path, format, unsupported, region = NULL, ...) {
-  first_lines <- encode_read_lines(path, n = 50L)
-  has_ucsc_directive <- any(encode_is_ucsc_directive(first_lines))
-  import_path <- path
-  if (has_ucsc_directive) {
-    import_path <- encode_gff_without_ucsc_directives(path, format = format)
-    on.exit(unlink(import_path), add = TRUE)
-  }
-  encode_read_with_optional_package(
-    package = "rtracklayer",
-    fun = "import",
-    path = import_path,
-    source_path = path,
-    unsupported = unsupported,
-    reason = "rtracklayer is required for GFF and GTF imports",
-    region = region,
-    ...
-  )
+    first_lines <- encode_read_lines(path, n = 50L)
+    has_ucsc_directive <- any(encode_is_ucsc_directive(first_lines))
+    import_path <- path
+    if (has_ucsc_directive) {
+        import_path <- encode_gff_without_ucsc_directives(path, format = format)
+        on.exit(unlink(import_path), add = TRUE)
+    }
+    encode_read_with_optional_package(
+        package = "rtracklayer",
+        fun = "import",
+        path = import_path,
+        source_path = path,
+        unsupported = unsupported,
+        reason = "rtracklayer is required for GFF and GTF imports",
+        region = region,
+        ...
+    )
 }
 
 encode_gff_without_ucsc_directives <- function(path, format) {
-  input <- if (grepl("[.](gz|bgz)$", path, ignore.case = TRUE)) {
-    gzfile(path, open = "rt")
-  } else {
-    file(path, open = "rt")
-  }
-  output_path <- tempfile(fileext = paste0(".", tolower(format)))
-  output <- file(output_path, open = "wt")
-  input_open <- TRUE
-  output_open <- TRUE
-  completed <- FALSE
-  on.exit({
-    if (input_open) {
-      close(input)
+    input <- if (grepl("[.](gz|bgz)$", path, ignore.case = TRUE)) {
+        gzfile(path, open = "rt")
+    } else {
+        file(path, open = "rt")
     }
-    if (output_open) {
-      close(output)
-    }
-    if (!completed && file.exists(output_path)) {
-      unlink(output_path)
-    }
-  }, add = TRUE)
+    output_path <- tempfile(fileext = paste0(".", tolower(format)))
+    output <- file(output_path, open = "wt")
+    input_open <- TRUE
+    output_open <- TRUE
+    completed <- FALSE
+    on.exit(
+        {
+            if (input_open) {
+                close(input)
+            }
+            if (output_open) {
+                close(output)
+            }
+            if (!completed && file.exists(output_path)) {
+                unlink(output_path)
+            }
+        },
+        add = TRUE
+    )
 
-  repeat {
-    lines <- readLines(input, n = 10000L, warn = FALSE)
-    if (length(lines) == 0L) {
-      break
+    repeat {
+        lines <- readLines(input, n = 10000L, warn = FALSE)
+        if (length(lines) == 0L) {
+            break
+        }
+        directives <- encode_is_ucsc_directive(lines)
+        writeLines(lines[!directives], output, useBytes = TRUE)
     }
-    directives <- encode_is_ucsc_directive(lines)
-    writeLines(lines[!directives], output, useBytes = TRUE)
-  }
-  close(input)
-  input_open <- FALSE
-  close(output)
-  output_open <- FALSE
-  completed <- TRUE
-  output_path
+    close(input)
+    input_open <- FALSE
+    close(output)
+    output_open <- FALSE
+    completed <- TRUE
+    output_path
 }
 
 encode_is_ucsc_directive <- function(lines) {
-  grepl("^[[:space:]]*(track|browser)([[:space:]]|$)", lines)
+    grepl("^[[:space:]]*(track|browser)([[:space:]]|$)", lines)
 }
 
 encode_is_featurecounts_tsv <- function(lines) {
-  any(grepl("^Geneid\\tChr\\tStart\\tEnd\\tStrand\\tLength\\t", lines))
+    any(grepl("^Geneid\\tChr\\tStart\\tEnd\\tStrand\\tLength\\t", lines))
 }
 
 encode_is_htseq_counts_tsv <- function(lines) {
-  fields <- strsplit(lines[[1L]], "\t", fixed = TRUE)[[1L]]
-  length(fields) %in% c(2L, 4L) &&
-    grepl("^(N_|ENS[A-Z]*G|[0-9]+)", fields[[1L]]) &&
-    all(grepl("^-?[0-9]+([.][0-9]+)?$", fields[-1L]))
+    fields <- strsplit(lines[[1L]], "\t", fixed = TRUE)[[1L]]
+    length(fields) %in% c(2L, 4L) &&
+        grepl("^(N_|ENS[A-Z]*G|[0-9]+)", fields[[1L]]) &&
+        all(grepl("^-?[0-9]+([.][0-9]+)?$", fields[-1L]))
 }
 
 encode_read_htseq_counts <- function(path, simplify_quant = TRUE) {
-  table <- utils::read.delim(
-    path,
-    header = FALSE,
-    stringsAsFactors = FALSE,
-    check.names = FALSE
-  )
-  if (!isTRUE(simplify_quant)) {
-    return(table)
-  }
-  if (ncol(table) == 2L) {
-    names(table) <- c("gene_id", "counts")
-  } else if (ncol(table) == 4L) {
-    names(table) <- c("gene_id", "counts", "stranded_first", "stranded_second")
-  } else {
-    names(table)[[1L]] <- "gene_id"
-    names(table)[[2L]] <- "counts"
-  }
-  table <- table[!grepl("^N_", table$gene_id), , drop = FALSE]
-  table[, intersect(c("gene_id", "counts"), names(table)), drop = FALSE]
+    table <- utils::read.delim(
+        path,
+        header = FALSE,
+        stringsAsFactors = FALSE,
+        check.names = FALSE
+    )
+    if (!isTRUE(simplify_quant)) {
+        return(table)
+    }
+    if (ncol(table) == 2L) {
+        names(table) <- c("gene_id", "counts")
+    } else if (ncol(table) == 4L) {
+        names(table) <- c("gene_id", "counts", "stranded_first", "stranded_second")
+    } else {
+        names(table)[[1L]] <- "gene_id"
+        names(table)[[2L]] <- "counts"
+    }
+    table <- table[!grepl("^N_", table$gene_id), , drop = FALSE]
+    table[, intersect(c("gene_id", "counts"), names(table)), drop = FALSE]
 }
 
 encode_simplify_quant_table <- function(table) {
-  if (!is.data.frame(table) || !"gene_id" %in% names(table)) {
-    return(table)
-  }
-  if (!any(c("expected_count", "counts", "count", "TPM", "FPKM", "RPKM") %in% names(table))) {
-    return(table)
-  }
-  table <- as.data.frame(table, stringsAsFactors = FALSE)
-  if (!"raw_counts" %in% names(table)) {
-    if ("expected_count" %in% names(table)) {
-      table$raw_counts <- table$expected_count
-    } else if ("counts" %in% names(table)) {
-      table$raw_counts <- table$counts
-    } else if ("count" %in% names(table)) {
-      table$raw_counts <- table$count
+    if (!is.data.frame(table) || !"gene_id" %in% names(table)) {
+        return(table)
     }
-  }
-  table <- encode_normalize_quant_identifiers(table)
-  columns <- intersect(c("gene_symbol", "ensembl_id", "entrez_id", "raw_counts", "TPM", "FPKM", "RPKM"), names(table))
-  table[, columns, drop = FALSE]
+    if (!any(c("expected_count", "counts", "count", "TPM", "FPKM", "RPKM") %in% names(table))) {
+        return(table)
+    }
+    table <- as.data.frame(table, stringsAsFactors = FALSE)
+    if (!"raw_counts" %in% names(table)) {
+        if ("expected_count" %in% names(table)) {
+            table$raw_counts <- table$expected_count
+        } else if ("counts" %in% names(table)) {
+            table$raw_counts <- table$counts
+        } else if ("count" %in% names(table)) {
+            table$raw_counts <- table$count
+        }
+    }
+    table <- encode_normalize_quant_identifiers(table)
+    columns <- intersect(c("gene_symbol", "ensembl_id", "entrez_id", "raw_counts", "TPM", "FPKM", "RPKM"), names(table))
+    table[, columns, drop = FALSE]
 }
 
 encode_normalize_quant_identifiers <- function(table) {
-  if (!"gene_id" %in% names(table)) {
-    return(table)
-  }
-  gene_id <- as.character(table$gene_id)
-  if (!"ensembl_id" %in% names(table)) {
-    table$ensembl_id <- ifelse(grepl("^ENS[A-Z]*G[0-9]+([.][0-9]+)?$", gene_id), gene_id, NA_character_)
-  }
-  if (!"entrez_id" %in% names(table)) {
-    table$entrez_id <- ifelse(grepl("^[0-9]+$", gene_id), gene_id, NA_character_)
-  }
-  if (!"gene_symbol" %in% names(table)) {
-    table$gene_symbol <- ifelse(
-      !grepl("^ENS[A-Z]*G[0-9]+([.][0-9]+)?$", gene_id) & !grepl("^[0-9]+$", gene_id),
-      gene_id,
-      NA_character_
-    )
-  }
-  table
+    if (!"gene_id" %in% names(table)) {
+        return(table)
+    }
+    gene_id <- as.character(table$gene_id)
+    if (!"ensembl_id" %in% names(table)) {
+        table$ensembl_id <- ifelse(grepl("^ENS[A-Z]*G[0-9]+([.][0-9]+)?$", gene_id), gene_id, NA_character_)
+    }
+    if (!"entrez_id" %in% names(table)) {
+        table$entrez_id <- ifelse(grepl("^[0-9]+$", gene_id), gene_id, NA_character_)
+    }
+    if (!"gene_symbol" %in% names(table)) {
+        table$gene_symbol <- ifelse(
+            !grepl("^ENS[A-Z]*G[0-9]+([.][0-9]+)?$", gene_id) & !grepl("^[0-9]+$", gene_id),
+            gene_id,
+            NA_character_
+        )
+    }
+    table
 }
 
+# Genomic interval readers
+
 encode_read_bed <- function(path, format = "bed", as = "auto", unsupported = "return_path") {
-  if (identical(as, "data.frame")) {
-    return(encode_read_bed_table(path, format = format))
-  }
-  if (as %in% c("auto", "GRanges")) {
-    return(encode_read_bed_granges(path, format = format, unsupported = unsupported))
-  }
-  encode_read_bed_table(path, format = format)
+    if (identical(as, "data.frame")) {
+        return(encode_read_bed_table(path, format = format))
+    }
+    if (as %in% c("auto", "GRanges")) {
+        return(encode_read_bed_granges(path, format = format, unsupported = unsupported))
+    }
+    encode_read_bed_table(path, format = format)
 }
 
 encode_read_bed_granges <- function(path, format = "bed", unsupported = "return_path") {
-  imported <- if (requireNamespace("rtracklayer", quietly = TRUE)) {
-    try(rtracklayer::import(path, format = "BED"), silent = TRUE)
-  } else {
-    structure("rtracklayer is not installed", class = "try-error")
-  }
-  if (!inherits(imported, "try-error")) {
-    return(imported)
-  }
-  ## rtracklayer handles standard BED-like files. ENCODE peak files can include
-  ## additional columns, so fall back to a parsed table and construct GRanges
-  ## from chrom/start/end when possible.
-  table <- encode_read_bed_table(path, format = format)
-  tryCatch(
-    encode_bed_table_to_granges(table),
-    error = function(cnd) {
-      if (identical(unsupported, "error")) {
-        cli::cli_abort(c(
-          "Failed to convert BED-like file to GRanges.",
-          "x" = conditionMessage(cnd),
-          "i" = "Use {.code as = \"data.frame\"} to read the file as a table."
-        ))
-      }
-      table
+    imported <- if (requireNamespace("rtracklayer", quietly = TRUE)) {
+        try(rtracklayer::import(path, format = "BED"), silent = TRUE)
+    } else {
+        structure("rtracklayer is not installed", class = "try-error")
     }
-  )
+    if (!inherits(imported, "try-error")) {
+        return(imported)
+    }
+    ## rtracklayer handles standard BED-like files. ENCODE peak files can include
+    ## additional columns, so fall back to a parsed table and construct GRanges
+    ## from chrom/start/end when possible.
+    table <- encode_read_bed_table(path, format = format)
+    tryCatch(
+        encode_bed_table_to_granges(table),
+        error = function(cnd) {
+            if (identical(unsupported, "error")) {
+                cli::cli_abort(c(
+                    "Failed to convert BED-like file to GRanges.",
+                    "x" = conditionMessage(cnd),
+                    "i" = "Use {.code as = \"data.frame\"} to read the file as a table."
+                ))
+            }
+            table
+        }
+    )
 }
 
 encode_bed_table_to_granges <- function(table) {
-  required <- c("chrom", "start", "end")
-  if (!all(required %in% names(table))) {
-    cli::cli_abort("BED-like table must contain chrom, start, and end columns.")
-  }
-  start <- encode_as_integer_no_warning(table$start) + 1L
-  end <- encode_as_integer_no_warning(table$end)
-  if (anyNA(start) || anyNA(end)) {
-    cli::cli_abort("BED-like start and end columns must be numeric.")
-  }
-  if (any(end < start)) {
-    cli::cli_abort("BED-like end positions must be greater than or equal to start positions after coordinate conversion.")
-  }
-  strand <- rep("*", nrow(table))
-  if ("strand" %in% names(table)) {
-    observed <- as.character(table$strand)
-    strand[observed %in% c("+", "-", "*")] <- observed[observed %in% c("+", "-", "*")]
-  }
-  metadata <- table[, setdiff(names(table), c("chrom", "start", "end", "strand")), drop = FALSE]
-  do.call(
-    GenomicRanges::GRanges,
-    c(
-      list(
-        seqnames = as.character(table$chrom),
-        ranges = IRanges::IRanges(start = start, end = end),
-        strand = strand
-      ),
-      as.list(metadata)
+    required <- c("chrom", "start", "end")
+    if (!all(required %in% names(table))) {
+        cli::cli_abort("BED-like table must contain chrom, start, and end columns.")
+    }
+    start <- encode_as_integer_no_warning(table$start) + 1L
+    end <- encode_as_integer_no_warning(table$end)
+    if (anyNA(start) || anyNA(end)) {
+        cli::cli_abort("BED-like start and end columns must be numeric.")
+    }
+    if (any(end < start)) {
+        cli::cli_abort("BED-like end positions must be greater than or equal to start positions after coordinate conversion.")
+    }
+    strand <- rep("*", nrow(table))
+    if ("strand" %in% names(table)) {
+        observed <- as.character(table$strand)
+        strand[observed %in% c("+", "-", "*")] <- observed[observed %in% c("+", "-", "*")]
+    }
+    metadata <- table[, setdiff(names(table), c("chrom", "start", "end", "strand")), drop = FALSE]
+    do.call(
+        GenomicRanges::GRanges,
+        c(
+            list(
+                seqnames = as.character(table$chrom),
+                ranges = IRanges::IRanges(start = start, end = end),
+                strand = strand
+            ),
+            as.list(metadata)
+        )
     )
-  )
 }
 
 encode_as_integer_no_warning <- function(x) {
-  withCallingHandlers(
-    as.integer(x),
-    warning = function(cnd) {
-      invokeRestart("muffleWarning")
-    }
-  )
+    withCallingHandlers(
+        as.integer(x),
+        warning = function(cnd) {
+            invokeRestart("muffleWarning")
+        }
+    )
 }
 
 encode_read_bed_table <- function(path, format = "bed") {
-  table <- utils::read.delim(
-    path,
-    header = FALSE,
-    stringsAsFactors = FALSE,
-    check.names = FALSE,
-    comment.char = "#"
-  )
-  format <- tolower(format)
-  names <- switch(
-    format,
-    narrowpeak = c(
-      "chrom", "start", "end", "name", "score", "strand",
-      "signal_value", "p_value", "q_value", "peak"
-    ),
-    broadpeak = c(
-      "chrom", "start", "end", "name", "score", "strand",
-      "signal_value", "p_value", "q_value"
-    ),
-    c("chrom", "start", "end", "name", "score", "strand")
-  )
-  named_count <- min(length(names), ncol(table))
-  extra_count <- ncol(table) - named_count
-  column_names <- names[seq_len(named_count)]
-  if (extra_count > 0L) {
-    column_names <- c(column_names, paste0("extra_", seq_len(extra_count)))
-  }
-  names(table) <- column_names
-  table
+    table <- utils::read.delim(
+        path,
+        header = FALSE,
+        stringsAsFactors = FALSE,
+        check.names = FALSE,
+        comment.char = "#"
+    )
+    format <- tolower(format)
+    names <- switch(format,
+        narrowpeak = c(
+            "chrom", "start", "end", "name", "score", "strand",
+            "signal_value", "p_value", "q_value", "peak"
+        ),
+        broadpeak = c(
+            "chrom", "start", "end", "name", "score", "strand",
+            "signal_value", "p_value", "q_value"
+        ),
+        c("chrom", "start", "end", "name", "score", "strand")
+    )
+    named_count <- min(length(names), ncol(table))
+    extra_count <- ncol(table) - named_count
+    column_names <- names[seq_len(named_count)]
+    if (extra_count > 0L) {
+        column_names <- c(column_names, paste0("extra_", seq_len(extra_count)))
+    }
+    names(table) <- column_names
+    table
 }
 
+# Input and optional-reader fallbacks
+
 encode_read_path <- function(path) {
-  if (encode_is_read_table(path)) {
-    if (!"local_path" %in% names(path)) {
-      cli::cli_abort("{.arg path} table input must include {.field local_path}.")
+    if (encode_is_read_table(path)) {
+        if (!"local_path" %in% names(path)) {
+            cli::cli_abort("{.arg path} table input must include {.field local_path}.")
+        }
+        if (nrow(path) != 1L) {
+            cli::cli_abort("{.arg path} table input must contain exactly one row.")
+        }
+        return(path$local_path[[1L]])
     }
-    if (nrow(path) != 1L) {
-      cli::cli_abort("{.arg path} table input must contain exactly one row.")
+    if (!is.character(path) || length(path) != 1L || is.na(path) || !nzchar(path)) {
+        cli::cli_abort("{.arg path} must be one local file path.")
     }
-    return(path$local_path[[1L]])
-  }
-  if (!is.character(path) || length(path) != 1L || is.na(path) || !nzchar(path)) {
-    cli::cli_abort("{.arg path} must be one local file path.")
-  }
-  path
+    path
 }
 
 encode_is_read_table <- function(path) {
-  is.data.frame(path) &&
-    ("local_path" %in% names(path) ||
-      inherits(path, "encode_download_result") ||
-      inherits(path, "encode_file_table"))
+    is.data.frame(path) &&
+        ("local_path" %in% names(path) ||
+            inherits(path, "encode_download_result") ||
+            inherits(path, "encode_file_table"))
 }
 
-encode_read_with_optional_package <- function(package,
-                                              fun,
-                                              path,
-                                              unsupported,
-                                              reason,
-                                              source_path = path,
-                                              region = NULL,
-                                              ...) {
-  if (!requireNamespace(package, quietly = TRUE)) {
-    return(encode_unsupported_local_file(
-      path = source_path,
-      reason = reason,
-      unsupported = unsupported
-    ))
-  }
-  reader <- getExportedValue(package, fun)
-  diagnostics <- new.env(parent = emptyenv())
-  diagnostics$warnings <- character()
-  value <- withCallingHandlers(
-    tryCatch(
-      if (is.null(region)) {
-        reader(path, ...)
-      } else {
-        reader(path, which = region, ...)
-      },
-      error = identity
-    ),
-    warning = function(cnd) {
-      diagnostics$warnings <- c(diagnostics$warnings, conditionMessage(cnd))
-      invokeRestart("muffleWarning")
+encode_read_with_optional_package <- function(
+    package,
+    fun,
+    path,
+    unsupported,
+    reason,
+    source_path = path,
+    region = NULL,
+    ...
+) {
+    if (!requireNamespace(package, quietly = TRUE)) {
+        return(encode_unsupported_local_file(
+            path = source_path,
+            reason = reason,
+            unsupported = unsupported
+        ))
     }
-  )
-  if (inherits(value, "error")) {
-    detail <- conditionMessage(value)
+    reader <- getExportedValue(package, fun)
+    diagnostics <- new.env(parent = emptyenv())
+    diagnostics$warnings <- character()
+    value <- withCallingHandlers(
+        tryCatch(
+            if (is.null(region)) {
+                reader(path, ...)
+            } else {
+                reader(path, which = region, ...)
+            },
+            error = identity
+        ),
+        warning = function(cnd) {
+            diagnostics$warnings <- c(diagnostics$warnings, conditionMessage(cnd))
+            invokeRestart("muffleWarning")
+        }
+    )
+    if (inherits(value, "error")) {
+        detail <- conditionMessage(value)
+        if (length(diagnostics$warnings) > 0L) {
+            detail <- paste(c(detail, unique(diagnostics$warnings)), collapse = "; ")
+        }
+        return(encode_unsupported_local_file(
+            path = source_path,
+            reason = paste0(package, "::", fun, "() failed: ", detail),
+            unsupported = unsupported
+        ))
+    }
     if (length(diagnostics$warnings) > 0L) {
-      detail <- paste(c(detail, unique(diagnostics$warnings)), collapse = "; ")
+        warning(paste(unique(diagnostics$warnings), collapse = "; "), call. = FALSE)
     }
-    return(encode_unsupported_local_file(
-      path = source_path,
-      reason = paste0(package, "::", fun, "() failed: ", detail),
-      unsupported = unsupported
-    ))
-  }
-  if (length(diagnostics$warnings) > 0L) {
-    warning(paste(unique(diagnostics$warnings), collapse = "; "), call. = FALSE)
-  }
-  value
+    value
 }
 
 encode_unsupported_local_file <- function(path, reason, unsupported) {
-  if (identical(unsupported, "error")) {
-    cli::cli_abort(reason)
-  }
-  result <- list(
-    path = path,
-    reason = reason,
-    file_size = as.numeric(file.info(path)$size),
-    file_size_pretty = encode_pretty_bytes(as.numeric(file.info(path)$size))
-  )
-  class(result) <- c("encode_local_file", "list")
-  result
+    if (identical(unsupported, "error")) {
+        cli::cli_abort(reason)
+    }
+    result <- list(
+        path = path,
+        reason = reason,
+        file_size = as.numeric(file.info(path)$size),
+        file_size_pretty = encode_pretty_bytes(as.numeric(file.info(path)$size))
+    )
+    class(result) <- c("encode_local_file", "list")
+    result
 }

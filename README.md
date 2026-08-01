@@ -12,7 +12,7 @@ The package is not affiliated with or endorsed by the ENCODE Project.
 
 ## Installation
 
-Install the Bioconductor release with:
+Once `encodeUtils` is available through Bioconductor, install it with:
 
 ```r
 if (!requireNamespace("BiocManager", quietly = TRUE)) {
@@ -21,8 +21,7 @@ if (!requireNamespace("BiocManager", quietly = TRUE)) {
 BiocManager::install("encodeUtils")
 ```
 
-Until a Bioconductor release is available, install the development version
-from GitHub:
+For the current development version, install from GitHub:
 
 ```r
 if (!requireNamespace("pak", quietly = TRUE)) {
@@ -44,6 +43,13 @@ The exported API follows one sequence:
 
 Use `encode_results()` whenever an ordinary data frame is needed.
 
+You can enter the workflow at the point matching what you already have:
+
+- search criteria: start with `encode_search()`;
+- ENCSR experiment accessions: start with `encode_list_files()`;
+- ENCFF file accessions: pass them directly to `encode_download()`;
+- local paths or a completed download table: start with `encode_read()`.
+
 ```r
 library(encodeUtils)
 
@@ -64,7 +70,8 @@ files <- encode_list_files(
 
 selected <- encode_select_files(
   files,
-  preset = "rnaseq_gene_quant"
+  preset = "rnaseq_gene_quant",
+  quiet = TRUE
 )
 
 plan <- encode_download(
@@ -76,9 +83,6 @@ plan <- encode_download(
 # After reviewing the plan:
 # downloaded <- encode_download(selected, directory = NULL)
 # loaded <- encode_read(downloaded, values = c("raw_counts", "tpm"))
-# loaded$metadata
-# loaded$row_data
-# loaded$matrices$raw_counts
 
 manifest <- encode_manifest(plan, include_session = FALSE)
 ```
@@ -99,9 +103,16 @@ four components:
 - `matrices`: numeric `raw_counts`, `tpm`, `fpkm`, or `rpkm` matrices when the
   requested values can be combined safely.
 
+Matrices are created only when all participating tables share a complete,
+unique feature key. Files with ambiguous identifiers remain available in
+`data` instead of being aligned by row order.
+
 BED-like files return `GenomicRanges::GRanges` by default; use
 `as = "data.frame"` for a plain table. FASTQ and alignment files are returned
 as local path objects for use with dedicated sequence-processing packages.
+When an optional native reader rejects a nonstandard file schema,
+`unsupported = "return_path"` preserves the local path and records the reader
+error rather than discarding file metadata.
 
 ## Network behavior
 

@@ -58,13 +58,13 @@ experiments.
 }
 \examples{
 if (interactive()) {
-  files <- encode_list_files(
-    "ENCSR083OKX",
-    file_format = "tsv",
-    output_type = "gene quantifications",
-    assembly = "mm10",
-    quiet = TRUE
-  )
-  encode_results(files)
+    files <- encode_list_files(
+        "ENCSR083OKX",
+        file_format = "tsv",
+        output_type = "gene quantifications",
+        assembly = "mm10",
+        quiet = TRUE
+    )
+    encode_results(files)
 }
 }

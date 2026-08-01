@@ -15,7 +15,7 @@ encode_select_files(
   replicate_policy = c("all", "preferred_processed", "replicate_level", "pooled_only"),
   prefer_default = FALSE,
   require_href = TRUE,
-  explain = TRUE
+  quiet = FALSE
 )
 }
 \arguments{
@@ -52,7 +52,7 @@ is skipped and the other explicit criteria are used.}
 \item{require_href}{Whether selected rows must include an ENCODE download
 path or URL.}
 
-\item{explain}{If `FALSE`, suppress the concise selection message.}
+\item{quiet}{If `FALSE`, print a concise selection message.}
 }
 \value{
 An `encode_selected_files` object with `files`, the selected
@@ -72,16 +72,16 @@ encode_file_presets()
 encode_file_presets("chipseq_peaks")
 
 files <- data.frame(
-  file_accession = c("ENCFF000AAA", "ENCFF000AAB"),
-  experiment_accession = "ENCSR000AAA",
-  file_format = c("bed", "bed"),
-  output_type = c("optimal IDR thresholded peaks", "replicated peaks"),
-  assembly = c("GRCh38", "hg19"),
-  status = c("released", "released"),
-  href = c(
-    "/files/ENCFF000AAA/@@download/ENCFF000AAA.bed",
-    "/files/ENCFF000AAB/@@download/ENCFF000AAB.bed"
-  )
+    file_accession = c("ENCFF000AAA", "ENCFF000AAB"),
+    experiment_accession = "ENCSR000AAA",
+    file_format = c("bed", "bed"),
+    output_type = c("optimal IDR thresholded peaks", "replicated peaks"),
+    assembly = c("GRCh38", "hg19"),
+    status = c("released", "released"),
+    href = c(
+        "/files/ENCFF000AAA/@@download/ENCFF000AAA.bed",
+        "/files/ENCFF000AAB/@@download/ENCFF000AAB.bed"
+    )
 )
 selected <- encode_select_files(files, preset = "chipseq_peaks", assembly = "GRCh38")
 encode_results(selected)

@@ -80,6 +80,9 @@ returned object includes complete file metadata, individual file tables,
 aligned feature metadata, and numeric expression matrices. A local path
 returns the native object for that file. A downloaded-file table always
 returns an `encode_loaded_files` collection, including for a one-row table.
+Combined matrices are created only when every table has one complete, unique
+feature identifier in common; otherwise the original tables are retained
+without an inferred alignment.
 }
 \examples{
 csv_path <- tempfile(fileext = ".csv")

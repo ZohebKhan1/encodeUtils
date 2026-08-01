@@ -1,3 +1,31 @@
+## CHANGES IN VERSION 0.99.7
+
+USER-VISIBLE CHANGES
+
+    o Standardize selection messages on quiet = FALSE, matching search, file
+      listing, and download functions.
+
+    o Make printed download results show transfer status, verification flags,
+      destination paths, and failure reasons when present.
+
+BUG FIXES
+
+    o Build combined expression matrices only when every table shares a
+      complete, unique biological feature key; keep ambiguous tables separate
+      instead of creating row-order-dependent identifiers.
+
+    o Construct experiment attribution URLs from experiment accessions rather
+      than assuming every file's parent dataset is an Experiment record.
+
+DOCUMENTATION AND STYLE
+
+    o Refine the README, vignette, reference text, and pkgdown organization
+      around practical entry points, safe matrix assembly, native file readers,
+      and current development installation.
+
+    o Organize internal helper families with concise navigation comments and
+      apply the Bioconductor four-space indentation preference consistently.
+
 ## CHANGES IN VERSION 0.99.6
 
 BUG FIXES

@@ -15,25 +15,27 @@
 #'
 #' @examples
 #' tbl <- data.frame(
-#'   accession = "ENCSR000AAA",
-#'   assay_title = "ChIP-seq"
+#'     accession = "ENCSR000AAA",
+#'     assay_title = "ChIP-seq"
 #' )
 #' encode_results(tbl)
 encode_results <- function(x) {
-  if (inherits(x, "encode_search_result")) {
-    return(x$results)
-  }
-  if (inherits(x, "encode_selected_files")) {
-    return(x$files)
-  }
-  if (inherits(x, "encode_loaded_files")) {
-    return(x$metadata)
-  }
-  if (is.data.frame(x)) {
-    return(x)
-  }
-  cli::cli_abort("{.arg x} does not contain a result table supported by {.fn encode_results}.")
+    if (inherits(x, "encode_search_result")) {
+        return(x$results)
+    }
+    if (inherits(x, "encode_selected_files")) {
+        return(x$files)
+    }
+    if (inherits(x, "encode_loaded_files")) {
+        return(x$metadata)
+    }
+    if (is.data.frame(x)) {
+        return(x)
+    }
+    cli::cli_abort("{.arg x} does not contain a result table supported by {.fn encode_results}.")
 }
+
+# Result provenance accessors
 
 #' Extract the ENCODE query URL from a result object
 #'
@@ -49,21 +51,21 @@ encode_results <- function(x) {
 #' encode_query_url(tbl)
 #' @noRd
 encode_query_url <- function(x) {
-  query_url <- attr(x, "query_url", exact = TRUE)
-  if (!is.null(query_url)) {
-    return(query_url)
-  }
-  url <- attr(x, "url", exact = TRUE)
-  if (!is.null(url)) {
-    return(url)
-  }
-  if (!is.data.frame(x) && is.list(x) && !is.null(x$query_url)) {
-    return(x$query_url)
-  }
-  if (!is.data.frame(x) && is.list(x) && !is.null(x$url)) {
-    return(x$url)
-  }
-  NA_character_
+    query_url <- attr(x, "query_url", exact = TRUE)
+    if (!is.null(query_url)) {
+        return(query_url)
+    }
+    url <- attr(x, "url", exact = TRUE)
+    if (!is.null(url)) {
+        return(url)
+    }
+    if (!is.data.frame(x) && is.list(x) && !is.null(x$query_url)) {
+        return(x$query_url)
+    }
+    if (!is.data.frame(x) && is.list(x) && !is.null(x$url)) {
+        return(x$url)
+    }
+    NA_character_
 }
 
 #' Extract ENCODE filters from a result object
@@ -78,12 +80,12 @@ encode_query_url <- function(x) {
 #' encode_filters(tbl)
 #' @noRd
 encode_filters <- function(x) {
-  if (is.list(x) && !is.null(x$filters)) {
-    return(x$filters)
-  }
-  filters <- attr(x, "filters", exact = TRUE)
-  if (!is.null(filters)) {
-    return(filters)
-  }
-  data.frame(field = character(), value = character())
+    if (is.list(x) && !is.null(x$filters)) {
+        return(x$filters)
+    }
+    filters <- attr(x, "filters", exact = TRUE)
+    if (!is.null(filters)) {
+        return(filters)
+    }
+    data.frame(field = character(), value = character())
 }

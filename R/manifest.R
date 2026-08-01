@@ -24,105 +24,107 @@
 #'
 #' @examples
 #' files <- data.frame(
-#'   file_accession = "ENCFF000AAA",
-#'   experiment_accession = "ENCSR000AAA",
-#'   file_format = "txt",
-#'   output_type = "metadata",
-#'   status = "released"
+#'     file_accession = "ENCFF000AAA",
+#'     experiment_accession = "ENCSR000AAA",
+#'     file_format = "txt",
+#'     output_type = "metadata",
+#'     status = "released"
 #' )
 #' path <- tempfile(fileext = ".json")
 #' manifest <- encode_manifest(files, include_session = FALSE, path = path)
 #' names(manifest)
-encode_manifest <- function(x,
-                            include_attribution = TRUE,
-                            include_session = TRUE,
-                            path = NULL,
-                            pretty = TRUE) {
-  manifest <- list(
-    package = list(
-      name = "encodeUtils",
-      version = encode_package_version()
-    ),
-    retrieval = list(
-      date = as.character(Sys.time()),
-      encode_base_url = attr(x, "encode_base_url", exact = TRUE) %||% encode_base_url(),
-      query_url = encode_query_url(x),
-      retrieved_at = as.character(attr(x, "retrieved_at", exact = TRUE) %||% NA_character_)
-    ),
-    filters = encode_filters(x),
-    object_type = class(x)[[1L]]
-  )
+encode_manifest <- function(
+    x,
+    include_attribution = TRUE,
+    include_session = TRUE,
+    path = NULL,
+    pretty = TRUE
+) {
+    manifest <- list(
+        package = list(
+            name = "encodeUtils",
+            version = encode_package_version()
+        ),
+        retrieval = list(
+            date = as.character(Sys.time()),
+            encode_base_url = attr(x, "encode_base_url", exact = TRUE) %||% encode_base_url(),
+            query_url = encode_query_url(x),
+            retrieved_at = as.character(attr(x, "retrieved_at", exact = TRUE) %||% NA_character_)
+        ),
+        filters = encode_filters(x),
+        object_type = class(x)[[1L]]
+    )
 
-  if (inherits(x, "encode_search_result")) {
-    manifest$experiments <- x$results
-  } else if (inherits(x, "encode_selected_files")) {
-    manifest$selected_files <- x$files
-    manifest$excluded_files <- x$excluded
-    manifest$criteria <- x$criteria
-  } else if (inherits(x, "encode_download_result")) {
-    manifest$downloaded_files <- as.data.frame(x, stringsAsFactors = FALSE)
-  } else if (inherits(x, "encode_loaded_files")) {
-    manifest$files <- as.data.frame(x$metadata, stringsAsFactors = FALSE)
-    manifest$loaded_objects <- data.frame(
-      name = names(x$data),
-      class = vapply(x$data, function(value) {
-        paste(class(value), collapse = ", ")
-      }, character(1L)),
-      stringsAsFactors = FALSE
-    )
-  } else if (inherits(x, "encode_file_table") || is.data.frame(x)) {
-    manifest$files <- as.data.frame(x, stringsAsFactors = FALSE)
-  } else if (is.character(x)) {
-    manifest$accessions <- data.frame(
-      accession = vapply(x, encode_normalize_accession, character(1L)),
-      stringsAsFactors = FALSE
-    )
-  } else {
-    cli::cli_abort("{.arg x} is not a supported ENCODE result, file table, or accession vector.")
-  }
+    if (inherits(x, "encode_search_result")) {
+        manifest$experiments <- x$results
+    } else if (inherits(x, "encode_selected_files")) {
+        manifest$selected_files <- x$files
+        manifest$excluded_files <- x$excluded
+        manifest$criteria <- x$criteria
+    } else if (inherits(x, "encode_download_result")) {
+        manifest$downloaded_files <- as.data.frame(x, stringsAsFactors = FALSE)
+    } else if (inherits(x, "encode_loaded_files")) {
+        manifest$files <- as.data.frame(x$metadata, stringsAsFactors = FALSE)
+        manifest$loaded_objects <- data.frame(
+            name = names(x$data),
+            class = vapply(x$data, function(value) {
+                paste(class(value), collapse = ", ")
+            }, character(1L)),
+            stringsAsFactors = FALSE
+        )
+    } else if (inherits(x, "encode_file_table") || is.data.frame(x)) {
+        manifest$files <- as.data.frame(x, stringsAsFactors = FALSE)
+    } else if (is.character(x)) {
+        manifest$accessions <- data.frame(
+            accession = vapply(x, encode_normalize_accession, character(1L)),
+            stringsAsFactors = FALSE
+        )
+    } else {
+        cli::cli_abort("{.arg x} is not a supported ENCODE result, file table, or accession vector.")
+    }
 
-  if (isTRUE(include_attribution)) {
-    ## Manifest creation should not fail for materialized result objects if
-    ## optional attribution is unavailable; raw accession input still requires
-    ## attribution resolution.
-    manifest$attribution <- tryCatch(
-      encode_attribution(x, enrich = FALSE, quiet = TRUE),
-      error = function(cnd) {
-        if (is.character(x)) {
-          cli::cli_abort(conditionMessage(cnd))
-        }
-        NULL
-      }
-    )
-  }
-  if (isTRUE(include_session)) {
-    manifest$session <- utils::capture.output(utils::sessionInfo())
-  }
-  class(manifest) <- c("encode_manifest", "list")
-  if (!is.null(path)) {
-    encode_write_manifest_json(manifest, path = path, pretty = pretty)
-    attr(manifest, "path") <- path
-  }
-  manifest
+    if (isTRUE(include_attribution)) {
+        ## Manifest creation should not fail for materialized result objects if
+        ## optional attribution is unavailable; raw accession input still requires
+        ## attribution resolution.
+        manifest$attribution <- tryCatch(
+            encode_attribution(x, enrich = FALSE, quiet = TRUE),
+            error = function(cnd) {
+                if (is.character(x)) {
+                    cli::cli_abort(conditionMessage(cnd))
+                }
+                NULL
+            }
+        )
+    }
+    if (isTRUE(include_session)) {
+        manifest$session <- utils::capture.output(utils::sessionInfo())
+    }
+    class(manifest) <- c("encode_manifest", "list")
+    if (!is.null(path)) {
+        encode_write_manifest_json(manifest, path = path, pretty = pretty)
+        attr(manifest, "path") <- path
+    }
+    manifest
 }
 
 encode_write_manifest_json <- function(manifest, path, pretty = TRUE) {
-  if (!inherits(manifest, "encode_manifest")) {
-    cli::cli_abort("{.arg manifest} must come from {.fun encode_manifest}.")
-  }
-  if (!is.character(path) || length(path) != 1L || is.na(path) || !nzchar(path)) {
-    cli::cli_abort("{.arg path} must be one non-empty JSON path.")
-  }
-  directory <- dirname(path)
-  if (!dir.exists(directory)) {
-    dir.create(directory, recursive = TRUE, showWarnings = FALSE)
-  }
-  jsonlite::write_json(
-    manifest,
-    path = path,
-    auto_unbox = TRUE,
-    pretty = pretty,
-    null = "null"
-  )
-  invisible(path)
+    if (!inherits(manifest, "encode_manifest")) {
+        cli::cli_abort("{.arg manifest} must come from {.fun encode_manifest}.")
+    }
+    if (!is.character(path) || length(path) != 1L || is.na(path) || !nzchar(path)) {
+        cli::cli_abort("{.arg path} must be one non-empty JSON path.")
+    }
+    directory <- dirname(path)
+    if (!dir.exists(directory)) {
+        dir.create(directory, recursive = TRUE, showWarnings = FALSE)
+    }
+    jsonlite::write_json(
+        manifest,
+        path = path,
+        auto_unbox = TRUE,
+        pretty = pretty,
+        null = "null"
+    )
+    invisible(path)
 }

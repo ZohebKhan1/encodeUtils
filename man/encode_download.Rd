@@ -78,6 +78,8 @@ An `encode_download_result` data frame. Dry runs return planned rows
   `download_status = "planned"`. Real downloads return one row per file with
   `download_status`, `downloaded_size`, expected and observed MD5 values,
   size/MD5 verification flags, and `failure_reason` for failed transfers.
+  Printing the result shows the transfer status and local destination; use
+  `encode_results()` for the complete table.
 }
 \description{
 Download files from an ENCODE file table, selected-file object, file search,
@@ -87,10 +89,10 @@ path, and size/MD5 checks are used when ENCODE provides the metadata.
 }
 \examples{
 files <- data.frame(
-  file_accession = "ENCFF000AAA",
-  href = "/files/ENCFF000AAA/@@download/ENCFF000AAA.txt",
-  file_size = 3,
-  md5sum = NA_character_
+    file_accession = "ENCFF000AAA",
+    href = "/files/ENCFF000AAA/@@download/ENCFF000AAA.txt",
+    file_size = 3,
+    md5sum = NA_character_
 )
 encode_download(files, directory = tempdir(), dry_run = TRUE, quiet = TRUE)
 

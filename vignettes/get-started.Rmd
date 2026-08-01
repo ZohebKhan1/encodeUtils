@@ -39,14 +39,30 @@ as paths for dedicated readers such as `ShortRead`, `Rsamtools`, or
 
 # Installation
 
-Install `encodeUtils` from Bioconductor with:
+Once `encodeUtils` is available through Bioconductor, install it with:
 
 ```{r installation, eval=FALSE}
 if (!requireNamespace("BiocManager", quietly = TRUE)) {
-  install.packages("BiocManager")
+    install.packages("BiocManager")
 }
 BiocManager::install("encodeUtils")
 ```
+
+For the current development version, install from GitHub:
+
+```{r installation-github, eval=FALSE}
+if (!requireNamespace("pak", quietly = TRUE)) {
+    install.packages("pak")
+}
+pak::pak("ZohebKhan1/encodeUtils")
+```
+
+# Choose an entry point
+
+The workflow does not require starting with a broad search. Use
+`encode_search()` when you have biological criteria, `encode_list_files()` when
+you have ENCSR experiment accessions, `encode_download()` when you already know
+the ENCFF file accessions, or `encode_read()` when the files are on disk.
 
 # Select files
 
@@ -54,32 +70,33 @@ Start with a small table shaped like the output of `encode_list_files()`.
 
 ```{r example-files}
 files <- data.frame(
-  experiment_accession = "ENCSR000AAA",
-  file_accession = c("ENCFF000AAA", "ENCFF000AAB", "ENCFF000AAC"),
-  file_format = c("tsv", "tsv", "bigWig"),
-  output_type = c(
-    "gene quantifications",
-    "gene quantifications",
-    "signal p-value"
-  ),
-  assembly = "mm10",
-  status = "released",
-  file_size = c(100, 120, 5000000),
-  md5sum = NA_character_,
-  href = c(
-    "/files/ENCFF000AAA/@@download/ENCFF000AAA.tsv",
-    "/files/ENCFF000AAB/@@download/ENCFF000AAB.tsv",
-    "/files/ENCFF000AAC/@@download/ENCFF000AAC.bigWig"
-  ),
-  stringsAsFactors = FALSE
+    experiment_accession = "ENCSR000AAA",
+    file_accession = c("ENCFF000AAA", "ENCFF000AAB", "ENCFF000AAC"),
+    file_format = c("tsv", "tsv", "bigWig"),
+    output_type = c(
+        "gene quantifications",
+        "gene quantifications",
+        "signal p-value"
+    ),
+    assembly = "mm10",
+    status = "released",
+    file_size = c(100, 120, 5000000),
+    md5sum = NA_character_,
+    href = c(
+        "/files/ENCFF000AAA/@@download/ENCFF000AAA.tsv",
+        "/files/ENCFF000AAB/@@download/ENCFF000AAB.tsv",
+        "/files/ENCFF000AAC/@@download/ENCFF000AAC.bigWig"
+    ),
+    stringsAsFactors = FALSE
 )
 
 encode_file_presets()
 
 selected <- encode_select_files(
-  files,
-  preset = "rnaseq_gene_quant",
-  assembly = "mm10"
+    files,
+    preset = "rnaseq_gene_quant",
+    assembly = "mm10",
+    quiet = TRUE
 )
 
 encode_results(selected)
@@ -99,14 +116,14 @@ without making a network request.
 
 ```{r download-plan}
 planned <- encode_download(
-  selected,
-  directory = tempdir(),
-  dry_run = TRUE,
-  quiet = TRUE
+    selected,
+    directory = tempdir(),
+    dry_run = TRUE,
+    quiet = TRUE
 )
 
 encode_results(planned)[, c(
-  "file_accession", "file_size_pretty", "download_status", "local_path"
+    "file_accession", "file_size_pretty", "download_status", "local_path"
 )]
 ```
 
@@ -123,20 +140,20 @@ collection shape, even when it has one row.
 ```{r read-local}
 quant_paths <- file.path(tempdir(), c("ENCFF000AAA.tsv", "ENCFF000AAB.tsv"))
 writeLines(
-  c(
-    "gene_id\traw_counts\tTPM",
-    "Gata4\t11\t4.5",
-    "Tbx5\t27\t8.2"
-  ),
-  quant_paths[[1L]]
+    c(
+        "gene_id\traw_counts\tTPM",
+        "Gata4\t11\t4.5",
+        "Tbx5\t27\t8.2"
+    ),
+    quant_paths[[1L]]
 )
 writeLines(
-  c(
-    "gene_id\traw_counts\tTPM",
-    "Gata4\t14\t5.1",
-    "Tbx5\t31\t9.0"
-  ),
-  quant_paths[[2L]]
+    c(
+        "gene_id\traw_counts\tTPM",
+        "Gata4\t14\t5.1",
+        "Tbx5\t31\t9.0"
+    ),
+    quant_paths[[2L]]
 )
 
 downloaded <- encode_results(planned)
@@ -144,8 +161,8 @@ downloaded$local_path <- quant_paths
 downloaded$download_status <- "downloaded"
 
 loaded <- encode_read(
-  downloaded,
-  values = c("raw_counts", "tpm")
+    downloaded,
+    values = c("raw_counts", "tpm")
 )
 
 names(loaded)
@@ -158,7 +175,28 @@ loaded$matrices$tpm
 The `metadata` component is the complete input file table. `data` contains one
 native object per file. `row_data` and each numeric matrix share row names, and
 matrix columns are file accessions. Use `simplify_quant = FALSE` when the exact
-downloaded columns must be preserved.
+downloaded columns must be preserved. A combined matrix is created only when
+every table shares a complete, unique feature key; ambiguous tables remain in
+`data` without an inferred row alignment.
+
+# Read genomic intervals
+
+A local BED-like file returns `GenomicRanges::GRanges` by default. The same
+call can return a data frame when a tabular representation is more convenient.
+
+```{r read-bed}
+bed_path <- tempfile(fileext = ".bed")
+writeLines("chr1\t0\t10\tpeak1\t100\t+", bed_path)
+
+ranges <- encode_read(bed_path)
+ranges
+
+encode_read(bed_path, as = "data.frame")
+```
+
+FASTQ and alignment formats remain local path objects for dedicated sequence
+readers. For optional native readers, `unsupported = "return_path"` retains the
+path and the reader diagnostic when the file schema cannot be imported safely.
 
 # Record provenance
 
@@ -170,7 +208,7 @@ same manifest as JSON.
 manifest <- encode_manifest(loaded, include_session = FALSE)
 names(manifest)
 manifest$attribution[, c(
-  "experiment_accession", "file_accession", "file_format", "output_type"
+    "experiment_accession", "file_accession", "file_format", "output_type"
 )]
 ```
 
@@ -181,23 +219,32 @@ interactive R session, keeping package builds deterministic.
 
 ```{r live-workflow}
 if (interactive()) {
-  experiments <- encode_search(
-    type = "Experiment",
-    organism = "mouse",
-    assay = "rna-seq",
-    organ = "heart",
-    limit = 5
-  )
+    experiments <- encode_search(
+        type = "Experiment",
+        organism = "mouse",
+        assay = "rna-seq",
+        organ = "heart",
+        limit = 5
+    )
 
-  files <- encode_list_files(
-    experiments,
-    file_format = "tsv",
-    output_type = "gene quantifications",
-    assembly = "mm10"
-  )
+    files <- encode_list_files(
+        experiments,
+        file_format = "tsv",
+        output_type = "gene quantifications",
+        assembly = "mm10"
+    )
 
-  selected <- encode_select_files(files, preset = "rnaseq_gene_quant")
-  encode_download(selected, directory = tempdir(), dry_run = TRUE)
+    selected <- encode_select_files(
+        files,
+        preset = "rnaseq_gene_quant",
+        quiet = TRUE
+    )
+    encode_download(
+        selected,
+        directory = tempdir(),
+        dry_run = TRUE,
+        quiet = TRUE
+    )
 }
 ```
 

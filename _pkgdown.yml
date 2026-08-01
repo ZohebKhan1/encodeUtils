@@ -11,7 +11,7 @@ navbar:
 
 home:
   title: encodeUtils
-  description: Query ENCODE metadata, select files, and load supported ENCODE datasets into R.
+  description: Search ENCODE metadata, choose and verify files, read supported formats, and record provenance.
 
 reference:
   - title: Package overview
