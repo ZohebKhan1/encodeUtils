@@ -1,3 +1,17 @@
+## CHANGES IN VERSION 0.99.6
+
+BUG FIXES
+
+    o Import ENCODE GFF files that begin with UCSC track directives, and honor
+      the documented path fallback when an optional native reader rejects a
+      valid but nonstandard file schema.
+
+DOCUMENTATION
+
+    o Add the reviewer-required vignette introduction, Bioconductor
+      installation section, and comparison with existing ENCODE and file-import
+      infrastructure.
+
 ## CHANGES IN VERSION 0.99.5
 
 VALIDATION AND INTEGRATION

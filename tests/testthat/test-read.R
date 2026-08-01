@@ -26,6 +26,28 @@ test_that("BED-like paths return GRanges by default and tables on request", {
   ))
 })
 
+test_that("GFF readers handle UCSC directives and native import failures", {
+  skip_if_not_installed("rtracklayer")
+
+  path <- withr::local_tempfile(fileext = ".gff")
+  writeLines(c(
+    "track name=example type=gff",
+    "chr1\tsource\tgene\t1\t10\t.\t+\t.\tgene_id 'GENE1';"
+  ), path)
+  ranges <- encode_read(path, unsupported = "error")
+
+  expect_s4_class(ranges, "GRanges")
+  expect_length(ranges, 1L)
+
+  malformed_path <- withr::local_tempfile(fileext = ".gff")
+  writeLines("not a GFF record", malformed_path)
+  fallback <- encode_read(malformed_path, unsupported = "return_path")
+
+  expect_s3_class(fallback, "encode_local_file")
+  expect_equal(fallback$path, malformed_path)
+  expect_match(fallback$reason, "rtracklayer::import\\(\\) failed")
+})
+
 test_that("table input always returns a stable loaded-file collection", {
   directory <- withr::local_tempdir()
   paths <- file.path(directory, c("a.tsv", "b.tsv"))

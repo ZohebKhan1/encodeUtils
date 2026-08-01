@@ -41,7 +41,8 @@
 #'   text tables return data frames, JSON returns a list, FASTA returns a
 #'   `DNAStringSet` when `Biostrings` is installed, BED-like intervals return
 #'   `GRanges`, and
-#'   GFF/GTF, BigWig, and BigBed return `rtracklayer` imports when available.
+#'   GFF/GTF, BigWig, and BigBed return `rtracklayer` imports when available
+#'   and readable. Native-reader failures follow the `unsupported` policy.
 #'   ENCODE peak files with extra nonstandard columns may fall back to a data
 #'   frame unless `as = "GRanges"` is requested. FASTQ and alignment formats
 #'   return `encode_local_file` path objects by default. Downloaded-file tables
@@ -152,7 +153,16 @@ encode_read <- function(
   if (format %in% c("bed", "narrowpeak", "broadpeak")) {
     return(encode_read_bed(path, format = format, as = as, unsupported = unsupported))
   }
-  if (format %in% c("gff", "gtf", "bw", "bigwig", "bb", "bigbed")) {
+  if (format %in% c("gff", "gtf")) {
+    return(encode_read_gff(
+      path = path,
+      format = format,
+      unsupported = unsupported,
+      region = region,
+      ...
+    ))
+  }
+  if (format %in% c("bw", "bigwig", "bb", "bigbed")) {
     return(encode_read_with_optional_package(
       package = "rtracklayer",
       fun = "import",
@@ -231,13 +241,76 @@ encode_read_featurecounts <- function(path, simplify_quant = TRUE) {
 }
 
 encode_read_lines <- function(path, n) {
-  connection <- if (grepl("[.]gz$", path, ignore.case = TRUE)) {
+  connection <- if (grepl("[.](gz|bgz)$", path, ignore.case = TRUE)) {
     gzfile(path, open = "rt")
   } else {
     file(path, open = "rt")
   }
   on.exit(close(connection), add = TRUE)
   readLines(connection, n = n, warn = FALSE)
+}
+
+encode_read_gff <- function(path, format, unsupported, region = NULL, ...) {
+  first_lines <- encode_read_lines(path, n = 50L)
+  has_ucsc_directive <- any(encode_is_ucsc_directive(first_lines))
+  import_path <- path
+  if (has_ucsc_directive) {
+    import_path <- encode_gff_without_ucsc_directives(path, format = format)
+    on.exit(unlink(import_path), add = TRUE)
+  }
+  encode_read_with_optional_package(
+    package = "rtracklayer",
+    fun = "import",
+    path = import_path,
+    source_path = path,
+    unsupported = unsupported,
+    reason = "rtracklayer is required for GFF and GTF imports",
+    region = region,
+    ...
+  )
+}
+
+encode_gff_without_ucsc_directives <- function(path, format) {
+  input <- if (grepl("[.](gz|bgz)$", path, ignore.case = TRUE)) {
+    gzfile(path, open = "rt")
+  } else {
+    file(path, open = "rt")
+  }
+  output_path <- tempfile(fileext = paste0(".", tolower(format)))
+  output <- file(output_path, open = "wt")
+  input_open <- TRUE
+  output_open <- TRUE
+  completed <- FALSE
+  on.exit({
+    if (input_open) {
+      close(input)
+    }
+    if (output_open) {
+      close(output)
+    }
+    if (!completed && file.exists(output_path)) {
+      unlink(output_path)
+    }
+  }, add = TRUE)
+
+  repeat {
+    lines <- readLines(input, n = 10000L, warn = FALSE)
+    if (length(lines) == 0L) {
+      break
+    }
+    directives <- encode_is_ucsc_directive(lines)
+    writeLines(lines[!directives], output, useBytes = TRUE)
+  }
+  close(input)
+  input_open <- FALSE
+  close(output)
+  output_open <- FALSE
+  completed <- TRUE
+  output_path
+}
+
+encode_is_ucsc_directive <- function(lines) {
+  grepl("^[[:space:]]*(track|browser)([[:space:]]|$)", lines)
 }
 
 encode_is_featurecounts_tsv <- function(lines) {
@@ -449,19 +522,53 @@ encode_is_read_table <- function(path) {
       inherits(path, "encode_file_table"))
 }
 
-encode_read_with_optional_package <- function(package, fun, path, unsupported, reason, region = NULL, ...) {
+encode_read_with_optional_package <- function(package,
+                                              fun,
+                                              path,
+                                              unsupported,
+                                              reason,
+                                              source_path = path,
+                                              region = NULL,
+                                              ...) {
   if (!requireNamespace(package, quietly = TRUE)) {
     return(encode_unsupported_local_file(
-      path = path,
+      path = source_path,
       reason = reason,
       unsupported = unsupported
     ))
   }
   reader <- getExportedValue(package, fun)
-  if (is.null(region)) {
-    return(reader(path, ...))
+  diagnostics <- new.env(parent = emptyenv())
+  diagnostics$warnings <- character()
+  value <- withCallingHandlers(
+    tryCatch(
+      if (is.null(region)) {
+        reader(path, ...)
+      } else {
+        reader(path, which = region, ...)
+      },
+      error = identity
+    ),
+    warning = function(cnd) {
+      diagnostics$warnings <- c(diagnostics$warnings, conditionMessage(cnd))
+      invokeRestart("muffleWarning")
+    }
+  )
+  if (inherits(value, "error")) {
+    detail <- conditionMessage(value)
+    if (length(diagnostics$warnings) > 0L) {
+      detail <- paste(c(detail, unique(diagnostics$warnings)), collapse = "; ")
+    }
+    return(encode_unsupported_local_file(
+      path = source_path,
+      reason = paste0(package, "::", fun, "() failed: ", detail),
+      unsupported = unsupported
+    ))
   }
-  reader(path, which = region, ...)
+  if (length(diagnostics$warnings) > 0L) {
+    warning(paste(unique(diagnostics$warnings), collapse = "; "), call. = FALSE)
+  }
+  value
 }
 
 encode_unsupported_local_file <- function(path, reason, unsupported) {

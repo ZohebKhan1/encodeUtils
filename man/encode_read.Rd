@@ -60,7 +60,8 @@ The return type depends on input shape and file format. A local path
   text tables return data frames, JSON returns a list, FASTA returns a
   `DNAStringSet` when `Biostrings` is installed, BED-like intervals return
   `GRanges`, and
-  GFF/GTF, BigWig, and BigBed return `rtracklayer` imports when available.
+  GFF/GTF, BigWig, and BigBed return `rtracklayer` imports when available
+  and readable. Native-reader failures follow the `unsupported` policy.
   ENCODE peak files with extra nonstandard columns may fall back to a data
   frame unless `as = "GRanges"` is requested. FASTQ and alignment formats
   return `encode_local_file` path objects by default. Downloaded-file tables

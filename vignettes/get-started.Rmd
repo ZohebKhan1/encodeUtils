@@ -19,13 +19,34 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 library(encodeUtils)
 ```
 
-# Overview
+# Introduction
 
 `encodeUtils` connects ENCODE metadata discovery to explicit file selection,
 bounded transfers, local readers, and reproducibility manifests. Search and
 file-list results retain the query URL and complete flattened metadata. The
 examples below are local and deterministic so the vignette can be built without
 network access.
+
+The package fills a current Bioconductor access gap left by the retired
+`ENCODExplorer`: it queries current ENCODE Portal records on demand, preserves
+request and attribution metadata, and applies explicit transfer limits and
+verification. It complements rather than replaces format-specific
+Bioconductor infrastructure. BED, GFF, GTF, BigWig, and BigBed files use
+`rtracklayer`; FASTA files use `Biostrings`; BED-like tables return
+`GenomicRanges::GRanges` by default; and sequence-read and alignment files stay
+as paths for dedicated readers such as `ShortRead`, `Rsamtools`, or
+`GenomicAlignments`.
+
+# Installation
+
+Install `encodeUtils` from Bioconductor with:
+
+```{r installation, eval=FALSE}
+if (!requireNamespace("BiocManager", quietly = TRUE)) {
+  install.packages("BiocManager")
+}
+BiocManager::install("encodeUtils")
+```
 
 # Select files
 
