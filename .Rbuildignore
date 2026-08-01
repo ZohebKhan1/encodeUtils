@@ -4,7 +4,6 @@
 ^AGENTS\.md$
 ^coding_guidelines\.md$
 ^docs$
-^data$
 ^site$
 ^\.gitignore$
 ^\.github$
@@ -17,7 +16,5 @@
 ^.*\.Rcheck$
 ^.*\.BiocCheck$
 ^\.Rproj\.user$
-^bioconductor_review_audit_.*[.]md$
-^external_bioconductor_audit_encodeUtils[.]md$
-^.*_bioconductor_audit.*[.]md$
-^.*_audit_encodeUtils[.]md$
+^\.r_codex_utils$
+^.*audit.*[.]md$

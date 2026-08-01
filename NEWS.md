@@ -1,3 +1,20 @@
+## CHANGES IN VERSION 0.99.4
+
+DOCUMENTATION AND INFRASTRUCTURE
+
+    o Replace duplicated introductory material with one evaluated,
+      network-independent vignette that demonstrates selection, dry-run
+      planning, multi-file reading, aligned matrices, and provenance capture.
+
+    o Add Bioconductor installation instructions and a concise public workflow
+      to the README; remove the unmaintained generated database-overview image.
+
+    o Refine package metadata, move optional annotation support to Suggests,
+      and remove data/ from repository and build ignore rules.
+
+    o Run full build, vignette, manual, and check jobs across current R release
+      and development platforms in continuous integration.
+
 ## CHANGES IN VERSION 0.99.3
 
 USER-VISIBLE CHANGES

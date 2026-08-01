@@ -5,6 +5,7 @@
 .Renviron
 .Rprofile
 .codex/
+.r_codex_utils/
 .DS_Store
 *.Rproj
 *.tar.gz
@@ -23,7 +24,6 @@ Meta/
 doc/
 tmp/
 site/
-data/
 renv/
 renv.lock
 

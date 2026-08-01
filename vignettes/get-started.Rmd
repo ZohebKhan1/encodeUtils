@@ -1,133 +1,38 @@
 ---
-title: "Get started"
+title: "Query and retrieve ENCODE files"
 author: "Zoheb Khan"
-date: "`r Sys.Date()`"
 output:
   BiocStyle::html_document:
     toc: true
     toc_depth: 2
 vignette: >
-  %\VignetteIndexEntry{Get started}
+  %\VignetteIndexEntry{Query and retrieve ENCODE files}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>"
-)
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 ```
 
 ```{r library}
 library(encodeUtils)
 ```
 
-# Introduction
+# Overview
 
-`encodeUtils` is an unofficial R package for convenient, traceable analysis of
-ENCODE datasets. It queries the
-[ENCODE REST API](https://www.encodeproject.org/help/rest-api/), parses the JSON
-returned by experiment and file searches, and converts ENCODE Portal metadata
-into file tables that can be filtered, downloaded, read, and recorded in
-reproducible analyses. Standardized fields include accessions, assay,
-biosample, organism, target, assembly, output type, file size, checksums, and
-download URLs.
-
-The package is designed for RNA-seq, ChIP-seq, and ATAC-seq workflows where
-users need to move from an ENCODE accession or search result to files and
-metadata that can be used in R. It keeps ENCODE discovery and download
-bookkeeping in R and delegates supported genomic file imports to packages such
-as `rtracklayer` and `Biostrings` when those packages are installed. The
-resulting tables and objects can be used with downstream packages such as
-`ChIPpeakAnno`, `edgeR`, `DESeq2`, and `GenomicRanges`. BED-like
-interval files are returned as `GRanges` by default when `GenomicRanges` and
-`IRanges` are available, and raw sequencing or alignment files are returned as
-paths for use with downstream tools such as `ShortRead`, `Rsamtools`, or
-`GenomicAlignments`.
-
-The package is not officially affiliated with the ENCODE Project. It started as
-a personal research utility to make ENCODE data discovery, download planning,
-and R-based analysis faster and easier for day-to-day workflows.
-
-# ENCODE REST API background
-
-The ENCODE Portal exposes records through ordinary URLs. An accession such as a
-biosample, experiment, or file can be requested over HTTP, and the response can
-be returned as JSON. `encodeUtils` wraps that process from R: it sends GET
-requests, parses the JSON response, flattens nested ENCODE fields into useful
-tables, and keeps enough metadata to trace which records and files were used.
-
-For debugging or learning the underlying API, two tools are helpful:
-
-- A browser JSON viewer, such as JSONView for Chrome or Firefox, or json-lite
-  for Safari.
-- `curl`, which is included with macOS and most Linux/Unix systems. If it is
-  not installed, use an SSL-aware build from the curl project.
-
-For example, this command requests a biosample record as JSON:
-
-```sh
-curl -H "Accept: application/json" \
-  https://www.encodeproject.org/biosamples/ENCBS000AAA/
-```
-
-The same idea is used by scripts: build a URL for an ENCODE object or search
-endpoint, request JSON, parse it, and convert it into native data structures.
-In `encodeUtils`, those native structures are R lists, data frames, file tables,
-and analysis-ready objects.
-
-The ENCODE REST API documentation asks programmatic users to stay at or below
-10 GET requests per second for a single user, group, company, or lab. Exceeding
-that limit can lead to IP-based blocking. `encodeUtils` uses a conservative
-default throttle of 5 requests per second; advanced users can change it with
-`options(encodeUtils.rate_per_second = ...)`.
-
-# Installation
-
-Install the current package from GitHub:
-
-```{r install-github, eval=FALSE}
-if (!requireNamespace("pak", quietly = TRUE)) {
-  install.packages("pak")
-}
-
-pak::pak("ZohebKhan1/encodeUtils")
-```
-
-After a Bioconductor release becomes available, install it with:
-
-```{r install-bioc, eval=FALSE}
-if (!requireNamespace("BiocManager", quietly = TRUE)) {
-  install.packages("BiocManager")
-}
-
-BiocManager::install("encodeUtils")
-```
-
-# Workflow
-
-Most analyses follow the same sequence:
-
-1. Search for experiments, or start from known ENCODE accessions.
-2. List files attached to selected experiments.
-3. Select the file accessions or file types you want.
-4. Check the download with `dry_run = TRUE`.
-5. Download files when the plan is acceptable.
-6. Read supported local files into R.
-7. Save a manifest for the files you used.
-
-The evaluated examples below use small local ENCODE-like records so the vignette
-is reproducible on the Bioconductor build system. A live ENCODE example is shown
-later as non-evaluated code because public web resources can be temporarily
-unavailable or change over time.
+`encodeUtils` connects ENCODE metadata discovery to explicit file selection,
+bounded transfers, local readers, and reproducibility manifests. Search and
+file-list results retain the query URL and complete flattened metadata. The
+examples below are local and deterministic so the vignette can be built without
+network access.
 
 # Select files
 
-Create a small file table like the one returned by `encode_list_files()`.
+Start with a small table shaped like the output of `encode_list_files()`.
 
 ```{r example-files}
-example_files <- data.frame(
+files <- data.frame(
   experiment_accession = "ENCSR000AAA",
   file_accession = c("ENCFF000AAA", "ENCFF000AAB", "ENCFF000AAC"),
   file_format = c("tsv", "tsv", "bigWig"),
@@ -136,9 +41,9 @@ example_files <- data.frame(
     "gene quantifications",
     "signal p-value"
   ),
-  assembly = c("mm10", "mm10", "mm10"),
-  status = c("released", "released", "released"),
-  file_size = c(120, 140, 5000000),
+  assembly = "mm10",
+  status = "released",
+  file_size = c(100, 120, 5000000),
   md5sum = NA_character_,
   href = c(
     "/files/ENCFF000AAA/@@download/ENCFF000AAA.tsv",
@@ -148,8 +53,10 @@ example_files <- data.frame(
   stringsAsFactors = FALSE
 )
 
+encode_file_presets()
+
 selected <- encode_select_files(
-  example_files,
+  files,
   preset = "rnaseq_gene_quant",
   assembly = "mm10"
 )
@@ -157,12 +64,19 @@ selected <- encode_select_files(
 encode_results(selected)
 ```
 
-# Check a download
+The selected-file object also retains excluded rows and the criteria used.
 
-`encode_download(dry_run = TRUE)` builds the destination paths and checks known
-sizes without transferring any file contents.
+```{r selection-audit}
+names(selected)
+selected$criteria$preset
+```
 
-```{r dry-run}
+# Plan a download
+
+Use `dry_run = TRUE` to resolve destination paths and check known size limits
+without making a network request.
+
+```{r download-plan}
 planned <- encode_download(
   selected,
   directory = tempdir(),
@@ -170,140 +84,101 @@ planned <- encode_download(
   quiet = TRUE
 )
 
-encode_results(planned)[, c("file_accession", "download_status", "local_path")]
+encode_results(planned)[, c(
+  "file_accession", "file_size_pretty", "download_status", "local_path"
+)]
 ```
 
-# Read a local file
+For a real transfer, run the same call without `dry_run = TRUE`.
+`directory = NULL` uses the persistent package cache; `directory = tempdir()`
+is appropriate for transient work.
 
-After files are downloaded, `encode_read()` can read supported local formats. The
-example below writes a tiny gene-quantification table to a temporary file and
-then reads it through the same metadata shape returned by `encode_download()`.
+# Read downloaded tables
+
+The next chunk creates two small quantification files and attaches their local
+paths to the planned metadata. A downloaded-file table always returns the same
+collection shape, even when it has one row.
 
 ```{r read-local}
-quant_path <- tempfile(fileext = ".tsv")
+quant_paths <- file.path(tempdir(), c("ENCFF000AAA.tsv", "ENCFF000AAB.tsv"))
 writeLines(
   c(
-    "gene_id\tTPM\tFPKM\traw_counts",
-    "ENSMUSG00000000001\t4.5\t2.1\t11",
-    "ENSMUSG00000000028\t8.2\t4.4\t27"
+    "gene_id\traw_counts\tTPM",
+    "Gata4\t11\t4.5",
+    "Tbx5\t27\t8.2"
   ),
-  quant_path
+  quant_paths[[1L]]
+)
+writeLines(
+  c(
+    "gene_id\traw_counts\tTPM",
+    "Gata4\t14\t5.1",
+    "Tbx5\t31\t9.0"
+  ),
+  quant_paths[[2L]]
 )
 
 downloaded <- encode_results(planned)
-downloaded$local_path <- quant_path
+downloaded$local_path <- quant_paths
 downloaded$download_status <- "downloaded"
-downloaded$organism <- "Mus musculus"
 
 loaded <- encode_read(
   downloaded,
-  values = c("raw_counts", "TPM"),
-  row_names = "none"
+  values = c("raw_counts", "tpm")
 )
 
-loaded$metadata
-loaded$raw_counts
-loaded$tpm
+names(loaded)
+loaded$metadata[, c("file_accession", "local_path")]
+loaded$row_data
+loaded$matrices$raw_counts
+loaded$matrices$tpm
 ```
 
-For loaded collections, the canonical components are `metadata`, `data`,
-`matrices`, and `by_experiment`. The `files`, `raw_counts`, and `tpm` elements
-are convenience aliases for `metadata`, `matrices$raw_counts`, and
-`matrices$TPM` when those objects are available. If code should handle one-file
-and many-file reads with the same object shape, use
-`encode_read(downloaded[1, ], as_collection = TRUE)`.
+The `metadata` component is the complete input file table. `data` contains one
+native object per file. `row_data` and each numeric matrix share row names, and
+matrix columns are file accessions. Use `simplify_quant = FALSE` when the exact
+downloaded columns must be preserved.
 
-Human and mouse RNA quantification tables are annotated with gene symbols,
-Ensembl IDs, and Entrez IDs when `org.Hs.eg.db` or `org.Mm.eg.db` is installed.
-If the relevant annotation package is unavailable, `encodeUtils` keeps the
-original identifiers and continues without that optional annotation step.
+# Record provenance
 
-# Save provenance
-
-`encode_manifest()` records the package version, retrieval metadata, file table,
-and ENCODE attribution fields when they are available.
+`encode_manifest()` captures the package version, retrieval context, files,
+loaded object classes, and ENCODE attribution fields. Set `path` to write the
+same manifest as JSON.
 
 ```{r manifest}
-manifest <- encode_manifest(downloaded, include_session = FALSE)
+manifest <- encode_manifest(loaded, include_session = FALSE)
 names(manifest)
+manifest$attribution[, c(
+  "experiment_accession", "file_accession", "file_format", "output_type"
+)]
 ```
 
-# Live ENCODE use
+# Live ENCODE workflow
 
-The same workflow can be run against the live ENCODE Portal. Start from a narrow
-query or a known experiment accession, inspect the returned rows, and perform a
-dry run before transferring files.
+The same sequence can start from a live query. This block runs only in an
+interactive R session, keeping package builds deterministic.
 
-```{r live-encode-example, eval=FALSE}
-rna_experiments <- encode_search(
-  type = "Experiment",
-  organism = "mouse",
-  assay = "rna-seq",
-  organ = "heart",
-  status = "released",
-  limit = 5
-)
+```{r live-workflow}
+if (interactive()) {
+  experiments <- encode_search(
+    type = "Experiment",
+    organism = "mouse",
+    assay = "rna-seq",
+    organ = "heart",
+    limit = 5
+  )
 
-rna_files <- encode_list_files(
-  rna_experiments,
-  file_format = "tsv",
-  output_type = "gene quantifications",
-  assembly = "mm10",
-  allow_many = TRUE
-)
+  files <- encode_list_files(
+    experiments,
+    file_format = "tsv",
+    output_type = "gene quantifications",
+    assembly = "mm10"
+  )
 
-rna_table <- encode_results(rna_files)
-rna_table <- rna_table[seq_len(min(2, nrow(rna_table))), ]
-
-encode_download(
-  rna_table,
-  directory = tempdir(),
-  dry_run = TRUE
-)
+  selected <- encode_select_files(files, preset = "rnaseq_gene_quant")
+  encode_download(selected, directory = tempdir(), dry_run = TRUE)
+}
 ```
-
-# Return objects
-
-`encodeUtils` returns compact S3 objects that print as small tables. Use
-`encode_results()` when ordinary data-frame operations are needed.
-
-The default print methods intentionally show a compact subset of columns. For
-file tables, the user-facing columns are the file accession, experiment
-accession, assay, organism, biosample, file format, output type, assembly, file
-size, and status. The full returned table keeps the broader ENCODE metadata for
-filtering, joins, and provenance; retrieve it with `encode_results()`.
-
-Common columns for downstream code:
-
-- `file_accession` identifies the ENCODE file;
-- `experiment_accession` identifies the parent experiment;
-- `organism` and `biosample_term_name` identify species and sample;
-- `file_format`, `output_type`, and `assembly` are the main file-selection
-  fields;
-- `file_size`, `md5sum`, `download_url`, and `local_path` support download
-  planning, verification, and provenance.
-
-For local file reading:
-
-- a single local path or one downloaded-file row returns the native object for
-  that file, whereas a multi-row downloaded-file table returns an
-  `encode_loaded_files` collection;
-- TSV and CSV files are returned as data frames;
-- ENCODE gene-quantification tables are normalized to common identifier and
-  expression columns by default, and `simplify_quant = FALSE` preserves raw
-  downloaded columns;
-- BED, narrowPeak, and broadPeak files are returned as `GRanges` when the
-  optional genomic reader stack can parse the file; ENCODE peak files with extra
-  nonstandard columns may fall back to a plain table unless `as = "GRanges"` is
-  requested;
-- FASTA files use `Biostrings` when it is installed;
-- indexed genomic formats such as bigWig and bigBed use `rtracklayer` when it is
-  installed and the requested read is small or region-limited;
-- FASTQ and alignment files return an `encode_local_file` path object by default
-  because read processing is normally performed by dedicated Bioconductor or
-  command-line workflows;
-- large or unsupported files return an `encode_local_file` path object unless
-  `unsupported = "error"` is requested.
 
 # Session information
 

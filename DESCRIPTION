@@ -1,29 +1,29 @@
 Package: encodeUtils
 Type: Package
 Title: Query and Retrieve ENCODE Portal Metadata and Files
-Version: 0.99.3
+Version: 0.99.4
 Authors@R: person(
     given = "Zoheb",
     family = "Khan",
     email = "zohebkhan600@gmail.com",
     role = c("aut", "cre"),
     comment = c(ORCID = "0000-0002-0266-8886")
-    )
-Description: Provides an unofficial R workflow for discovering ENCODE Portal
-    datasets through the ENCODE REST API and converting ENCODE JSON metadata
-    into analysis-ready, traceable file tables. Supports scripted searches for
-    RNA-seq, ChIP-seq, and ATAC-seq experiments, accession-aware file listing
-    and selection, download planning, supported local file readers, and
-    reproducibility manifests for downstream R and Bioconductor analyses.
+)
+Description: Queries the ENCODE Portal REST API and converts nested metadata
+    into traceable experiment and file tables. Provides accession-aware search,
+    file selection, bounded download, and supported local-file reading
+    workflows. Records request, file, and attribution metadata for reproducible
+    downstream R and Bioconductor analyses.
 License: Artistic-2.0
-URL: https://github.com/ZohebKhan1/encodeUtils, https://zohebkhan1.github.io/encodeUtils/
+URL: https://github.com/ZohebKhan1/encodeUtils,
+    https://zohebkhan1.github.io/encodeUtils/
 BugReports: https://github.com/ZohebKhan1/encodeUtils/issues
-biocViews: DataImport, FunctionalGenomics, GeneExpression, GenomeAssembly, RNASeq, Sequencing
+biocViews: DataImport, FunctionalGenomics, GeneExpression, GenomeAssembly,
+    RNASeq, Sequencing
 Encoding: UTF-8
 Depends:
     R (>= 4.6.0)
 Imports:
-    AnnotationDbi,
     cli,
     httr2,
     jsonlite,
@@ -31,6 +31,7 @@ Imports:
     tools,
     utils
 Suggests:
+    AnnotationDbi,
     BiocStyle,
     Biostrings,
     GenomicRanges,
@@ -49,4 +50,4 @@ Config/Needs/website:
     rmarkdown,
     knitr,
     BiocStyle
-Config/roxygen2/version: 8.0.0
+RoxygenNote: 8.0.0
