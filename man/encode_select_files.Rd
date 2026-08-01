@@ -5,7 +5,7 @@
 \title{Select ENCODE files to use or download}
 \usage{
 encode_select_files(
-  files = NULL,
+  files,
   preset = NULL,
   file_format = NULL,
   output_type = NULL,
@@ -20,13 +20,10 @@ encode_select_files(
 }
 \arguments{
 \item{files}{File metadata from `encode_list_files()`, a file search result,
-or another object accepted by `encode_download()`. Leave as `NULL` to
-inspect available presets instead of selecting files.}
+or another object accepted by `encode_download()`.}
 
-\item{preset}{Optional preset name. Supported values include broad presets
-such as `"raw_reads"`, `"signal"`, `"peaks"`, and assay-aware presets such
-as `"chipseq_peaks"`, `"chipseq_signal"`, `"atacseq_peaks"`, and
-`"rnaseq_gene_quant"`.}
+\item{preset}{Optional preset name. Use `encode_file_presets()` to list the
+canonical preset names.}
 
 \item{file_format}{Optional file format filter. If omitted and `preset` is set,
 the preset supplies a format preference.}
@@ -61,8 +58,7 @@ path or URL.}
 An `encode_selected_files` object with `files`, the selected
   `encode_file_table`; `excluded`, a table of non-selected rows and reasons;
   `criteria`, the applied filters and preset settings; `query_url`; and
-  `retrieved_at`. If `files = NULL`, returns the same preset information as
-  `encode_file_presets()`.
+  `retrieved_at`.
 }
 \description{
 Choose files from an `encode_list_files()` table using explicit filters or a
@@ -70,12 +66,10 @@ preset. The result keeps the selected files for download or reading.
 }
 \details{
 Use `encode_file_presets()` to list available presets or inspect one preset.
-For compatibility, `encode_select_files()` with no `files` argument also
-returns preset information instead of selecting files.
 }
 \examples{
 encode_file_presets()
-encode_file_presets("chipseq_idr_peaks")
+encode_file_presets("chipseq_peaks")
 
 files <- data.frame(
   file_accession = c("ENCFF000AAA", "ENCFF000AAB"),
@@ -89,6 +83,6 @@ files <- data.frame(
     "/files/ENCFF000AAB/@@download/ENCFF000AAB.bed"
   )
 )
-selected <- encode_select_files(files, preset = "peaks", assembly = "GRCh38")
+selected <- encode_select_files(files, preset = "chipseq_peaks", assembly = "GRCh38")
 encode_results(selected)
 }

@@ -4,16 +4,11 @@
 #' preset. The result keeps the selected files for download or reading.
 #'
 #' Use `encode_file_presets()` to list available presets or inspect one preset.
-#' For compatibility, `encode_select_files()` with no `files` argument also
-#' returns preset information instead of selecting files.
 #'
 #' @param files File metadata from `encode_list_files()`, a file search result,
-#'   or another object accepted by `encode_download()`. Leave as `NULL` to
-#'   inspect available presets instead of selecting files.
-#' @param preset Optional preset name. Supported values include broad presets
-#'   such as `"raw_reads"`, `"signal"`, `"peaks"`, and assay-aware presets such
-#'   as `"chipseq_peaks"`, `"chipseq_signal"`, `"atacseq_peaks"`, and
-#'   `"rnaseq_gene_quant"`.
+#'   or another object accepted by `encode_download()`.
+#' @param preset Optional preset name. Use `encode_file_presets()` to list the
+#'   canonical preset names.
 #' @param file_format Optional file format filter. If omitted and `preset` is set,
 #'   the preset supplies a format preference.
 #' @param output_type Optional output type filter. If omitted and `preset` is set,
@@ -38,13 +33,12 @@
 #' @return An `encode_selected_files` object with `files`, the selected
 #'   `encode_file_table`; `excluded`, a table of non-selected rows and reasons;
 #'   `criteria`, the applied filters and preset settings; `query_url`; and
-#'   `retrieved_at`. If `files = NULL`, returns the same preset information as
-#'   `encode_file_presets()`.
+#'   `retrieved_at`.
 #' @export
 #'
 #' @examples
 #' encode_file_presets()
-#' encode_file_presets("chipseq_idr_peaks")
+#' encode_file_presets("chipseq_peaks")
 #'
 #' files <- data.frame(
 #'   file_accession = c("ENCFF000AAA", "ENCFF000AAB"),
@@ -58,10 +52,10 @@
 #'     "/files/ENCFF000AAB/@@@@download/ENCFF000AAB.bed"
 #'   )
 #' )
-#' selected <- encode_select_files(files, preset = "peaks", assembly = "GRCh38")
+#' selected <- encode_select_files(files, preset = "chipseq_peaks", assembly = "GRCh38")
 #' encode_results(selected)
 encode_select_files <- function(
-                                files = NULL,
+                                files,
                                 preset = NULL,
                                 file_format = NULL,
                                 output_type = NULL,
@@ -72,9 +66,6 @@ encode_select_files <- function(
                                 prefer_default = FALSE,
                                 require_href = TRUE,
                                 explain = TRUE) {
-  if (is.null(files)) {
-    return(encode_file_presets(preset))
-  }
   replicate_policy <- match.arg(replicate_policy)
   files <- encode_file_table_from_input(files, status = status)
   files <- as.data.frame(files, stringsAsFactors = FALSE)
@@ -239,7 +230,7 @@ encode_select_files <- function(
 #'
 #' @examples
 #' encode_file_presets()
-#' encode_file_presets("peaks")
+#' encode_file_presets("chipseq_peaks")
 encode_file_presets <- function(preset = NULL) {
   encode_file_preset(preset)
 }
@@ -250,46 +241,11 @@ encode_file_preset <- function(preset = NULL) {
       file_format = "fastq",
       output_type_priority = "reads"
     ),
-    raw_fastq = list(
-      file_format = "fastq",
-      output_type_priority = "reads"
-    ),
     alignments = list(
       file_format = c("bam", "cram", "sam"),
       output_type_priority = c("alignments", "unfiltered alignments")
     ),
-    signal = list(
-      file_format = c("bigWig", "bw"),
-      output_type_priority = c(
-        "fold change over control",
-        "signal p-value",
-        "read-depth normalized signal",
-        "signal"
-      )
-    ),
-    peaks = list(
-      file_format = c("bed", "narrowPeak", "broadPeak", "bigBed"),
-      output_type_priority = c(
-        "optimal IDR thresholded peaks",
-        "conservative IDR thresholded peaks",
-        "IDR thresholded peaks",
-        "pseudoreplicated peaks",
-        "replicated peaks",
-        "peaks"
-      )
-    ),
     chipseq_peaks = list(
-      file_format = c("bed", "narrowPeak", "broadPeak", "bigBed"),
-      output_type_priority = c(
-        "optimal IDR thresholded peaks",
-        "conservative IDR thresholded peaks",
-        "IDR thresholded peaks",
-        "pseudoreplicated peaks",
-        "replicated peaks",
-        "peaks"
-      )
-    ),
-    chipseq_idr_peaks = list(
       file_format = c("bed", "narrowPeak", "broadPeak", "bigBed"),
       output_type_priority = c(
         "optimal IDR thresholded peaks",
@@ -310,16 +266,6 @@ encode_file_preset <- function(preset = NULL) {
         "signal"
       )
     ),
-    chipseq_signal_bigwig = list(
-      file_format = c("bigWig", "bw"),
-      output_type_priority = c(
-        "fold change over control",
-        "signal p-value",
-        "control normalized signal",
-        "read-depth normalized signal",
-        "signal"
-      )
-    ),
     atacseq_peaks = list(
       file_format = c("bed", "narrowPeak", "broadPeak", "bigBed"),
       output_type_priority = c(
@@ -329,15 +275,6 @@ encode_file_preset <- function(preset = NULL) {
         "pseudoreplicated peaks",
         "replicated peaks",
         "peaks"
-      )
-    ),
-    quantification = list(
-      file_format = c("tsv", "txt", "csv"),
-      output_type_priority = c(
-        "gene quantifications",
-        "transcript quantifications",
-        "gene expression quantifications",
-        "quantifications"
       )
     ),
     rnaseq_gene_quant = list(
@@ -350,34 +287,7 @@ encode_file_preset <- function(preset = NULL) {
         "quantifications"
       )
     ),
-    rna_gene_counts = list(
-      file_format = c("tsv", "txt", "csv"),
-      output_type_priority = c(
-        "gene counts",
-        "gene quantifications",
-        "gene expression quantifications",
-        "quantifications"
-      )
-    ),
-    rna_gene_tpm = list(
-      file_format = c("tsv", "txt", "csv"),
-      output_type_priority = c(
-        "gene TPMs",
-        "gene quantifications",
-        "gene expression quantifications",
-        "quantifications"
-      )
-    ),
     rnaseq_transcript_quant = list(
-      file_format = c("tsv", "txt", "csv"),
-      output_type_priority = c(
-        "transcript quantifications",
-        "transcript expression quantifications",
-        "transcript TPMs",
-        "quantifications"
-      )
-    ),
-    rna_transcript_quant = list(
       file_format = c("tsv", "txt", "csv"),
       output_type_priority = c(
         "transcript quantifications",

@@ -10,40 +10,27 @@ encode_download(
   file_format = NULL,
   output_type = NULL,
   assembly = NULL,
-  file_status = "released",
-  n = NULL,
+  status = "released",
+  limit = NULL,
   directory = NULL,
-  cache = TRUE,
   max_file_size = "250MB",
   max_total_size = "500MB",
   allow_unknown_size = FALSE,
   overwrite = FALSE,
   dry_run = FALSE,
-  read = FALSE,
-  read_max_size = "100MB",
-  read_format = NULL,
-  read_region = NULL,
-  read_allow_large = FALSE,
-  read_unsupported = c("return_path", "error"),
-  read_as = c("auto", "data.frame", "GRanges", "path"),
-  read_row_names = c("gene_symbol", "ensembl_id", "entrez_id", "none"),
-  read_values = "raw_counts",
-  read_simplify_quant = TRUE,
-  assign = FALSE,
-  envir = parent.frame(),
   prefer_cloud = FALSE,
   verify = c("md5", "size"),
   quiet = FALSE
 )
 }
 \arguments{
-\item{x}{ENCFF accession(s), file metadata table, file search result, file
-object, selected-file object, experiment object, or ENCSR experiment
-accession(s). ENCSR input is first passed to `encode_list_files()`.}
+\item{x}{ENCFF accession(s), file metadata table, file search result,
+selected-file object, or ENCSR experiment accession(s). ENCSR input is
+first passed to `encode_list_files()`.}
 
 \item{file_accession}{Optional ENCODE file accession(s), such as
 `"ENCFF260OJQ"`, to download from `x`. Use this when you want specific
-files rather than the first `n` rows.}
+files rather than the first `limit` rows.}
 
 \item{file_format}{Optional file-format filter used when `x` is an ENCSR
 experiment accession.}
@@ -54,20 +41,14 @@ experiment accession.}
 \item{assembly}{Optional genome-assembly filter used when `x` is an ENCSR
 experiment accession.}
 
-\item{file_status}{Optional file-status filter used when `x` is an ENCSR
+\item{status}{Optional file-status filter used when `x` is an ENCSR
 experiment accession.}
 
-\item{n}{Optional number of files to use from the top of `x`.}
+\item{limit}{Optional number of files to use from the top of `x`.}
 
 \item{directory}{Destination directory. If `NULL`, a package cache directory
 from `tools::R_user_dir("encodeUtils", "cache")` is used. Use `tempdir()`
 for non-persistent example or testing downloads.}
-
-\item{cache}{Whether `directory = NULL` should use the package cache. If
-`FALSE`, a session temporary directory is used. The default cache uses a
-standard R user-cache location with accession-derived file names and
-size/MD5 verification, avoiding writes to the package, working, or home
-directory.}
 
 \item{max_file_size}{Maximum allowed size per file, as bytes or a string like
 `"500MB"`.}
@@ -82,45 +63,6 @@ report the unknown-size count.}
 
 \item{dry_run}{If `TRUE`, return the planned download table without
 downloading.}
-
-\item{read}{If `TRUE`, read downloaded files into R after a successful
-transfer. This is intended for small tabular files and supported local
-genomic formats.}
-
-\item{read_max_size}{Maximum file size to read into memory when
-`read = TRUE`.}
-
-\item{read_format}{Optional file format override used when `read = TRUE`.
-Leave as `NULL` to use ENCODE file metadata or the file extension.}
-
-\item{read_region}{Optional genomic range passed to `encode_read()` for
-indexed genomic formats.}
-
-\item{read_allow_large}{Whether `read = TRUE` may fully import indexed files
-such as bigWig or bigBed without `read_region`.}
-
-\item{read_unsupported}{What to do when a downloaded file cannot be read
-directly. Use `"return_path"` to return an `encode_local_file` path object,
-or `"error"` to fail.}
-
-\item{read_as}{Return type passed to `encode_read()` when `read = TRUE`.
-`"auto"` uses Bioconductor classes for genomic formats when available.}
-
-\item{read_row_names}{Column to use for row names when `read = TRUE`.
-Use `"none"` to keep default integer row names.}
-
-\item{read_values}{Expression values to combine across files when
-`read = TRUE`. Defaults to `"raw_counts"`. Use values such as `"TPM"`,
-`"FPKM"`, or `"RPKM"` when those matrices are needed, or `"all"` to build
-every supported expression matrix.}
-
-\item{read_simplify_quant}{Whether ENCODE gene-quantification tables should
-be normalized to common expression columns when `read = TRUE`.}
-
-\item{assign}{If `TRUE`, assign loaded file objects and experiment groups
-into `envir`. The default is `FALSE` so scripts stay explicit.}
-
-\item{envir}{Environment used when `assign = TRUE`.}
 
 \item{prefer_cloud}{Whether to prefer ENCODE cloud URLs when available.}
 
@@ -153,12 +95,12 @@ files <- data.frame(
 encode_download(files, directory = tempdir(), dry_run = TRUE, quiet = TRUE)
 
 # Live ENCODE example:
-# loaded <- encode_download(
+# downloaded <- encode_download(
 #   "ENCSR083OKX",
 #   file_format = "tsv",
 #   output_type = "gene quantifications",
 #   assembly = "mm10",
-#   directory = NULL,
-#   read = TRUE
+#   directory = NULL
 # )
+# loaded <- encode_read(downloaded)
 }

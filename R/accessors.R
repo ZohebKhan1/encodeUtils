@@ -10,7 +10,7 @@
 #'   this is the record or file table. For `encode_select_files()`, it is the
 #'   selected file table. For `encode_download()`, it is the download-result
 #'   table. For `encode_read()` collection output, it is the loaded-file
-#'   metadata table. For schema objects, it is the schema-property table.
+#'   metadata table.
 #' @export
 #'
 #' @examples
@@ -22,12 +22,6 @@
 encode_results <- function(x) {
   if (inherits(x, "encode_search_result")) {
     return(x$results)
-  }
-  if (inherits(x, "encode_object")) {
-    return(x$summary)
-  }
-  if (inherits(x, "encode_schema_result")) {
-    return(x$properties)
   }
   if (inherits(x, "encode_selected_files")) {
     return(x$files)
@@ -92,22 +86,4 @@ encode_filters <- function(x) {
     return(filters)
   }
   data.frame(field = character(), value = character())
-}
-
-#' List searchable fields from an ENCODE schema
-#'
-#' Retrieve an ENCODE schema and return the compact property table. This is a
-#' convenience wrapper around `encode_get_schema()` for field discovery.
-#'
-#' @param type ENCODE object type, schema path, or profile JSON URL.
-#' @param quiet If `FALSE`, print a concise status message.
-#'
-#' @return A data frame describing schema properties.
-#'
-#' @examples
-#' # fields <- encode_search_fields("Experiment")
-#' # fields$property
-#' @noRd
-encode_search_fields <- function(type = "Experiment", quiet = TRUE) {
-  encode_get_schema(type, quiet = quiet)$properties
 }

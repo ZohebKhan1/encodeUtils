@@ -12,7 +12,6 @@ encode_list_files(
   status = "released",
   limit = "all",
   metadata = c("basic", "full"),
-  max_experiments = 25,
   allow_many = FALSE,
   quiet = FALSE
 )
@@ -37,10 +36,6 @@ encode_list_files(
 \item{metadata}{Amount of linked metadata to request. `"basic"` keeps
 responses smaller. `"full"` adds more display columns.}
 
-\item{max_experiments}{Maximum number of experiments accepted without
-`allow_many = TRUE`. This guard prevents accidental broad file-listing
-queries.}
-
 \item{allow_many}{Whether to allow many experiment datasets in one query.}
 
 \item{quiet}{If `FALSE`, print a concise status message.}
@@ -62,17 +57,14 @@ The default `limit = "all"` requests the complete file list for the selected
 experiments.
 }
 \examples{
-files <- try(
-  encode_list_files(
+if (interactive()) {
+  files <- encode_list_files(
     "ENCSR083OKX",
     file_format = "tsv",
     output_type = "gene quantifications",
     assembly = "mm10",
     quiet = TRUE
-  ),
-  silent = TRUE
-)
-if (!inherits(files, "try-error")) {
+  )
   encode_results(files)
 }
 }

@@ -15,7 +15,7 @@ A data frame. For `encode_search()` and `encode_list_files()` output,
   this is the record or file table. For `encode_select_files()`, it is the
   selected file table. For `encode_download()`, it is the download-result
   table. For `encode_read()` collection output, it is the loaded-file
-  metadata table. For schema objects, it is the schema-property table.
+  metadata table.
 }
 \description{
 `encode_results()` returns the main table from an encodeUtils object. Use it

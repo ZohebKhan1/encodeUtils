@@ -144,23 +144,18 @@ query files attached to those experiments. File-format filters are applied
 to the attached File records.
 }
 \examples{
-res <- try(
-  encode_search(
+if (interactive()) {
+  res <- encode_search(
     type = "Experiment",
     organism = "mouse",
     assay = "rna-seq",
     organ = "heart",
     limit = 1,
     quiet = TRUE
-  ),
-  silent = TRUE
-)
-if (!inherits(res, "try-error")) {
+  )
   encode_results(res)
-}
 
-chip <- try(
-  encode_search(
+  chip <- encode_search(
     type = "Experiment",
     organism = "mouse",
     assay = "histone chip-seq",
@@ -169,7 +164,6 @@ chip <- try(
     exclude_controls = TRUE,
     limit = 1,
     quiet = TRUE
-  ),
-  silent = TRUE
-)
+  )
+}
 }

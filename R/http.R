@@ -43,7 +43,16 @@ encode_normalize_path <- function(x) {
 
 encode_request_throttle <- function() {
   rate <- encode_option("encodeUtils.rate_per_second", 5)
-  if (isFALSE(rate) || is.na(rate) || rate <= 0) {
+  if (isFALSE(rate)) {
+    return(invisible(NULL))
+  }
+  if (!is.numeric(rate) || length(rate) != 1L || is.na(rate) ||
+    !is.finite(rate) || rate < 0) {
+    cli::cli_abort(
+      "Option {.code encodeUtils.rate_per_second} must be FALSE or one finite non-negative number."
+    )
+  }
+  if (rate == 0) {
     return(invisible(NULL))
   }
 
@@ -166,37 +175,6 @@ encode_parse_search_404 <- function(body, status, allow_search_404) {
   parsed
 }
 
-encode_perform_text <- function(path, query = list(), timeout = NULL) {
-  req <- encode_build_request(
-    path,
-    query = query,
-    timeout = timeout,
-    accept = "text/tab-separated-values, text/plain, */*"
-  )
-  resp <- encode_perform_with_retry(req)
-  status <- httr2::resp_status(resp)
-  body <- httr2::resp_body_string(resp)
-
-  if (status >= 400L) {
-    details <- encode_error_details(body)
-    cli::cli_abort(
-      encode_error_message(
-        message = "ENCODE request failed with HTTP {status}.",
-        url = req$url,
-        details = details
-      )
-    )
-  }
-
-  list(
-    text = body,
-    url = req$url,
-    status_code = status,
-    content_type = httr2::resp_content_type(resp),
-    retrieved_at = Sys.time()
-  )
-}
-
 encode_perform_file <- function(url, path, timeout = NULL) {
   req <- encode_build_request(
     url,
@@ -286,8 +264,22 @@ encode_retry_sleep <- function(attempt, resp = NULL) {
   delay <- encode_retry_after(resp)
   if (is.na(delay)) {
     base <- encode_option("encodeUtils.retry_base_seconds", 0.5)
+    if (!is.numeric(base) || length(base) != 1L || is.na(base) ||
+      !is.finite(base) || base < 0) {
+      cli::cli_abort(
+        "Option {.code encodeUtils.retry_base_seconds} must be one finite non-negative number."
+      )
+    }
     delay <- base * 2^(attempt - 1L)
   }
+  max_delay <- encode_option("encodeUtils.max_retry_seconds", 60)
+  if (!is.numeric(max_delay) || length(max_delay) != 1L || is.na(max_delay) ||
+    !is.finite(max_delay) || max_delay < 0) {
+    cli::cli_abort(
+      "Option {.code encodeUtils.max_retry_seconds} must be one finite non-negative number."
+    )
+  }
+  delay <- min(delay, max_delay)
   if (!is.na(delay) && delay > 0) {
     Sys.sleep(delay)
   }

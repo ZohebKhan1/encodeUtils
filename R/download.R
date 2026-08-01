@@ -5,29 +5,24 @@
 #' are not overwritten by default, files are written through a temporary `.part`
 #' path, and size/MD5 checks are used when ENCODE provides the metadata.
 #'
-#' @param x ENCFF accession(s), file metadata table, file search result, file
-#'   object, selected-file object, experiment object, or ENCSR experiment
-#'   accession(s). ENCSR input is first passed to `encode_list_files()`.
+#' @param x ENCFF accession(s), file metadata table, file search result,
+#'   selected-file object, or ENCSR experiment accession(s). ENCSR input is
+#'   first passed to `encode_list_files()`.
 #' @param file_accession Optional ENCODE file accession(s), such as
 #'   `"ENCFF260OJQ"`, to download from `x`. Use this when you want specific
-#'   files rather than the first `n` rows.
+#'   files rather than the first `limit` rows.
 #' @param file_format Optional file-format filter used when `x` is an ENCSR
 #'   experiment accession.
 #' @param output_type Optional output-type filter used when `x` is an ENCSR
 #'   experiment accession.
 #' @param assembly Optional genome-assembly filter used when `x` is an ENCSR
 #'   experiment accession.
-#' @param file_status Optional file-status filter used when `x` is an ENCSR
+#' @param status Optional file-status filter used when `x` is an ENCSR
 #'   experiment accession.
-#' @param n Optional number of files to use from the top of `x`.
+#' @param limit Optional number of files to use from the top of `x`.
 #' @param directory Destination directory. If `NULL`, a package cache directory
 #'   from `tools::R_user_dir("encodeUtils", "cache")` is used. Use `tempdir()`
 #'   for non-persistent example or testing downloads.
-#' @param cache Whether `directory = NULL` should use the package cache. If
-#'   `FALSE`, a session temporary directory is used. The default cache uses a
-#'   standard R user-cache location with accession-derived file names and
-#'   size/MD5 verification, avoiding writes to the package, working, or home
-#'   directory.
 #' @param max_file_size Maximum allowed size per file, as bytes or a string like
 #'   `"500MB"`.
 #' @param max_total_size Maximum allowed total size, as bytes or a string.
@@ -37,33 +32,6 @@
 #' @param overwrite Whether existing destination files may be replaced.
 #' @param dry_run If `TRUE`, return the planned download table without
 #'   downloading.
-#' @param read If `TRUE`, read downloaded files into R after a successful
-#'   transfer. This is intended for small tabular files and supported local
-#'   genomic formats.
-#' @param read_max_size Maximum file size to read into memory when
-#'   `read = TRUE`.
-#' @param read_format Optional file format override used when `read = TRUE`.
-#'   Leave as `NULL` to use ENCODE file metadata or the file extension.
-#' @param read_region Optional genomic range passed to `encode_read()` for
-#'   indexed genomic formats.
-#' @param read_allow_large Whether `read = TRUE` may fully import indexed files
-#'   such as bigWig or bigBed without `read_region`.
-#' @param read_unsupported What to do when a downloaded file cannot be read
-#'   directly. Use `"return_path"` to return an `encode_local_file` path object,
-#'   or `"error"` to fail.
-#' @param read_as Return type passed to `encode_read()` when `read = TRUE`.
-#'   `"auto"` uses Bioconductor classes for genomic formats when available.
-#' @param read_row_names Column to use for row names when `read = TRUE`.
-#'   Use `"none"` to keep default integer row names.
-#' @param read_values Expression values to combine across files when
-#'   `read = TRUE`. Defaults to `"raw_counts"`. Use values such as `"TPM"`,
-#'   `"FPKM"`, or `"RPKM"` when those matrices are needed, or `"all"` to build
-#'   every supported expression matrix.
-#' @param read_simplify_quant Whether ENCODE gene-quantification tables should
-#'   be normalized to common expression columns when `read = TRUE`.
-#' @param assign If `TRUE`, assign loaded file objects and experiment groups
-#'   into `envir`. The default is `FALSE` so scripts stay explicit.
-#' @param envir Environment used when `assign = TRUE`.
 #' @param prefer_cloud Whether to prefer ENCODE cloud URLs when available.
 #' @param verify Verification checks to perform. Supported values are `"md5"`
 #'   and `"size"`. Use `NULL` to record downloads without size or MD5
@@ -87,52 +55,32 @@
 #' encode_download(files, directory = tempdir(), dry_run = TRUE, quiet = TRUE)
 #'
 #' # Live ENCODE example:
-#' # loaded <- encode_download(
+#' # downloaded <- encode_download(
 #' #   "ENCSR083OKX",
 #' #   file_format = "tsv",
 #' #   output_type = "gene quantifications",
 #' #   assembly = "mm10",
-#' #   directory = NULL,
-#' #   read = TRUE
+#' #   directory = NULL
 #' # )
+#' # loaded <- encode_read(downloaded)
 encode_download <- function(
                             x,
                             file_accession = NULL,
                             file_format = NULL,
                             output_type = NULL,
                             assembly = NULL,
-                            file_status = "released",
-                            n = NULL,
+                            status = "released",
+                            limit = NULL,
                             directory = NULL,
-                            cache = TRUE,
                             max_file_size = "250MB",
                             max_total_size = "500MB",
                             allow_unknown_size = FALSE,
                             overwrite = FALSE,
                             dry_run = FALSE,
-                            read = FALSE,
-                            read_max_size = "100MB",
-                            read_format = NULL,
-                            read_region = NULL,
-                            read_allow_large = FALSE,
-                            read_unsupported = c("return_path", "error"),
-                            read_as = c("auto", "data.frame", "GRanges", "path"),
-                            read_row_names = c("gene_symbol", "ensembl_id", "entrez_id", "none"),
-                            read_values = "raw_counts",
-                            read_simplify_quant = TRUE,
-                            assign = FALSE,
-                            envir = parent.frame(),
                             prefer_cloud = FALSE,
                             verify = c("md5", "size"),
                             quiet = FALSE) {
   verify <- encode_normalize_verify(verify)
-  read_unsupported <- match.arg(read_unsupported)
-  read_as <- match.arg(read_as)
-  read_row_names <- match.arg(read_row_names)
-  read_values <- encode_normalize_matrix_values(read_values)
-  if (isTRUE(read) && isTRUE(dry_run)) {
-    cli::cli_abort("Use either {.code dry_run = TRUE} or {.code read = TRUE}, not both.")
-  }
   ## Real ENCSR downloads must be narrowed before transfer; dry runs remain
   ## unrestricted so users can inspect the complete file plan.
   encode_check_experiment_download_scope(
@@ -141,14 +89,14 @@ encode_download <- function(
     file_accession = file_accession,
     file_format = file_format,
     output_type = output_type,
-    n = n
+    limit = limit
   )
   files <- encode_download_file_table(
     x,
     file_format = file_format,
     output_type = output_type,
     assembly = assembly,
-    file_status = file_status
+    status = status
   )
   if (nrow(files) == 0L) {
     encode_abort_no_matching_download_files(
@@ -156,7 +104,7 @@ encode_download <- function(
       file_format = file_format,
       output_type = output_type,
       assembly = assembly,
-      file_status = file_status
+      status = status
     )
   }
   files <- encode_filter_file_accessions(files, file_accession)
@@ -166,11 +114,10 @@ encode_download <- function(
       "i" = "Use {.fun encode_results} on the file table to choose valid ENCFF accessions."
     ))
   }
-  files <- encode_limit_file_rows(files, n = n, file_accession = file_accession)
+  files <- encode_limit_file_rows(files, limit = limit, file_accession = file_accession)
   files <- encode_prepare_download_table(
     files = files,
     directory = directory,
-    cache = cache,
     prefer_cloud = prefer_cloud
   )
 
@@ -252,37 +199,15 @@ encode_download <- function(
       "Failed to download or verify {sum(failed)} ENCODE file(s): {.val {paste(result$file_accession[failed], collapse = ', ')}}."
     )
   }
-  if (!isTRUE(quiet) && !isTRUE(read)) {
+  if (!isTRUE(quiet)) {
     cli::cli_inform(
       "ENCODE download completed. Print the result to view downloaded files, or use {.code encode_results()} for the table."
     )
   }
-  if (isTRUE(read)) {
-    if (!isTRUE(quiet)) {
-      cli::cli_inform(
-        "File transfer completed. Reading downloaded files into R."
-      )
-    }
-    return(encode_load_downloaded_files(
-      result,
-      max_size = read_max_size,
-      format = read_format,
-      region = read_region,
-      allow_large = read_allow_large,
-      unsupported = read_unsupported,
-      as = read_as,
-      row_names = read_row_names,
-      matrix_values = read_values,
-      simplify_quant = read_simplify_quant,
-      assign = assign,
-      envir = envir,
-      quiet = quiet
-    ))
-  }
   result
 }
 
-encode_download_file_table <- function(x, file_format = NULL, output_type = NULL, assembly = NULL, file_status = "released") {
+encode_download_file_table <- function(x, file_format = NULL, output_type = NULL, assembly = NULL, status = "released") {
   experiment_input <- is.character(x) && all(encode_is_experiment_accession(vapply(x, encode_normalize_accession, character(1L))))
   filters_requested <- !is.null(file_format) || !is.null(output_type) || !is.null(assembly)
   if (experiment_input) {
@@ -291,7 +216,7 @@ encode_download_file_table <- function(x, file_format = NULL, output_type = NULL
       file_format = file_format,
       output_type = output_type,
       assembly = assembly,
-      status = file_status,
+      status = status,
       limit = "all",
       quiet = TRUE
     ))
@@ -309,21 +234,21 @@ encode_check_experiment_download_scope <- function(x,
                                                    file_accession,
                                                    file_format,
                                                    output_type,
-                                                   n) {
+                                                   limit) {
   if (isTRUE(dry_run) || !encode_is_direct_experiment_download_input(x)) {
     return(invisible(NULL))
   }
   narrowed <- !is.null(file_accession) ||
     !is.null(file_format) ||
     !is.null(output_type) ||
-    !is.null(n)
+    !is.null(limit)
   if (narrowed) {
     return(invisible(NULL))
   }
   cli::cli_abort(c(
     "Refusing to download all files for an ENCODE experiment accession without narrowing the request.",
     "i" = "Run {.code encode_download(x, dry_run = TRUE)} to inspect the full plan.",
-    "i" = "For real downloads, provide {.arg file_format}, {.arg output_type}, {.arg file_accession}, or {.arg n}."
+    "i" = "For real downloads, provide {.arg file_format}, {.arg output_type}, {.arg file_accession}, or {.arg limit}."
   ))
 }
 
@@ -339,13 +264,13 @@ encode_abort_no_matching_download_files <- function(x,
                                                     file_format = NULL,
                                                     output_type = NULL,
                                                     assembly = NULL,
-                                                    file_status = "released") {
+                                                    status = "released") {
   if (is.character(x) && any(encode_is_experiment_accession(vapply(x, encode_normalize_accession, character(1L))))) {
     filters <- c(
       if (!is.null(file_format)) paste0("file_format = ", paste(file_format, collapse = ", ")),
       if (!is.null(output_type)) paste0("output_type = ", paste(output_type, collapse = ", ")),
       if (!is.null(assembly)) paste0("assembly = ", paste(assembly, collapse = ", ")),
-      if (!is.null(file_status)) paste0("status = ", paste(file_status, collapse = ", "))
+      if (!is.null(status)) paste0("status = ", paste(status, collapse = ", "))
     )
     details <- if (length(filters) > 0L) paste(filters, collapse = "; ") else "no file filters"
     cli::cli_abort(c(
@@ -361,18 +286,18 @@ encode_abort_no_matching_download_files <- function(x,
   ))
 }
 
-encode_limit_file_rows <- function(files, n = NULL, file_accession = NULL) {
-  if (is.null(n)) {
+encode_limit_file_rows <- function(files, limit = NULL, file_accession = NULL) {
+  if (is.null(limit)) {
     return(files)
   }
   if (!is.null(file_accession)) {
-    cli::cli_abort("Use either {.arg file_accession} or {.arg n}, not both.")
+    cli::cli_abort("Use either {.arg file_accession} or {.arg limit}, not both.")
   }
-  n <- encode_validate_positive_whole_number(n, "n")
-  if (nrow(files) <= n) {
+  limit <- encode_validate_positive_whole_number(limit, "limit")
+  if (nrow(files) <= limit) {
     return(files)
   }
-  files[seq_len(n), , drop = FALSE]
+  files[seq_len(limit), , drop = FALSE]
 }
 
 encode_normalize_verify <- function(verify) {
@@ -382,7 +307,7 @@ encode_normalize_verify <- function(verify) {
   match.arg(verify, choices = c("md5", "size"), several.ok = TRUE)
 }
 
-encode_prepare_download_table <- function(files, directory, cache, prefer_cloud) {
+encode_prepare_download_table <- function(files, directory, prefer_cloud) {
   files <- as.data.frame(files, stringsAsFactors = FALSE)
   if (!"file_accession" %in% names(files)) {
     if ("accession" %in% names(files)) {
@@ -406,11 +331,7 @@ encode_prepare_download_table <- function(files, directory, cache, prefer_cloud)
     files$cloud_url <- NA_character_
   }
 
-  directory <- directory %||% if (isTRUE(cache)) {
-    tools::R_user_dir("encodeUtils", which = "cache")
-  } else {
-    tempdir()
-  }
+  directory <- directory %||% tools::R_user_dir("encodeUtils", which = "cache")
   if (!is.character(directory) || length(directory) != 1L || is.na(directory) || !nzchar(directory)) {
     cli::cli_abort("{.arg directory} must be one non-empty path or NULL.")
   }
@@ -529,38 +450,57 @@ encode_download_one <- function(file, overwrite, verify, quiet, index = NULL, to
     }
   }, add = TRUE)
   response <- encode_perform_file(file$download_url[[1L]], tmp_path)
-  if (file.exists(path) && isTRUE(overwrite)) {
-    unlink(path)
-  }
-  renamed <- file.rename(tmp_path, path)
-  if (!isTRUE(renamed)) {
-    cli::cli_abort("Could not move downloaded file into place: {.path {path}}.")
-  }
-
-  file$download_status <- "downloaded"
   file$downloaded_at <- response$retrieved_at
-  file$downloaded_size <- as.numeric(file.info(path)$size)
+  file$downloaded_size <- as.numeric(file.info(tmp_path)$size)
   file$md5sum_expected <- file$md5sum
-  file$md5sum_observed <- encode_observed_md5(path, file$md5sum[[1L]])
+  file$md5sum_observed <- encode_observed_md5(tmp_path, file$md5sum[[1L]])
   file$size_verified <- if ("size" %in% verify) {
-    encode_verify_size(path, file$file_size[[1L]])
+    encode_verify_size(tmp_path, file$file_size[[1L]])
   } else {
     NA
   }
   file$md5_verified <- if ("md5" %in% verify) {
-    encode_verify_md5(path, file$md5sum[[1L]])
+    encode_verify_md5(tmp_path, file$md5sum[[1L]])
   } else {
     NA
   }
   file$size_ok <- file$size_verified
   file$md5_ok <- file$md5_verified
-  file$failure_reason <- NA_character_
-
   if (identical(file$size_verified[[1L]], FALSE) ||
     identical(file$md5_verified[[1L]], FALSE)) {
     file$download_status <- "failed"
     file$failure_reason <- "Downloaded file failed size or MD5 verification."
+    return(file)
   }
+
+  backup_path <- NA_character_
+  if (file.exists(path) && isTRUE(overwrite)) {
+    backup_path <- tempfile(
+      pattern = paste0(".", basename(path), ".backup-"),
+      tmpdir = dirname(path)
+    )
+    if (!file.rename(path, backup_path)) {
+      cli::cli_abort("Could not preserve the existing file before replacement: {.path {path}}.")
+    }
+  }
+  on.exit({
+    if (!is.na(backup_path) && file.exists(backup_path)) {
+      if (!file.exists(path)) {
+        file.rename(backup_path, path)
+      } else {
+        unlink(backup_path)
+      }
+    }
+  }, add = TRUE)
+  if (!file.rename(tmp_path, path)) {
+    cli::cli_abort("Could not move the verified download into place: {.path {path}}.")
+  }
+  if (!is.na(backup_path) && file.exists(backup_path)) {
+    unlink(backup_path)
+    backup_path <- NA_character_
+  }
+  file$download_status <- "downloaded"
+  file$failure_reason <- NA_character_
   file
 }
 

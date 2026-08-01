@@ -15,7 +15,6 @@ encode_read(
   row_names = c("gene_symbol", "ensembl_id", "entrez_id", "none"),
   values = "raw_counts",
   simplify_quant = TRUE,
-  as_collection = FALSE,
   ...
 )
 }
@@ -47,33 +46,27 @@ return an `encode_local_file` path object.}
 Use `"none"` to keep default integer row names.}
 
 \item{values}{Expression values to combine across files. Defaults to
-`"raw_counts"`. Use values such as `"TPM"`, `"FPKM"`, or `"RPKM"` when
+`"raw_counts"`. Use values such as `"tpm"`, `"fpkm"`, or `"rpkm"` when
 those matrices are needed, or `"all"` to build every supported matrix.}
 
 \item{simplify_quant}{Whether ENCODE gene-quantification tables should be
 normalized to common identifier and expression columns. Use `FALSE` to
 preserve the raw columns from the downloaded file.}
 
-\item{as_collection}{Whether downloaded-file table input should always return
-an `encode_loaded_files` collection. This is useful when code should handle
-one-file and many-file reads with the same object shape.}
-
 \item{...}{Additional arguments passed to table readers where applicable.}
 }
 \value{
 The return type depends on input shape and file format. A local path
-  or one-row downloaded-file table returns the native object for that file:
+  returns the native object for that file:
   text tables return data frames, JSON returns a list, FASTA returns a
   `DNAStringSet` when `Biostrings` is installed, BED-like intervals return
   `GRanges` when the optional genomic reader stack can parse the file, and
   GFF/GTF, BigWig, and BigBed return `rtracklayer` imports when available.
   ENCODE peak files with extra nonstandard columns may fall back to a data
   frame unless `as = "GRanges"` is requested. FASTQ and alignment formats
-  return `encode_local_file` path objects by default. Multi-row
-  downloaded-file tables, and any downloaded-file table read with
-  `as_collection = TRUE`, return an `encode_loaded_files` object with
-  `metadata`, `data`, `matrices`, and `by_experiment` components plus
-  documented convenience aliases.
+  return `encode_local_file` path objects by default. Downloaded-file tables
+  return an `encode_loaded_files` object with `metadata`, `data`, `row_data`,
+  and `matrices` components.
 }
 \description{
 Read one or more files that are already on disk. Small tabular and JSON files
@@ -83,15 +76,10 @@ return a path object by default.
 }
 \details{
 When downloaded gene-quantification TSV tables are read together, the
-returned object includes sample metadata, individual file tables, and a merged
-raw-count matrix. Request TPM, FPKM, or RPKM with `values` when needed.
-A single local path or one-row downloaded-file table returns the native object
-for that file. A downloaded-file table with more than one row returns an
-`encode_loaded_files` collection with `metadata`, `data`, `matrices`, and
-`by_experiment` components. `files`, `raw_counts`, and `tpm` are convenience
-aliases for `metadata`, `matrices$raw_counts`, and `matrices$TPM` when those
-objects are available. Set `as_collection = TRUE` for a downloaded-file table
-when you want an `encode_loaded_files` collection even for one row.
+returned object includes complete file metadata, individual file tables,
+aligned feature metadata, and numeric expression matrices. A local path
+returns the native object for that file. A downloaded-file table always
+returns an `encode_loaded_files` collection, including for a one-row table.
 }
 \examples{
 csv_path <- tempfile(fileext = ".csv")
@@ -109,11 +97,10 @@ encode_read(bam_path)
 
 # Use with downloaded rows:
 # downloaded <- encode_download(encode_results(selected)[1, ], directory = tempdir())
-# encode_read(downloaded[1, ])
+# one_loaded <- encode_read(downloaded[1, ])
 # loaded <- encode_read(downloaded)
 # loaded$metadata
-# loaded$raw_counts
-# loaded <- encode_read(downloaded, values = c("raw_counts", "TPM"))
-# loaded$tpm
-# one_loaded <- encode_read(downloaded[1, ], as_collection = TRUE)
+# loaded$row_data
+# loaded <- encode_read(downloaded, values = c("raw_counts", "tpm"))
+# loaded$matrices$raw_counts
 }

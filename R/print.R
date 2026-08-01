@@ -1,53 +1,6 @@
 # Print methods.
 
 #' @export
-names.encode_search_result <- function(x) {
-  c("results", "total_results", "query_url", "metadata", "requested_limit")
-}
-
-#' @export
-names.encode_object <- function(x) {
-  c("summary", "type", "accession", "query_url", "metadata")
-}
-
-#' @export
-names.encode_schema_result <- function(x) {
-  c("properties", "title", "id", "query_url")
-}
-
-#' @export
-names.encode_selected_files <- function(x) {
-  c("files", "criteria")
-}
-
-#' @export
-names.encode_loaded_files <- function(x) {
-  encode_loaded_names(x, include_by_experiment = TRUE)
-}
-
-#' @export
-names.encode_loaded_experiment <- function(x) {
-  encode_loaded_names(x, include_by_experiment = FALSE)
-}
-
-encode_loaded_names <- function(x, include_by_experiment = TRUE) {
-  names <- c("metadata", "data")
-  if (!is.null(x$raw_counts)) {
-    names <- c(names, "raw_counts")
-  }
-  if (!is.null(x$tpm)) {
-    names <- c(names, "tpm")
-  }
-  if (!is.null(x$matrices) && length(x$matrices) > 0L) {
-    names <- c(names, "matrices")
-  }
-  if (isTRUE(include_by_experiment) && !is.null(x$by_experiment)) {
-    names <- c(names, "by_experiment")
-  }
-  names
-}
-
-#' @export
 print.encode_search_result <- function(x, ..., verbose = FALSE) {
   cli::cli_text("ENCODE search")
   cli::cli_text("- total matches: {.val {x$total}}")
@@ -66,28 +19,6 @@ print.encode_experiment_table <- function(x, ...) {
   cli::cli_text("ENCODE experiments")
   cli::cli_text("- experiments: {.val {nrow(x)}}")
   encode_print_table("Experiments", encode_experiment_display(x))
-  invisible(x)
-}
-
-#' @export
-print.encode_object <- function(x, ..., verbose = FALSE) {
-  cli::cli_text("ENCODE record")
-  cli::cli_text("- type: {.val {x$type}}")
-  encode_print_table("Summary", encode_result_display(x$summary))
-  if (isTRUE(verbose)) {
-    cli::cli_text("URL: {x$url}")
-  }
-  invisible(x)
-}
-
-#' @export
-print.encode_schema_result <- function(x, ..., verbose = FALSE) {
-  cli::cli_text("ENCODE schema")
-  cli::cli_text("Title: {.val {x$title}}")
-  encode_print_table("Properties", x$properties)
-  if (isTRUE(verbose)) {
-    cli::cli_text("URL: {x$url}")
-  }
   invisible(x)
 }
 
@@ -127,16 +58,8 @@ print.encode_loaded_files <- function(x, ..., verbose = FALSE) {
   cli::cli_text("ENCODE loaded files")
   cli::cli_text("- files: {.val {nrow(x$metadata)}}")
   cli::cli_text("- file objects: {.val {length(x$data)}}")
-  if (!is.null(x$raw_counts)) {
-    cli::cli_text("- raw counts: available")
-  }
-  if (!is.null(x$tpm)) {
-    cli::cli_text("- TPM: available")
-  }
-  if (!is.null(x$matrices) && length(x$matrices) > 0L) {
-    cli::cli_text("- matrices: {.val {length(x$matrices)}}")
-  }
-  cli::cli_text("- experiments: {.val {length(x$by_experiment)}}")
+  cli::cli_text("- feature rows: {.val {nrow(x$row_data)}}")
+  cli::cli_text("- matrices: {.val {length(x$matrices)}}")
   encode_print_table("Metadata", encode_display_columns(x$metadata, encode_loaded_display_columns()))
   if (isTRUE(verbose)) {
     encode_print_table("Full metadata", x$metadata, n = nrow(x$metadata))
@@ -146,35 +69,6 @@ print.encode_loaded_files <- function(x, ..., verbose = FALSE) {
       stringsAsFactors = FALSE
     )
     encode_print_table("Loaded objects", objects, n = length(objects$name))
-  }
-  invisible(x)
-}
-
-#' @export
-print.encode_loaded_experiment <- function(x, ..., verbose = FALSE) {
-  experiment <- if ("experiment_accession" %in% names(x$metadata) && nrow(x$metadata) > 0L) {
-    unique(x$metadata$experiment_accession)[[1L]]
-  } else {
-    "unknown"
-  }
-  cli::cli_text("ENCODE loaded experiment")
-  cli::cli_text("- experiment: {.val {experiment}}")
-  cli::cli_text("- files: {.val {nrow(x$metadata)}}")
-  cli::cli_text("- file objects: {.val {length(x$data)}}")
-  if (!is.null(x$raw_counts)) {
-    cli::cli_text("- raw counts: available")
-  }
-  if (!is.null(x$tpm)) {
-    cli::cli_text("- TPM: available")
-  }
-  if (!is.null(x$matrices) && length(x$matrices) > 0L) {
-    cli::cli_text("- matrices: {.val {length(x$matrices)}}")
-  }
-  encode_print_table("Metadata", encode_display_columns(x$metadata, encode_loaded_display_columns()))
-  if (isTRUE(verbose)) {
-    encode_print_table("Full metadata", x$metadata, n = nrow(x$metadata))
-    print(x$data)
-    print(x$matrices)
   }
   invisible(x)
 }
@@ -303,9 +197,9 @@ encode_loaded_display_columns <- function() {
     experiment = "experiment_accession",
     assay = "assay_title",
     organism = "organism",
-    biosample = "biosample",
+    biosample = "biosample_term_name",
     assembly = "assembly",
-    file_size = "file_size",
+    file_size = "file_size_pretty",
     status = "status"
   )
 }
@@ -400,22 +294,4 @@ encode_top_facets <- function(facets) {
     return(facets)
   }
   facets[order(facets$count, decreasing = TRUE), , drop = FALSE]
-}
-
-encode_exclusion_summary <- function(excluded) {
-  if (is.null(excluded) || nrow(excluded) == 0L || !"reason" %in% names(excluded)) {
-    return(data.frame(reason = character(), n = integer()))
-  }
-  reasons <- strsplit(excluded$reason, "; ", fixed = TRUE)
-  reasons <- unlist(reasons, use.names = FALSE)
-  reasons <- reasons[!is.na(reasons) & nzchar(reasons)]
-  if (length(reasons) == 0L) {
-    return(data.frame(reason = character(), n = integer()))
-  }
-  counts <- sort(table(reasons), decreasing = TRUE)
-  data.frame(
-    reason = names(counts),
-    n = as.integer(counts),
-    stringsAsFactors = FALSE
-  )
 }

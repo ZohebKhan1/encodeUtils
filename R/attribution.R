@@ -30,6 +30,14 @@ encode_attribution_table <- function(x,
       quiet = quiet
     ))
   }
+  if (inherits(x, "encode_loaded_files")) {
+    return(encode_attribution_from_file_table(
+      x$metadata,
+      enrich = enrich,
+      max_enrich_datasets = max_enrich_datasets,
+      quiet = quiet
+    ))
+  }
   if (inherits(x, "encode_search_result")) {
     if ("file_accession" %in% names(x$results)) {
       return(encode_attribution_from_file_table(
@@ -40,20 +48,6 @@ encode_attribution_table <- function(x,
       ))
     }
     return(encode_attribution_from_experiment_table(x$results))
-  }
-  if (inherits(x, "encode_object")) {
-    if (identical(x$type, "File")) {
-      return(encode_attribution_from_file_table(
-        encode_flatten_file(x$data),
-        enrich = enrich,
-        max_enrich_datasets = max_enrich_datasets,
-        quiet = quiet
-      ))
-    }
-    if (identical(x$type, "Experiment")) {
-      return(encode_attribution_from_experiment_table(encode_flatten_experiment(x$data)))
-    }
-    return(encode_attribution_from_object_table(encode_flatten_object(x$data)))
   }
   if (is.data.frame(x)) {
     if ("file_accession" %in% names(x) || "href" %in% names(x)) {
@@ -91,12 +85,16 @@ encode_attribution_from_character <- function(x, quiet = FALSE) {
     NULL
   }
   experiment_rows <- if (length(experiment_ids) > 0L) {
-    experiments <- lapply(experiment_ids, function(id) {
-      encode_get_record(id, metadata = "full", quiet = TRUE)$summary
-    })
-    encode_attribution_from_experiment_table(
-      encode_bind_rows(experiments)
+    experiments <- encode_search(
+      type = "Experiment",
+      filters = list(accession = experiment_ids),
+      status = NULL,
+      limit = "all",
+      metadata = "full",
+      include_facets = FALSE,
+      quiet = TRUE
     )
+    encode_attribution_from_experiment_table(encode_results(experiments))
   } else {
     NULL
   }
@@ -299,38 +297,6 @@ encode_attribution_from_experiment_table <- function(experiments) {
     status = experiments$status,
     dataset_url = experiments$url,
     experiment_url = experiments$url,
-    file_url = NA_character_,
-    download_url = NA_character_,
-    retrieval_date = as.character(Sys.Date()),
-    attribution_guidance_url = "https://www.encodeproject.org/help/citing-encode/",
-    stringsAsFactors = FALSE
-  )
-  out <- out[encode_attribution_columns()]
-  class(out) <- c("encode_attribution_table", "data.frame")
-  out
-}
-
-encode_attribution_from_object_table <- function(objects) {
-  objects <- as.data.frame(objects, stringsAsFactors = FALSE)
-  objects <- encode_ensure_columns(objects, c("accession", "status", "url", "type", "title"))
-  out <- data.frame(
-    dataset_accession = objects$accession,
-    dataset_type = objects$type,
-    experiment_accession = ifelse(objects$type %in% "Experiment", objects$accession, NA_character_),
-    file_accession = NA_character_,
-    lab = NA_character_,
-    institution = NA_character_,
-    project = NA_character_,
-    assay_title = objects$title,
-    biosample = NA_character_,
-    organism = NA_character_,
-    file_format = NA_character_,
-    output_type = NA_character_,
-    assembly = NA_character_,
-    md5sum = NA_character_,
-    status = objects$status,
-    dataset_url = objects$url,
-    experiment_url = ifelse(objects$type %in% "Experiment", objects$url, NA_character_),
     file_url = NA_character_,
     download_url = NA_character_,
     retrieval_date = as.character(Sys.Date()),

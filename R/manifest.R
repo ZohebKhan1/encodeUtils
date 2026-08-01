@@ -61,15 +61,24 @@ encode_manifest <- function(x,
     manifest$criteria <- x$criteria
   } else if (inherits(x, "encode_download_result")) {
     manifest$downloaded_files <- as.data.frame(x, stringsAsFactors = FALSE)
+  } else if (inherits(x, "encode_loaded_files")) {
+    manifest$files <- as.data.frame(x$metadata, stringsAsFactors = FALSE)
+    manifest$loaded_objects <- data.frame(
+      name = names(x$data),
+      class = vapply(x$data, function(value) {
+        paste(class(value), collapse = ", ")
+      }, character(1L)),
+      stringsAsFactors = FALSE
+    )
   } else if (inherits(x, "encode_file_table") || is.data.frame(x)) {
     manifest$files <- as.data.frame(x, stringsAsFactors = FALSE)
-  } else if (inherits(x, "encode_object")) {
-    manifest$object <- x$summary
   } else if (is.character(x)) {
     manifest$accessions <- data.frame(
       accession = vapply(x, encode_normalize_accession, character(1L)),
       stringsAsFactors = FALSE
     )
+  } else {
+    cli::cli_abort("{.arg x} is not a supported ENCODE result, file table, or accession vector.")
   }
 
   if (isTRUE(include_attribution)) {

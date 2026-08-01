@@ -79,23 +79,18 @@
 #' @export
 #'
 #' @examples
-#' res <- try(
-#'   encode_search(
+#' if (interactive()) {
+#'   res <- encode_search(
 #'     type = "Experiment",
 #'     organism = "mouse",
 #'     assay = "rna-seq",
 #'     organ = "heart",
 #'     limit = 1,
 #'     quiet = TRUE
-#'   ),
-#'   silent = TRUE
-#' )
-#' if (!inherits(res, "try-error")) {
+#'   )
 #'   encode_results(res)
-#' }
 #'
-#' chip <- try(
-#'   encode_search(
+#'   chip <- encode_search(
 #'     type = "Experiment",
 #'     organism = "mouse",
 #'     assay = "histone chip-seq",
@@ -104,9 +99,8 @@
 #'     exclude_controls = TRUE,
 #'     limit = 1,
 #'     quiet = TRUE
-#'   ),
-#'   silent = TRUE
-#' )
+#'   )
+#' }
 encode_search <- function(
                           type = "Experiment",
                           filters = list(),
@@ -1130,101 +1124,4 @@ encode_search_terms <- function(search, biosample = NULL) {
   terms <- c(search %||% character(), biosample %||% character())
   terms <- unique(trimws(terms[nzchar(trimws(terms))]))
   paste(terms, collapse = " ")
-}
-
-#' Count ENCODE search matches
-#'
-#' Return only the number of matching records. Use this for broad queries when
-#' the row count matters but the result rows do not.
-#'
-#' `encode_search()` already reports both returned rows and total matches.
-#'
-#' @inheritParams encode_search
-#' @param metadata How much linked metadata to request. The default `"basic"`
-#'   keeps the count request small because no result rows are returned.
-#'
-#' @return A query count. Printing shows the total number of matching records.
-#' @noRd
-#'
-encode_count <- function(
-                         type = "Experiment",
-                         filters = list(),
-                         search = NULL,
-                         status = "released",
-                         metadata = c("basic", "full"),
-                         quiet = FALSE) {
-  metadata_request <- encode_metadata_request(metadata)
-  result <- encode_search(
-    type = type,
-    filters = filters,
-    search = search,
-    status = status,
-    limit = 0,
-    metadata = metadata_request$metadata,
-    include_facets = FALSE,
-    quiet = TRUE
-  )
-  out <- list(
-    total = result$total,
-    total_results = result$total,
-    filters = result$filters,
-    query_url = result$query_url,
-    url = result$url,
-    encode_base_url = result$encode_base_url,
-    metadata = metadata_request$metadata,
-    frame = metadata_request$frame,
-    request = result$request
-  )
-  class(out) <- c("encode_count_result", "list")
-  if (!isTRUE(quiet)) {
-    cli::cli_inform("ENCODE count found {out$total} matching record(s).")
-    cli::cli_inform(
-      "Returned a query count. Print the result to view it."
-    )
-  }
-  out
-}
-
-#' Filter an ENCODE result table in R
-#'
-#' Filter an ENCODE result table without making another web request. Values are
-#' matched exactly by default.
-#'
-#' @param x A search result from `encode_search()` or a data frame.
-#' @param filters Named list of columns and values to keep.
-#' @param ignore_case Whether character matching should ignore case.
-#'
-#' @return A filtered data frame.
-#'
-#' @examples
-#' results <- data.frame(
-#'   accession = c("ENCSR000AAA", "ENCSR000AAB"),
-#'   assay_title = c("total RNA-seq", "ChIP-seq")
-#' )
-#' encode_filter_results(results, list(assay_title = "total RNA-seq"))
-#' @noRd
-encode_filter_results <- function(x, filters = list(), ignore_case = TRUE) {
-  encode_validate_filters(filters)
-  table <- if (inherits(x, "encode_search_result")) {
-    x$results
-  } else if (is.data.frame(x)) {
-    x
-  } else {
-    cli::cli_abort("{.arg x} must be an ENCODE search result or data frame.")
-  }
-
-  keep <- rep(TRUE, nrow(table))
-  for (field in names(filters)) {
-    if (!field %in% names(table)) {
-      cli::cli_abort("Column {.field {field}} is not present in {.arg x}.")
-    }
-    values <- filters[[field]]
-    column <- table[[field]]
-    if (is.character(column) && isTRUE(ignore_case)) {
-      column <- tolower(column)
-      values <- tolower(as.character(values))
-    }
-    keep <- keep & column %in% values
-  }
-  table[keep, , drop = FALSE]
 }

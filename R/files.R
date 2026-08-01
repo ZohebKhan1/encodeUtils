@@ -19,9 +19,6 @@
 #' @param limit Number of file records to request, or `"all"`.
 #' @param metadata Amount of linked metadata to request. `"basic"` keeps
 #'   responses smaller. `"full"` adds more display columns.
-#' @param max_experiments Maximum number of experiments accepted without
-#'   `allow_many = TRUE`. This guard prevents accidental broad file-listing
-#'   queries.
 #' @param allow_many Whether to allow many experiment datasets in one query.
 #' @param quiet If `FALSE`, print a concise status message.
 #'
@@ -33,17 +30,14 @@
 #' @export
 #'
 #' @examples
-#' files <- try(
-#'   encode_list_files(
+#' if (interactive()) {
+#'   files <- encode_list_files(
 #'     "ENCSR083OKX",
 #'     file_format = "tsv",
 #'     output_type = "gene quantifications",
 #'     assembly = "mm10",
 #'     quiet = TRUE
-#'   ),
-#'   silent = TRUE
-#' )
-#' if (!inherits(files, "try-error")) {
+#'   )
 #'   encode_results(files)
 #' }
 encode_list_files <- function(
@@ -54,7 +48,6 @@ encode_list_files <- function(
                               status = "released",
                               limit = "all",
                               metadata = c("basic", "full"),
-                              max_experiments = 25,
                               allow_many = FALSE,
                               quiet = FALSE) {
   metadata_request <- encode_metadata_request(metadata)
@@ -66,7 +59,7 @@ encode_list_files <- function(
   if (length(experiment_paths) == 0L) {
     cli::cli_abort("{.arg x} did not contain experiment accessions or paths.")
   }
-  if (length(experiment_paths) > max_experiments && !isTRUE(allow_many)) {
+  if (length(experiment_paths) > 25L && !isTRUE(allow_many)) {
     cli::cli_abort(
       c(
         "Refusing to list files for {length(experiment_paths)} experiments at once.",
@@ -283,12 +276,6 @@ encode_experiment_paths <- function(x) {
   if (inherits(x, "encode_search_result")) {
     return(encode_experiment_paths(x$results))
   }
-  if (inherits(x, "encode_object")) {
-    if (identical(x$type, "Experiment")) {
-      return(encode_scalar(x$data$`@id`))
-    }
-    cli::cli_abort("{.arg x} is an ENCODE object, but it is not an Experiment.")
-  }
   if (is.data.frame(x)) {
     if ("dataset" %in% names(x)) {
       return(as.character(x$dataset))
@@ -309,7 +296,7 @@ encode_experiment_paths <- function(x) {
   if (is.character(x)) {
     return(vapply(x, encode_as_experiment_path, character(1L)))
   }
-  cli::cli_abort("{.arg x} must be experiment identifiers, an ENCODE result, an ENCODE object, or a data frame.")
+  cli::cli_abort("{.arg x} must be experiment identifiers, an ENCODE search result, or a data frame.")
 }
 
 encode_as_experiment_path <- function(x) {
@@ -339,9 +326,6 @@ encode_file_table_from_input <- function(x, status = "released") {
   if (inherits(x, "encode_file_table")) {
     return(x)
   }
-  if (inherits(x, "encode_download_result")) {
-    return(as.data.frame(x, stringsAsFactors = FALSE))
-  }
   if (inherits(x, "encode_search_result")) {
     if (!"file_accession" %in% names(x$results) && !"href" %in% names(x$results)) {
       cli::cli_abort("{.arg x} search result does not contain file metadata.")
@@ -350,24 +334,10 @@ encode_file_table_from_input <- function(x, status = "released") {
     class(files) <- c("encode_file_table", "data.frame")
     return(files)
   }
-  if (inherits(x, "encode_object")) {
-    if (identical(x$type, "File")) {
-      files <- encode_flatten_file(x$data)
-      files <- encode_enrich_file_table_from_parent_experiments(files, metadata = "basic")
-      files <- encode_attach_metadata(
-        files,
-        query_url = x$query_url,
-        retrieved_at = x$request$retrieved_at
-      )
-      class(files) <- c("encode_file_table", "data.frame")
-      return(files)
-    }
-    if (identical(x$type, "Experiment")) {
-      return(encode_list_files(x, status = status, quiet = TRUE))
-    }
-  }
   if (is.data.frame(x)) {
-    if ("href" %in% names(x) || "file_accession" %in% names(x) || "accession" %in% names(x)) {
+    accession_is_file <- "accession" %in% names(x) &&
+      all(encode_is_file_accession(toupper(as.character(x$accession))))
+    if ("href" %in% names(x) || "file_accession" %in% names(x) || accession_is_file) {
       files <- as.data.frame(x, stringsAsFactors = FALSE)
       class(files) <- c("encode_file_table", "data.frame")
       return(files)

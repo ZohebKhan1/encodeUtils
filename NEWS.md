@@ -1,3 +1,41 @@
+## CHANGES IN VERSION 0.99.3
+
+USER-VISIBLE CHANGES
+
+    o Keep the public API focused on eight workflow functions and remove
+      obsolete internal object, schema, interactive-selection, count, and
+      local-filter compatibility layers.
+
+    o Separate transfer from import: encode_download() now returns download
+      records, and encode_read() handles all local-file loading.
+
+    o Standardize download arguments as status and limit, use directory = NULL
+      for the persistent package cache, and require files in
+      encode_select_files().
+
+    o Reduce file-selection presets to eight canonical, assay-aware names.
+
+    o Make downloaded-table input to encode_read() return one stable
+      encode_loaded_files shape with metadata, data, row_data, and matrices.
+      Expression matrices are numeric, use lower-case names, and align with
+      row_data.
+
+BUG FIXES
+
+    o Preserve raw quantification columns when simplify_quant = FALSE instead
+      of simplifying them again during collection assembly.
+
+    o Verify temporary downloads before replacing an existing destination and
+      preserve the existing file when verification or installation fails.
+
+    o Cap Retry-After delays and validate request-throttle and retry options.
+
+TESTING
+
+    o Replace duplicated implementation-level tests with deterministic,
+      fixture-backed tests of public contracts, provenance, retry behavior,
+      matrix alignment, and atomic download replacement.
+
 ## CHANGES IN VERSION 0.99.2
 
 DOCUMENTATION

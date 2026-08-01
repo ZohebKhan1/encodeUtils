@@ -1,36 +1,3 @@
-#' Summarize an ENCODE result
-#'
-#' Return a compact summary of an ENCODE result object or file table. For file
-#' tables, the summary includes file count, experiment count, known total size,
-#' formats, assemblies, output types, and largest known-size files.
-#'
-#' @param x An ENCODE result object or table.
-#' @param ... Reserved for future methods.
-#'
-#' @return A compact summary object or data frame, depending on input type.
-#' @noRd
-#'
-encode_summary <- function(x, ...) {
-  if (inherits(x, "encode_object")) {
-    return(x$summary)
-  }
-  if (inherits(x, "encode_search_result")) {
-    return(data.frame(
-      total_results = x$total,
-      returned_results = nrow(x$results),
-      query_url = x$query_url,
-      stringsAsFactors = FALSE
-    ))
-  }
-  if (inherits(x, "encode_selected_files")) {
-    return(encode_file_summary(x$files))
-  }
-  if (is.data.frame(x) && ("file_accession" %in% names(x) || "href" %in% names(x))) {
-    return(encode_file_summary(x))
-  }
-  cli::cli_abort("{.arg x} cannot be summarized by encodeUtils.")
-}
-
 #' Summarize an ENCODE file table
 #'
 #' @param files File metadata from `encode_list_files()`, `encode_select_files()`,

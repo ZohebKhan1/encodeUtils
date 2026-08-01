@@ -9,8 +9,7 @@
 }
 
 encode_option <- function(name, default) {
-  legacy_name <- sub("^encodeUtils", "encodeapiutil", name)
-  getOption(name, getOption(legacy_name, default))
+  getOption(name, default)
 }
 
 encode_base_url <- function() {
@@ -243,13 +242,6 @@ encode_pluck <- function(x, path) {
   value
 }
 
-encode_extract_field <- function(x, field) {
-  if (is.null(field) || !nzchar(field)) {
-    return(NULL)
-  }
-  encode_pluck(x, strsplit(field, ".", fixed = TRUE)[[1L]])
-}
-
 encode_first_type <- function(x) {
   types <- x$`@type` %||% character()
   types <- unlist(types, use.names = FALSE)
@@ -335,15 +327,6 @@ encode_parse_size <- function(x, arg = "size") {
     TB = 1024^4
   )
   as.numeric(parts[[2L]]) * multiplier
-}
-
-encode_first_present <- function(x, names) {
-  for (name in names) {
-    if (name %in% names(x)) {
-      return(x[[name]])
-    }
-  }
-  NULL
 }
 
 encode_empty_data_frame <- function(columns) {
@@ -596,7 +579,7 @@ encode_unique_paths <- function(paths, accessions = NULL) {
   duplicated_paths <- unique(paths[duplicated(paths)])
   for (path in duplicated_paths) {
     index <- which(paths == path)
-    pieces <- path_parts(path)
+    pieces <- encode_path_parts(path)
     suffix <- seq_along(index)
     if (!is.null(accessions) && length(accessions) == length(paths)) {
       accession_suffix <- accessions[index]
@@ -614,7 +597,7 @@ encode_unique_paths <- function(paths, accessions = NULL) {
   out
 }
 
-path_parts <- function(path) {
+encode_path_parts <- function(path) {
   directory <- dirname(path)
   base <- basename(path)
   extension <- regmatches(base, regexpr("[.][^.]+$", base))

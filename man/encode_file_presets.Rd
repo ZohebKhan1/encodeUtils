@@ -21,5 +21,5 @@ preferences for `encode_select_files()`.
 }
 \examples{
 encode_file_presets()
-encode_file_presets("peaks")
+encode_file_presets("chipseq_peaks")
 }

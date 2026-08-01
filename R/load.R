@@ -10,8 +10,6 @@ encode_load_downloaded_files <- function(
                                          allow_large = FALSE,
                                          unsupported = c("return_path", "error"),
                                          as = c("auto", "data.frame", "GRanges", "path"),
-                                         assign = FALSE,
-                                         envir = parent.frame(),
                                          row_names = c("gene_symbol", "ensembl_id", "entrez_id", "none"),
                                          matrix_values = "raw_counts",
                                          simplify_quant = TRUE,
@@ -61,61 +59,30 @@ encode_load_downloaded_files <- function(
   if (!isTRUE(quiet)) {
     cli::cli_inform("Preparing loaded ENCODE tables.")
   }
-  data <- encode_annotate_loaded_data(data, files)
-  data <- encode_clean_loaded_data(data)
+  if (isTRUE(simplify_quant)) {
+    data <- encode_annotate_loaded_data(data, files)
+  }
   data <- encode_set_row_names(data, row_names)
   class(data) <- c("encode_data_list", "list")
 
   matrices <- encode_tabular_matrices(data, files, values = matrix_values)
-  matrices <- encode_set_row_names(matrices, row_names)
-  metadata <- encode_loaded_metadata(files)
-  by_experiment <- encode_group_loaded_by_experiment(
-    files,
-    data,
-    row_names = row_names,
-    full_metadata = metadata,
-    full_matrices = matrices,
-    matrix_values = matrix_values
-  )
+  row_data <- attr(matrices, "row_data", exact = TRUE)
+  attr(matrices, "row_data") <- NULL
+  assays <- encode_set_assay_row_names(matrices, row_data, row_names)
   result <- list(
-    metadata = metadata,
+    metadata = files,
     data = data,
-    raw_counts = encode_named_matrix(matrices, c("raw_counts")),
-    tpm = encode_named_matrix(matrices, c("TPM", "tpm")),
-    matrices = matrices,
-    files = metadata,
-    by_experiment = by_experiment
+    row_data = assays$row_data,
+    matrices = assays$matrices
   )
-  attr(result, "raw_files") <- files
   class(result) <- c("encode_loaded_files", "list")
 
-  if (isTRUE(assign)) {
-    encode_assign_loaded_files(result, envir = envir)
-  }
   if (!isTRUE(quiet)) {
-    available <- c("x$metadata", "x$data")
-    if (!is.null(result$raw_counts)) {
-      available <- c(available, "x$raw_counts")
-    }
-    if (!is.null(result$tpm)) {
-      available <- c(available, "x$tpm")
-    }
     cli::cli_inform(
-      "Loaded {length(data)} ENCODE file object(s). Use {encode_join_words(available)}."
+      "Loaded {length(data)} ENCODE file object(s). Use {.code x$metadata}, {.code x$data}, {.code x$row_data}, and {.code x$matrices}."
     )
   }
   result
-}
-
-encode_join_words <- function(x) {
-  x <- as.character(x)
-  if (length(x) <= 1L) {
-    return(x)
-  }
-  if (length(x) == 2L) {
-    return(paste(x, collapse = " and "))
-  }
-  paste0(paste(x[seq_len(length(x) - 1L)], collapse = ", "), ", and ", x[[length(x)]])
 }
 
 encode_set_row_names <- function(x, row_names) {
@@ -142,15 +109,6 @@ encode_set_row_names <- function(x, row_names) {
     x[] <- lapply(x, encode_set_row_names, row_names = row_names)
   }
   x
-}
-
-encode_clean_loaded_data <- function(data) {
-  lapply(data, function(x) {
-    if (is.data.frame(x)) {
-      return(encode_simplify_quant_table(x))
-    }
-    x
-  })
 }
 
 encode_loaded_file_names <- function(files) {
@@ -201,80 +159,6 @@ encode_row_read_format <- function(row, format) {
     return(row$file_format[[1L]])
   }
   NULL
-}
-
-encode_loaded_metadata <- function(files) {
-  columns <- c(
-    experiment_accession = "experiment_accession",
-    dataset_type = "dataset_type",
-    file_accession = "file_accession",
-    assay_title = "assay_title",
-    target = "target",
-    control_type = "control_type",
-    organism = "organism",
-    biosample = "biosample_term_name",
-    biosample_type = "biosample_type",
-    age = "life_stage_age",
-    sex = "sex",
-    sample = "sample_summary",
-    treatment = "treatment",
-    assembly = "assembly",
-    analysis_accession = "analysis_accession",
-    file_size = "file_size_pretty",
-    status = "status",
-    local_path = "local_path"
-  )
-  encode_display_columns(files, columns)
-}
-
-encode_named_matrix <- function(matrices, names) {
-  if (length(matrices) == 0L) {
-    return(NULL)
-  }
-  found <- names[names %in% base::names(matrices)]
-  if (length(found) == 0L) {
-    return(NULL)
-  }
-  matrices[[found[[1L]]]]
-}
-
-encode_group_loaded_by_experiment <- function(files, data, row_names = "gene_symbol", full_metadata = NULL, full_matrices = NULL, matrix_values = "raw_counts") {
-  if (!"experiment_accession" %in% names(files)) {
-    return(list())
-  }
-  experiments <- files$experiment_accession
-  experiments[is.na(experiments) | !nzchar(experiments)] <- "unknown_experiment"
-  experiment_names <- unique(experiments)
-  groups <- vector("list", length(experiment_names))
-  names(groups) <- encode_valid_object_names(experiment_names)
-  single_experiment <- length(experiment_names) == 1L &&
-    !is.null(full_metadata) &&
-    !is.null(full_matrices)
-  for (i in seq_along(experiment_names)) {
-    keep <- experiments == experiment_names[[i]]
-    group_files <- files[keep, , drop = FALSE]
-    group_data <- data[keep]
-    class(group_data) <- c("encode_data_list", "list")
-    if (isTRUE(single_experiment)) {
-      group_matrices <- full_matrices
-      group_metadata <- full_metadata
-    } else {
-      group_matrices <- encode_tabular_matrices(group_data, group_files, values = matrix_values)
-      group_matrices <- encode_set_row_names(group_matrices, row_names)
-      group_metadata <- encode_loaded_metadata(group_files)
-    }
-    groups[[i]] <- list(
-      metadata = group_metadata,
-      data = group_data,
-      raw_counts = encode_named_matrix(group_matrices, c("raw_counts")),
-      tpm = encode_named_matrix(group_matrices, c("TPM", "tpm")),
-      matrices = group_matrices,
-      files = group_metadata
-    )
-    attr(groups[[i]], "raw_files") <- group_files
-    class(groups[[i]]) <- c("encode_loaded_experiment", "list")
-  }
-  groups
 }
 
 encode_annotate_loaded_data <- function(data, files) {
@@ -352,22 +236,6 @@ encode_coalesce_annotation_column <- function(primary, fallback = NULL) {
   missing <- is.na(primary) | !nzchar(primary)
   primary[missing] <- fallback[missing]
   primary
-}
-
-encode_gene_annotation <- function(gene_id, file) {
-  gene_id <- as.character(gene_id)
-  if (length(gene_id) == 0L) {
-    return(NULL)
-  }
-  package <- encode_gene_annotation_package(file)
-  if (is.na(package)) {
-    return(NULL)
-  }
-  annotation <- encode_gene_annotation_for_package(gene_id, package)
-  if (is.null(annotation)) {
-    return(NULL)
-  }
-  annotation[, c("gene_symbol", "ensembl_id", "entrez_id"), drop = FALSE]
 }
 
 encode_gene_annotation_for_package <- function(gene_id, package) {
@@ -569,30 +437,35 @@ encode_tabular_matrices <- function(data, files, values = "raw_counts") {
     lapply(data, function(x) names(x)[vapply(x, is.numeric, logical(1L))])
   )
   numeric_columns <- setdiff(numeric_columns, feature)
-  if (!is.null(values)) {
-    numeric_columns <- intersect(values, numeric_columns)
-  }
-  if (length(numeric_columns) == 0L) {
+  available <- stats::setNames(numeric_columns, tolower(numeric_columns))
+  supported <- c("raw_counts", "tpm", "fpkm", "rpkm")
+  selected <- intersect(values %||% supported, names(available))
+  if (length(selected) == 0L) {
     return(encode_empty_matrix_list())
   }
-  annotation <- encode_feature_annotation(data, feature)
-  matrices <- vector("list", length(numeric_columns))
-  names(matrices) <- encode_valid_object_names(numeric_columns)
-  for (i in seq_along(numeric_columns)) {
+  features <- encode_matrix_features(data, feature)
+  matrices <- vector("list", length(selected))
+  names(matrices) <- selected
+  for (i in seq_along(selected)) {
     matrices[[i]] <- encode_merge_numeric_column(
       data = data,
       files = files,
       feature = feature,
-      value = numeric_columns[[i]],
-      annotation = annotation
+      value = available[[selected[[i]]]],
+      features = features
     )
   }
+  attr(matrices, "row_data") <- encode_matrix_row_data(data, feature, features)
   class(matrices) <- c("encode_matrix_list", "list")
   matrices
 }
 
 encode_empty_matrix_list <- function() {
-  structure(list(), class = c("encode_matrix_list", "list"))
+  structure(
+    list(),
+    row_data = data.frame(),
+    class = c("encode_matrix_list", "list")
+  )
 }
 
 encode_normalize_matrix_values <- function(values) {
@@ -600,17 +473,17 @@ encode_normalize_matrix_values <- function(values) {
     return(NULL)
   }
   if (!is.character(values)) {
-    cli::cli_abort("{.arg read_values} must be a character vector.")
+    cli::cli_abort("{.arg values} must be a character vector.")
   }
-  values <- unique(values[!is.na(values) & nzchar(values)])
+  values <- unique(tolower(values[!is.na(values) & nzchar(values)]))
   if (length(values) == 0L || "all" %in% values) {
     return(NULL)
   }
-  supported <- c("raw_counts", "TPM", "FPKM", "RPKM")
+  supported <- c("raw_counts", "tpm", "fpkm", "rpkm")
   invalid <- setdiff(values, supported)
   if (length(invalid) > 0L) {
     cli::cli_abort(
-      "{.arg read_values} must contain supported values: {.val {paste(supported, collapse = ', ')}}."
+      "{.arg values} must contain supported values: {.val {paste(supported, collapse = ', ')}}."
     )
   }
   values
@@ -681,46 +554,73 @@ encode_common_feature_column <- function(data) {
   NA_character_
 }
 
-encode_merge_numeric_column <- function(data, files, feature, value, annotation = NULL) {
-  labels <- encode_loaded_file_names(files)
+encode_matrix_features <- function(data, feature) {
   features <- unique(unlist(
     lapply(data, function(x) as.character(x[[feature]])),
     use.names = FALSE
   ))
-  features <- features[!is.na(features) & nzchar(features)]
-  merged <- data.frame(
-    feature_id = features,
-    stringsAsFactors = FALSE,
-    check.names = FALSE
-  )
-  names(merged)[[1L]] <- feature
-  for (i in seq_along(data)) {
-    index <- match(features, as.character(data[[i]][[feature]]))
-    merged[[labels[[i]]]] <- unname(data[[i]][[value]][index])
-  }
-  if (!is.null(annotation)) {
-    annotation <- annotation[match(features, as.character(annotation[[feature]])), , drop = FALSE]
-    annotation[[feature]] <- features
-    merged <- cbind(
-      annotation,
-      merged[, labels, drop = FALSE]
-    )
-  }
-  encode_order_matrix_columns(merged, feature = feature, labels = labels)
+  features[!is.na(features) & nzchar(features)]
 }
 
-encode_order_matrix_columns <- function(merged, feature, labels) {
-  annotation <- intersect(c("gene_symbol", "ensembl_id", "entrez_id", "gene_name", "transcript_name"), names(merged))
-  if (identical(feature, ".encode_feature_id")) {
-    leading <- annotation
-  } else if ("gene_symbol" %in% annotation && feature %in% c("ensembl_id", "entrez_id", "gene_id")) {
-    leading <- c("gene_symbol", "ensembl_id", "entrez_id")
-  } else {
-    leading <- c(feature, annotation)
+encode_merge_numeric_column <- function(data, files, feature, value, features) {
+  labels <- encode_loaded_file_names(files)
+  merged <- matrix(
+    NA_real_,
+    nrow = length(features),
+    ncol = length(data),
+    dimnames = list(features, labels)
+  )
+  for (i in seq_along(data)) {
+    index <- match(features, as.character(data[[i]][[feature]]))
+    merged[, i] <- as.numeric(data[[i]][[value]][index])
   }
-  leading <- unique(leading[leading %in% names(merged)])
-  columns <- c(leading, labels[labels %in% names(merged)])
-  merged[, columns, drop = FALSE]
+  merged
+}
+
+encode_matrix_row_data <- function(data, feature, features) {
+  annotation <- encode_feature_annotation(data, feature)
+  if (is.null(annotation)) {
+    annotation <- data.frame(features, stringsAsFactors = FALSE)
+    names(annotation) <- if (identical(feature, ".encode_feature_id")) {
+      "feature_id"
+    } else {
+      feature
+    }
+  } else {
+    annotation <- annotation[
+      match(features, as.character(annotation[[feature]])),
+      ,
+      drop = FALSE
+    ]
+    annotation[[feature]] <- features
+    if (identical(feature, ".encode_feature_id")) {
+      names(annotation)[names(annotation) == feature] <- "feature_id"
+    }
+  }
+  row.names(annotation) <- make.unique(features)
+  annotation
+}
+
+encode_set_assay_row_names <- function(matrices, row_data, row_names) {
+  if (!is.data.frame(row_data) || nrow(row_data) == 0L) {
+    return(list(matrices = matrices, row_data = row_data))
+  }
+  labels <- row.names(row_data)
+  if (identical(row_names, "none")) {
+    labels <- NULL
+    row.names(row_data) <- NULL
+  } else if (row_names %in% names(row_data)) {
+    requested <- as.character(row_data[[row_names]])
+    missing <- is.na(requested) | !nzchar(requested)
+    requested[missing] <- labels[missing]
+    labels <- make.unique(requested)
+    row.names(row_data) <- labels
+  }
+  matrices[] <- lapply(matrices, function(x) {
+    row.names(x) <- labels
+    x
+  })
+  list(matrices = matrices, row_data = row_data)
 }
 
 encode_feature_annotation <- function(data, feature) {
@@ -738,17 +638,4 @@ encode_feature_annotation <- function(data, feature) {
   annotation <- annotation[stats::complete.cases(annotation[, feature, drop = FALSE]), , drop = FALSE]
   annotation <- annotation[!duplicated(annotation[[feature]]), , drop = FALSE]
   annotation
-}
-
-encode_assign_loaded_files <- function(x, envir) {
-  if (!is.environment(envir)) {
-    cli::cli_abort("{.arg envir} must be an environment.")
-  }
-  for (name in names(x$data)) {
-    base::assign(name, x$data[[name]], envir = envir)
-  }
-  for (name in names(x$by_experiment)) {
-    base::assign(name, x$by_experiment[[name]], envir = envir)
-  }
-  invisible(x)
 }
