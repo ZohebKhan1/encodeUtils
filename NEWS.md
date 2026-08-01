@@ -1,3 +1,15 @@
+## CHANGES IN VERSION 0.99.5
+
+VALIDATION AND INTEGRATION
+
+    o Make GenomicRanges and IRanges core dependencies so BED-like imports have
+      a deterministic GRanges default and the package has a substantive
+      Bioconductor integration point.
+
+    o Remove generated check and temporary install directories before
+      BiocCheck, and correct DESCRIPTION continuation formatting found by the
+      built-package validation run.
+
 ## CHANGES IN VERSION 0.99.4
 
 DOCUMENTATION AND INFRASTRUCTURE

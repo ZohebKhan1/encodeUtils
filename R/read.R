@@ -22,9 +22,8 @@
 #' @param unsupported What to do for unsupported formats. Use `"return_path"`
 #'   to return an `encode_local_file` path object, or `"error"` to fail.
 #' @param as Return type. `"auto"` uses Bioconductor classes for genomic
-#'   formats when the optional reader package is installed, including
-#'   `GRanges` for BED-like intervals when `GenomicRanges` and `IRanges` are
-#'   installed. Use `"data.frame"` to force tabular BED-like output,
+#'   formats, including `GRanges` for BED-like intervals. Use `"data.frame"`
+#'   to force tabular BED-like output,
 #'   `"GRanges"` to require genomic ranges for BED-like formats, or `"path"` to
 #'   return an `encode_local_file` path object.
 #' @param row_names Column to use for row names in loaded expression tables.
@@ -41,7 +40,7 @@
 #'   returns the native object for that file:
 #'   text tables return data frames, JSON returns a list, FASTA returns a
 #'   `DNAStringSet` when `Biostrings` is installed, BED-like intervals return
-#'   `GRanges` when the optional genomic reader stack can parse the file, and
+#'   `GRanges`, and
 #'   GFF/GTF, BigWig, and BigBed return `rtracklayer` imports when available.
 #'   ENCODE peak files with extra nonstandard columns may fall back to a data
 #'   frame unless `as = "GRanges"` is requested. FASTQ and alignment formats
@@ -321,9 +320,6 @@ encode_read_bed <- function(path, format = "bed", as = "auto", unsupported = "re
   if (identical(as, "data.frame")) {
     return(encode_read_bed_table(path, format = format))
   }
-  if (identical(as, "auto") && !encode_can_return_granges()) {
-    return(encode_read_bed_table(path, format = format))
-  }
   if (as %in% c("auto", "GRanges")) {
     return(encode_read_bed_granges(path, format = format, unsupported = unsupported))
   }
@@ -331,13 +327,6 @@ encode_read_bed <- function(path, format = "bed", as = "auto", unsupported = "re
 }
 
 encode_read_bed_granges <- function(path, format = "bed", unsupported = "return_path") {
-  if (!encode_can_return_granges()) {
-    return(encode_unsupported_local_file(
-      path = path,
-      reason = "GenomicRanges and IRanges are required to import BED-like files as GRanges",
-      unsupported = unsupported
-    ))
-  }
   imported <- if (requireNamespace("rtracklayer", quietly = TRUE)) {
     try(rtracklayer::import(path, format = "BED"), silent = TRUE)
   } else {
@@ -363,11 +352,6 @@ encode_read_bed_granges <- function(path, format = "bed", unsupported = "return_
       table
     }
   )
-}
-
-encode_can_return_granges <- function() {
-  requireNamespace("GenomicRanges", quietly = TRUE) &&
-    requireNamespace("IRanges", quietly = TRUE)
 }
 
 encode_bed_table_to_granges <- function(table) {

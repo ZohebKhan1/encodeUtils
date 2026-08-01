@@ -1,14 +1,14 @@
 Package: encodeUtils
 Type: Package
 Title: Query and Retrieve ENCODE Portal Metadata and Files
-Version: 0.99.4
+Version: 0.99.5
 Authors@R: person(
     given = "Zoheb",
     family = "Khan",
     email = "zohebkhan600@gmail.com",
     role = c("aut", "cre"),
     comment = c(ORCID = "0000-0002-0266-8886")
-)
+    )
 Description: Queries the ENCODE Portal REST API and converts nested metadata
     into traceable experiment and file tables. Provides accession-aware search,
     file selection, bounded download, and supported local-file reading
@@ -25,7 +25,9 @@ Depends:
     R (>= 4.6.0)
 Imports:
     cli,
+    GenomicRanges,
     httr2,
+    IRanges,
     jsonlite,
     stats,
     tools,
@@ -34,8 +36,6 @@ Suggests:
     AnnotationDbi,
     BiocStyle,
     Biostrings,
-    GenomicRanges,
-    IRanges,
     knitr,
     org.Hs.eg.db,
     org.Mm.eg.db,

@@ -36,9 +36,8 @@ bigWig or bigBed without `region`.}
 to return an `encode_local_file` path object, or `"error"` to fail.}
 
 \item{as}{Return type. `"auto"` uses Bioconductor classes for genomic
-formats when the optional reader package is installed, including
-`GRanges` for BED-like intervals when `GenomicRanges` and `IRanges` are
-installed. Use `"data.frame"` to force tabular BED-like output,
+formats, including `GRanges` for BED-like intervals. Use `"data.frame"`
+to force tabular BED-like output,
 `"GRanges"` to require genomic ranges for BED-like formats, or `"path"` to
 return an `encode_local_file` path object.}
 
@@ -60,7 +59,7 @@ The return type depends on input shape and file format. A local path
   returns the native object for that file:
   text tables return data frames, JSON returns a list, FASTA returns a
   `DNAStringSet` when `Biostrings` is installed, BED-like intervals return
-  `GRanges` when the optional genomic reader stack can parse the file, and
+  `GRanges`, and
   GFF/GTF, BigWig, and BigBed return `rtracklayer` imports when available.
   ENCODE peak files with extra nonstandard columns may fall back to a data
   frame unless `as = "GRanges"` is requested. FASTQ and alignment formats

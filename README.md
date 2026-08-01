@@ -99,9 +99,9 @@ four components:
 - `matrices`: numeric `raw_counts`, `tpm`, `fpkm`, or `rpkm` matrices when the
   requested values can be combined safely.
 
-BED-like files use Bioconductor genomic classes when the optional reader stack
-is installed. FASTQ and alignment files are returned as local path objects for
-use with dedicated sequence-processing packages.
+BED-like files return `GenomicRanges::GRanges` by default; use
+`as = "data.frame"` for a plain table. FASTQ and alignment files are returned
+as local path objects for use with dedicated sequence-processing packages.
 
 ## Network behavior
 

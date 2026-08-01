@@ -8,6 +8,24 @@ test_that("local paths return native reader output", {
   expect_equal(result$value, 2.5)
 })
 
+test_that("BED-like paths return GRanges by default and tables on request", {
+  path <- withr::local_tempfile(fileext = ".bed")
+  writeLines("chr1\t0\t10\tpeak1\t100\t+", path)
+
+  ranges <- encode_read(path)
+  table <- encode_read(path, as = "data.frame")
+
+  expect_s4_class(ranges, "GRanges")
+  expect_equal(as.character(GenomicRanges::seqnames(ranges)), "chr1")
+  expect_equal(IRanges::start(ranges), 1L)
+  expect_s3_class(table, "data.frame")
+  expect_equal(table[, c("chrom", "start", "end")], data.frame(
+    chrom = "chr1",
+    start = 0L,
+    end = 10L
+  ))
+})
+
 test_that("table input always returns a stable loaded-file collection", {
   directory <- withr::local_tempdir()
   paths <- file.path(directory, c("a.tsv", "b.tsv"))
