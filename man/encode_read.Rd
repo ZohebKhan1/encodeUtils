@@ -85,25 +85,13 @@ feature identifier in common; otherwise the original tables are retained
 without an inferred alignment.
 }
 \examples{
-csv_path <- tempfile(fileext = ".csv")
-writeLines(c("gene,value", "MYC,2.5"), csv_path)
-encode_read(csv_path)
-
-bed_path <- tempfile(fileext = ".bed")
-writeLines("chr1\t0\t10\tpeak1\t100\t+", bed_path)
-encode_read(bed_path, as = "data.frame")
-
-bam_path <- tempfile(fileext = ".bam")
-writeBin(charToRaw("placeholder"), bam_path)
-# Alignment files are returned as paths unless read with a dedicated reader.
-encode_read(bam_path)
-
-# Use with downloaded rows:
-# downloaded <- encode_download(encode_results(selected)[1, ], directory = tempdir())
-# one_loaded <- encode_read(downloaded[1, ])
-# loaded <- encode_read(downloaded)
-# loaded$metadata
-# loaded$row_data
-# loaded <- encode_read(downloaded, values = c("raw_counts", "tpm"))
-# loaded$matrices$raw_counts
+if (interactive()) {
+    downloaded <- encode_download(
+        "ENCFF973TYM",
+        directory = "encode-data"
+    )
+    loaded <- encode_read(downloaded, values = c("raw_counts", "tpm"))
+    loaded$metadata
+    loaded$matrices
+}
 }

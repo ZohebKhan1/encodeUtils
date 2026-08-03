@@ -5,8 +5,8 @@
 #'
 #' Use `encode_file_presets()` to list available presets or inspect one preset.
 #'
-#' @param files File metadata from `encode_list_files()`, a file search result,
-#'   or another object accepted by `encode_download()`.
+#' @param files File metadata from `encode_list_files()`, a File search result,
+#'   a selected-file object, or ENCFF accession(s).
 #' @param preset Optional preset name. Use `encode_file_presets()` to list the
 #'   canonical preset names.
 #' @param file_format Optional file format filter. If omitted and `preset` is set,
@@ -40,20 +40,15 @@
 #' encode_file_presets()
 #' encode_file_presets("chipseq_peaks")
 #'
-#' files <- data.frame(
-#'     file_accession = c("ENCFF000AAA", "ENCFF000AAB"),
-#'     experiment_accession = "ENCSR000AAA",
-#'     file_format = c("bed", "bed"),
-#'     output_type = c("optimal IDR thresholded peaks", "replicated peaks"),
-#'     assembly = c("GRCh38", "hg19"),
-#'     status = c("released", "released"),
-#'     href = c(
-#'         "/files/ENCFF000AAA/@@@@download/ENCFF000AAA.bed",
-#'         "/files/ENCFF000AAB/@@@@download/ENCFF000AAB.bed"
+#' if (interactive()) {
+#'     files <- encode_list_files("ENCSR389GJZ")
+#'     selected <- encode_select_files(
+#'         files,
+#'         preset = "rnaseq_gene_quant",
+#'         assembly = "mm10"
 #'     )
-#' )
-#' selected <- encode_select_files(files, preset = "chipseq_peaks", assembly = "GRCh38")
-#' encode_results(selected)
+#'     encode_results(selected)
+#' }
 encode_select_files <- function(
     files,
     preset = NULL,
@@ -68,6 +63,14 @@ encode_select_files <- function(
     quiet = FALSE
 ) {
     replicate_policy <- match.arg(replicate_policy)
+    file_format <- encode_validate_values(file_format, "file_format")
+    output_type <- encode_validate_values(output_type, "output_type")
+    assembly <- encode_validate_values(assembly, "assembly")
+    file_accession <- encode_validate_file_accessions(file_accession)
+    status <- encode_validate_values(status, "status")
+    prefer_default <- encode_validate_flag(prefer_default, "prefer_default")
+    require_href <- encode_validate_flag(require_href, "require_href")
+    quiet <- encode_validate_flag(quiet, "quiet")
     files <- encode_file_table_from_input(files, status = status)
     files <- as.data.frame(files, stringsAsFactors = FALSE)
     if (!"file_accession" %in% names(files) && "accession" %in% names(files)) {
@@ -79,8 +82,6 @@ encode_select_files <- function(
         "preferred_default"
     ))
     files$preferred_default <- encode_logical_vector(files$preferred_default)
-    file_accession <- encode_validate_file_accessions(file_accession)
-
     preset_info <- if (is.null(preset)) {
         list(file_format = NULL, output_type_priority = NULL)
     } else {
@@ -209,10 +210,9 @@ encode_select_files <- function(
     if (isTRUE(quiet)) {
         return(result)
     }
-    cli::cli_inform(c(
-        "ENCODE file selection kept {nrow(selected)} of {nrow(files)} file(s).",
-        "i" = "Returned selected files. Print the result to view them, or use {.code encode_results()} for selected file rows."
-    ))
+    cli::cli_inform(
+        "ENCODE file selection kept {nrow(selected)} of {nrow(files)} file(s)."
+    )
     result
 }
 
@@ -307,11 +307,13 @@ encode_file_preset <- function(preset = NULL) {
     if (is.null(preset)) {
         return(names(presets))
     }
-    if (!is.character(preset) || length(preset) != 1L || !preset %in% names(presets)) {
+    if (!is.character(preset) || length(preset) != 1L || is.na(preset) ||
+        !nzchar(trimws(preset)) || !trimws(preset) %in% names(presets)) {
         cli::cli_abort(
             "{.arg preset} must be one of {.val {paste(names(presets), collapse = ', ')}}."
         )
     }
+    preset <- trimws(preset)
     preset_info <- presets[[preset]]
     preset_info$preset <- preset
     preset_info

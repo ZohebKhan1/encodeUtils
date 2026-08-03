@@ -54,27 +54,15 @@
 #' @export
 #'
 #' @examples
-#' csv_path <- tempfile(fileext = ".csv")
-#' writeLines(c("gene,value", "MYC,2.5"), csv_path)
-#' encode_read(csv_path)
-#'
-#' bed_path <- tempfile(fileext = ".bed")
-#' writeLines("chr1\t0\t10\tpeak1\t100\t+", bed_path)
-#' encode_read(bed_path, as = "data.frame")
-#'
-#' bam_path <- tempfile(fileext = ".bam")
-#' writeBin(charToRaw("placeholder"), bam_path)
-#' # Alignment files are returned as paths unless read with a dedicated reader.
-#' encode_read(bam_path)
-#'
-#' # Use with downloaded rows:
-#' # downloaded <- encode_download(encode_results(selected)[1, ], directory = tempdir())
-#' # one_loaded <- encode_read(downloaded[1, ])
-#' # loaded <- encode_read(downloaded)
-#' # loaded$metadata
-#' # loaded$row_data
-#' # loaded <- encode_read(downloaded, values = c("raw_counts", "tpm"))
-#' # loaded$matrices$raw_counts
+#' if (interactive()) {
+#'     downloaded <- encode_download(
+#'         "ENCFF973TYM",
+#'         directory = "encode-data"
+#'     )
+#'     loaded <- encode_read(downloaded, values = c("raw_counts", "tpm"))
+#'     loaded$metadata
+#'     loaded$matrices
+#' }
 encode_read <- function(
     path,
     format = NULL,
@@ -91,6 +79,9 @@ encode_read <- function(
     unsupported <- match.arg(unsupported)
     as <- match.arg(as)
     row_names <- match.arg(row_names)
+    format <- encode_validate_scalar(format, "format")
+    allow_large <- encode_validate_flag(allow_large, "allow_large")
+    simplify_quant <- encode_validate_flag(simplify_quant, "simplify_quant")
     values <- encode_normalize_matrix_values(values)
     if (encode_is_read_table(path)) {
         if (!"local_path" %in% names(path)) {
@@ -146,8 +137,7 @@ encode_read <- function(
         return(jsonlite::fromJSON(path, simplifyVector = FALSE))
     }
     if (format %in% c("bw", "bigwig", "bb", "bigbed") && is.null(region) && !isTRUE(allow_large)) {
-        ## Indexed signal and annotation files can be very large; require an
-        ## explicit region or opt-in full import.
+        # Require a region or explicit opt-in before importing a complete indexed file.
         return(encode_unsupported_local_file(
             path = path,
             reason = "indexed signal and annotation files require region or allow_large = TRUE",
@@ -210,8 +200,7 @@ encode_read <- function(
 
 # Quantification-table readers
 
-## ENCODE quantification TSVs appear in several pipeline-specific shapes; detect
-## common count formats before generic table import.
+# Detect common pipeline count formats before generic TSV import.
 encode_read_tsv <- function(path, simplify_quant = TRUE, ...) {
     first_lines <- encode_read_lines(path, n = 5L)
     if (length(first_lines) == 0L) {
@@ -242,8 +231,8 @@ encode_read_featurecounts <- function(path, simplify_quant = TRUE) {
     }
     names(table)[names(table) == "Geneid"] <- "gene_id"
     count_column <- utils::tail(names(table), 1L)
-    names(table)[names(table) == count_column] <- "counts"
-    table[, intersect(c("gene_id", "counts"), names(table)), drop = FALSE]
+    names(table)[names(table) == count_column] <- "raw_counts"
+    table[, intersect(c("gene_id", "raw_counts"), names(table)), drop = FALSE]
 }
 
 encode_read_lines <- function(path, n) {
@@ -344,15 +333,15 @@ encode_read_htseq_counts <- function(path, simplify_quant = TRUE) {
         return(table)
     }
     if (ncol(table) == 2L) {
-        names(table) <- c("gene_id", "counts")
+        names(table) <- c("gene_id", "raw_counts")
     } else if (ncol(table) == 4L) {
-        names(table) <- c("gene_id", "counts", "stranded_first", "stranded_second")
+        names(table) <- c("gene_id", "raw_counts", "stranded_first", "stranded_second")
     } else {
         names(table)[[1L]] <- "gene_id"
-        names(table)[[2L]] <- "counts"
+        names(table)[[2L]] <- "raw_counts"
     }
     table <- table[!grepl("^N_", table$gene_id), , drop = FALSE]
-    table[, intersect(c("gene_id", "counts"), names(table)), drop = FALSE]
+    table[, intersect(c("gene_id", "raw_counts"), names(table)), drop = FALSE]
 }
 
 encode_simplify_quant_table <- function(table) {
@@ -373,7 +362,10 @@ encode_simplify_quant_table <- function(table) {
         }
     }
     table <- encode_normalize_quant_identifiers(table)
-    columns <- intersect(c("gene_symbol", "ensembl_id", "entrez_id", "raw_counts", "TPM", "FPKM", "RPKM"), names(table))
+    columns <- intersect(c(
+        "gene_id", "gene_symbol", "ensembl_id", "entrez_id",
+        "raw_counts", "TPM", "FPKM", "RPKM"
+    ), names(table))
     table[, columns, drop = FALSE]
 }
 
@@ -419,9 +411,7 @@ encode_read_bed_granges <- function(path, format = "bed", unsupported = "return_
     if (!inherits(imported, "try-error")) {
         return(imported)
     }
-    ## rtracklayer handles standard BED-like files. ENCODE peak files can include
-    ## additional columns, so fall back to a parsed table and construct GRanges
-    ## from chrom/start/end when possible.
+    # Convert nonstandard ENCODE peak tables when native BED import fails.
     table <- encode_read_bed_table(path, format = format)
     tryCatch(
         encode_bed_table_to_granges(table),

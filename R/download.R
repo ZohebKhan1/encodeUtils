@@ -21,8 +21,8 @@
 #'   experiment accession.
 #' @param limit Optional number of files to use from the top of `x`.
 #' @param directory Destination directory. If `NULL`, a package cache directory
-#'   from `tools::R_user_dir("encodeUtils", "cache")` is used. Use `tempdir()`
-#'   for non-persistent example or testing downloads.
+#'   from `tools::R_user_dir("encodeUtils", "cache")` is used. Supply an
+#'   explicit project directory for reusable data.
 #' @param max_file_size Maximum allowed size per file, as bytes or a string like
 #'   `"500MB"`.
 #' @param max_total_size Maximum allowed total size, as bytes or a string.
@@ -40,31 +40,21 @@
 #'
 #' @return An `encode_download_result` data frame. Dry runs return planned rows
 #'   with destination `local_path`, known-size totals, unknown-size counts, and
-#'   `download_status = "planned"`. Real downloads return one row per file with
-#'   `download_status`, `downloaded_size`, expected and observed MD5 values,
-#'   size/MD5 verification flags, and `failure_reason` for failed transfers.
+#'   `download_status = "planned"`. Transfers return one row per file with
+#'   `download_status`, `downloaded_at`, `downloaded_size`, the expected
+#'   `md5sum`, `observed_md5`, verification flags, and `failure_reason`.
 #'   Printing the result shows the transfer status and local destination; use
 #'   `encode_results()` for the complete table.
 #' @export
 #'
 #' @examples
-#' files <- data.frame(
-#'     file_accession = "ENCFF000AAA",
-#'     href = "/files/ENCFF000AAA/@@@@download/ENCFF000AAA.txt",
-#'     file_size = 3,
-#'     md5sum = NA_character_
-#' )
-#' encode_download(files, directory = tempdir(), dry_run = TRUE, quiet = TRUE)
-#'
-#' # Live ENCODE example:
-#' # downloaded <- encode_download(
-#' #   "ENCSR083OKX",
-#' #   file_format = "tsv",
-#' #   output_type = "gene quantifications",
-#' #   assembly = "mm10",
-#' #   directory = NULL
-#' # )
-#' # loaded <- encode_read(downloaded)
+#' if (interactive()) {
+#'     downloaded <- encode_download(
+#'         "ENCFF973TYM",
+#'         directory = "encode-data"
+#'     )
+#'     encode_results(downloaded)
+#' }
 encode_download <- function(
     x,
     file_accession = NULL,
@@ -83,9 +73,24 @@ encode_download <- function(
     verify = c("md5", "size"),
     quiet = FALSE
 ) {
+    file_accession <- encode_validate_file_accessions(file_accession)
+    file_format <- encode_validate_values(file_format, "file_format")
+    output_type <- encode_validate_values(output_type, "output_type")
+    assembly <- encode_validate_values(assembly, "assembly")
+    status <- encode_validate_values(status, "status")
+    if (!is.null(limit)) {
+        limit <- encode_validate_positive_whole_number(limit, "limit")
+    }
+    directory <- encode_validate_scalar(directory, "directory")
+    max_file_size <- encode_parse_size(max_file_size, arg = "max_file_size")
+    max_total_size <- encode_parse_size(max_total_size, arg = "max_total_size")
+    allow_unknown_size <- encode_validate_flag(allow_unknown_size, "allow_unknown_size")
+    overwrite <- encode_validate_flag(overwrite, "overwrite")
+    dry_run <- encode_validate_flag(dry_run, "dry_run")
+    prefer_cloud <- encode_validate_flag(prefer_cloud, "prefer_cloud")
+    quiet <- encode_validate_flag(quiet, "quiet")
     verify <- encode_normalize_verify(verify)
-    ## Real ENCSR downloads must be narrowed before transfer; dry runs remain
-    ## unrestricted so users can inspect the complete file plan.
+    # Require a narrowed ENCSR request for transfer, but allow unrestricted planning.
     encode_check_experiment_download_scope(
         x,
         dry_run = dry_run,
@@ -123,6 +128,7 @@ encode_download <- function(
         directory = directory,
         prefer_cloud = prefer_cloud
     )
+    files <- encode_initialize_download_result(files)
 
     encode_check_download_sizes(
         files,
@@ -143,29 +149,15 @@ encode_download <- function(
 
     if (isTRUE(dry_run)) {
         files$download_status <- "planned"
-        files$downloaded_size <- NA_real_
-        files$md5sum_expected <- files$md5sum
-        files$md5sum_observed <- NA_character_
-        files$size_ok <- NA
-        files$md5_ok <- NA
-        files$size_verified <- NA
-        files$md5_verified <- NA
-        files$failure_reason <- NA_character_
         attr(files, "known_total_size") <- known_size
         attr(files, "unknown_size_count") <- unknown_size
         class(files) <- c("encode_download_result", "encode_file_table", "data.frame")
         files <- encode_attach_metadata(files, query_url = encode_query_url(x), filters = encode_filters(x))
-        if (!isTRUE(quiet)) {
-            cli::cli_inform(
-                "Returned planned download rows. Print the result to view them, or use {.code encode_results()} for the table."
-            )
-        }
         return(files)
     }
 
     if (unknown_size > 0L && !isTRUE(allow_unknown_size)) {
-        ## Unknown-size files are refused by default because the dry run cannot
-        ## bound the transfer before content is requested from ENCODE.
+        # Refuse unknown-size transfers by default because their total cannot be bounded.
         cli::cli_abort(c(
             "Refusing to download {unknown_size} ENCODE file(s) with unknown file size.",
             "i" = "Run {.fun encode_download} with {.code dry_run = TRUE} to inspect the plan.",
@@ -203,8 +195,10 @@ encode_download <- function(
         )
     }
     if (!isTRUE(quiet)) {
+        downloaded <- sum(result$download_status %in% "downloaded")
+        existing <- sum(result$download_status %in% "exists")
         cli::cli_inform(
-            "ENCODE download completed. Print the result to view downloaded files, or use {.code encode_results()} for the table."
+            "ENCODE download finished: {downloaded} downloaded, {existing} already present, and {sum(failed)} failed."
         )
     }
     result
@@ -302,7 +296,6 @@ encode_limit_file_rows <- function(files, limit = NULL, file_accession = NULL) {
     if (!is.null(file_accession)) {
         cli::cli_abort("Use either {.arg file_accession} or {.arg limit}, not both.")
     }
-    limit <- encode_validate_positive_whole_number(limit, "limit")
     if (nrow(files) <= limit) {
         return(files)
     }
@@ -367,13 +360,27 @@ encode_prepare_download_table <- function(files, directory, prefer_cloud) {
     local_name[no_accession] <- paste(files$file_accession[no_accession], local_name[no_accession], sep = "_")
 
     files$download_url <- download_url
-    ## ENCODE href basenames can collide across rows. Preserve one local path per
-    ## file accession so verification and manifests remain unambiguous.
+    # Include accessions when needed to keep destination paths unique.
     files$local_path <- encode_unique_paths(
         file.path(directory, local_name),
         accessions = files$file_accession
     )
     class(files) <- c("encode_file_table", "data.frame")
+    files
+}
+
+encode_initialize_download_result <- function(files) {
+    files$download_status <- NA_character_
+    files$downloaded_at <- as.POSIXct(
+        rep(NA_real_, nrow(files)),
+        origin = "1970-01-01",
+        tz = "UTC"
+    )
+    files$downloaded_size <- NA_real_
+    files$observed_md5 <- NA_character_
+    files$size_verified <- NA
+    files$md5_verified <- NA
+    files$failure_reason <- NA_character_
     files
 }
 
@@ -433,10 +440,7 @@ encode_download_one <- function(file, overwrite, verify, quiet, index = NULL, to
         status <- encode_verify_existing_file(file, verify = verify)
         file$download_status <- status$download_status
         file$downloaded_size <- status$downloaded_size
-        file$md5sum_expected <- file$md5sum
-        file$md5sum_observed <- status$md5sum_observed
-        file$size_ok <- status$size_verified
-        file$md5_ok <- status$md5_verified
+        file$observed_md5 <- status$observed_md5
         file$size_verified <- status$size_verified
         file$md5_verified <- status$md5_verified
         file$failure_reason <- status$failure_reason
@@ -452,8 +456,7 @@ encode_download_one <- function(file, overwrite, verify, quiet, index = NULL, to
         cli::cli_inform("Downloading{progress} {.val {accession}}.")
     }
     tmp_path <- paste0(path, ".part")
-    ## Write through a temporary .part path so interrupted transfers are not
-    ## mistaken for complete downloaded files on later runs.
+    # Write to a .part file so interrupted transfers cannot appear complete.
     if (file.exists(tmp_path)) {
         unlink(tmp_path)
     }
@@ -468,8 +471,7 @@ encode_download_one <- function(file, overwrite, verify, quiet, index = NULL, to
     response <- encode_perform_file(file$download_url[[1L]], tmp_path)
     file$downloaded_at <- response$retrieved_at
     file$downloaded_size <- as.numeric(file.info(tmp_path)$size)
-    file$md5sum_expected <- file$md5sum
-    file$md5sum_observed <- encode_observed_md5(tmp_path, file$md5sum[[1L]])
+    file$observed_md5 <- encode_observed_md5(tmp_path, file$md5sum[[1L]])
     file$size_verified <- if ("size" %in% verify) {
         encode_verify_size(tmp_path, file$file_size[[1L]])
     } else {
@@ -480,8 +482,6 @@ encode_download_one <- function(file, overwrite, verify, quiet, index = NULL, to
     } else {
         NA
     }
-    file$size_ok <- file$size_verified
-    file$md5_ok <- file$md5_verified
     if (identical(file$size_verified[[1L]], FALSE) ||
         identical(file$md5_verified[[1L]], FALSE)) {
         file$download_status <- "failed"
@@ -542,7 +542,7 @@ encode_verify_existing_file <- function(file, verify) {
     list(
         download_status = if (is.na(failure_reason)) "exists" else "failed",
         downloaded_size = as.numeric(file.info(file$local_path[[1L]])$size),
-        md5sum_observed = encode_observed_md5(file$local_path[[1L]], file$md5sum[[1L]]),
+        observed_md5 = encode_observed_md5(file$local_path[[1L]], file$md5sum[[1L]]),
         size_verified = size_verified,
         md5_verified = md5_verified,
         failure_reason = failure_reason
@@ -555,17 +555,6 @@ encode_failed_download_row <- function(file, reason) {
         unlink(tmp_path)
     }
     file$download_status <- "failed"
-    file$downloaded_size <- if (file.exists(file$local_path[[1L]])) {
-        as.numeric(file.info(file$local_path[[1L]])$size)
-    } else {
-        NA_real_
-    }
-    file$md5sum_expected <- file$md5sum
-    file$md5sum_observed <- encode_observed_md5(file$local_path[[1L]], file$md5sum[[1L]])
-    file$size_ok <- FALSE
-    file$md5_ok <- FALSE
-    file$size_verified <- FALSE
-    file$md5_verified <- FALSE
     file$failure_reason <- reason
     file
 }

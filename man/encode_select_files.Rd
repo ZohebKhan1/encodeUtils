@@ -19,8 +19,8 @@ encode_select_files(
 )
 }
 \arguments{
-\item{files}{File metadata from `encode_list_files()`, a file search result,
-or another object accepted by `encode_download()`.}
+\item{files}{File metadata from `encode_list_files()`, a File search result,
+a selected-file object, or ENCFF accession(s).}
 
 \item{preset}{Optional preset name. Use `encode_file_presets()` to list the
 canonical preset names.}
@@ -71,18 +71,13 @@ Use `encode_file_presets()` to list available presets or inspect one preset.
 encode_file_presets()
 encode_file_presets("chipseq_peaks")
 
-files <- data.frame(
-    file_accession = c("ENCFF000AAA", "ENCFF000AAB"),
-    experiment_accession = "ENCSR000AAA",
-    file_format = c("bed", "bed"),
-    output_type = c("optimal IDR thresholded peaks", "replicated peaks"),
-    assembly = c("GRCh38", "hg19"),
-    status = c("released", "released"),
-    href = c(
-        "/files/ENCFF000AAA/@@download/ENCFF000AAA.bed",
-        "/files/ENCFF000AAB/@@download/ENCFF000AAB.bed"
+if (interactive()) {
+    files <- encode_list_files("ENCSR389GJZ")
+    selected <- encode_select_files(
+        files,
+        preset = "rnaseq_gene_quant",
+        assembly = "mm10"
     )
-)
-selected <- encode_select_files(files, preset = "chipseq_peaks", assembly = "GRCh38")
-encode_results(selected)
+    encode_results(selected)
+}
 }

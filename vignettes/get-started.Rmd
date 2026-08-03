@@ -19,234 +19,143 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 library(encodeUtils)
 ```
 
-# Introduction
+# Overview
 
-`encodeUtils` connects ENCODE metadata discovery to explicit file selection,
-bounded transfers, local readers, and reproducibility manifests. Search and
-file-list results retain the query URL and complete flattened metadata. The
-examples below are local and deterministic so the vignette can be built without
-network access.
+`encodeUtils` provides one auditable path from an ENCODE metadata query to
+local files, R objects, expression matrices, and a provenance manifest. Search
+and file results retain the ENCODE query URL, active filters, retrieval time,
+and flattened record metadata.
 
-The package fills a current Bioconductor access gap left by the retired
-`ENCODExplorer`: it queries current ENCODE Portal records on demand, preserves
-request and attribution metadata, and applies explicit transfer limits and
-verification. It complements rather than replaces format-specific
-Bioconductor infrastructure. BED, GFF, GTF, BigWig, and BigBed files use
-`rtracklayer`; FASTA files use `Biostrings`; BED-like tables return
-`GenomicRanges::GRanges` by default; and sequence-read and alignment files stay
-as paths for dedicated readers such as `ShortRead`, `Rsamtools`, or
-`GenomicAlignments`.
+Install the current development version from GitHub as described in the package
+[README](https://github.com/ZohebKhan1/encodeUtils#installation).
 
-# Installation
+# File-selection presets
 
-Once `encodeUtils` is available through Bioconductor, install it with:
+Presets provide format and output-type preferences for common assays. Inspect a
+preset before using it when the exact priorities matter.
 
-```{r installation, eval=FALSE}
-if (!requireNamespace("BiocManager", quietly = TRUE)) {
-    install.packages("BiocManager")
-}
-BiocManager::install("encodeUtils")
+```{r presets}
+encode_file_presets()
+encode_file_presets("rnaseq_gene_quant")
 ```
 
-For the current development version, install from GitHub:
+# End-to-end RNA-seq workflow
 
-```{r installation-github, eval=FALSE}
-if (!requireNamespace("pak", quietly = TRUE)) {
-    install.packages("pak")
-}
-pak::pak("ZohebKhan1/encodeUtils")
-```
+The workflow below finds one released mouse heart RNA-seq experiment, selects
+gene quantification files, downloads them to an `encode-data` directory in the
+current project, assembles count and TPM matrices, and writes a JSON manifest.
 
-# Choose an entry point
-
-The workflow does not require starting with a broad search. Use
-`encode_search()` when you have biological criteria, `encode_list_files()` when
-you have ENCSR experiment accessions, `encode_download()` when you already know
-the ENCFF file accessions, or `encode_read()` when the files are on disk.
-
-# Select files
-
-Start with a small table shaped like the output of `encode_list_files()`.
-
-```{r example-files}
-files <- data.frame(
-    experiment_accession = "ENCSR000AAA",
-    file_accession = c("ENCFF000AAA", "ENCFF000AAB", "ENCFF000AAC"),
-    file_format = c("tsv", "tsv", "bigWig"),
-    output_type = c(
-        "gene quantifications",
-        "gene quantifications",
-        "signal p-value"
-    ),
-    assembly = "mm10",
-    status = "released",
-    file_size = c(100, 120, 5000000),
-    md5sum = NA_character_,
-    href = c(
-        "/files/ENCFF000AAA/@@download/ENCFF000AAA.tsv",
-        "/files/ENCFF000AAB/@@download/ENCFF000AAB.tsv",
-        "/files/ENCFF000AAC/@@download/ENCFF000AAC.bigWig"
-    ),
-    stringsAsFactors = FALSE
+```{r workflow, eval=FALSE}
+experiments <- encode_search(
+    organism = "mouse",
+    assay = "rna-seq",
+    organ = "heart",
+    limit = 1
 )
 
-encode_file_presets()
+experiment_table <- encode_results(experiments)
+experiment_table[, c(
+    "accession", "assay_title", "biosample_summary", "organism", "status"
+)]
+
+files <- encode_list_files(experiments)
 
 selected <- encode_select_files(
     files,
     preset = "rnaseq_gene_quant",
     assembly = "mm10",
-    quiet = TRUE
+    replicate_policy = "preferred_processed"
 )
 
-encode_results(selected)
-```
-
-The selected-file object also retains excluded rows and the criteria used.
-
-```{r selection-audit}
-names(selected)
-selected$criteria$preset
-```
-
-# Plan a download
-
-Use `dry_run = TRUE` to resolve destination paths and check known size limits
-without making a network request.
-
-```{r download-plan}
-planned <- encode_download(
-    selected,
-    directory = tempdir(),
-    dry_run = TRUE,
-    quiet = TRUE
-)
-
-encode_results(planned)[, c(
-    "file_accession", "file_size_pretty", "download_status", "local_path"
+selected_table <- encode_results(selected)
+selected_table[, c(
+    "experiment_accession", "file_accession", "file_format",
+    "output_type", "assembly", "file_size_pretty"
 )]
-```
+selected$excluded
+selected$criteria
 
-For a real transfer, run the same call without `dry_run = TRUE`.
-`directory = NULL` uses the persistent package cache; `directory = tempdir()`
-is appropriate for transient work.
-
-# Read downloaded tables
-
-The next chunk creates two small quantification files and attaches their local
-paths to the planned metadata. A downloaded-file table always returns the same
-collection shape, even when it has one row.
-
-```{r read-local}
-quant_paths <- file.path(tempdir(), c("ENCFF000AAA.tsv", "ENCFF000AAB.tsv"))
-writeLines(
-    c(
-        "gene_id\traw_counts\tTPM",
-        "Gata4\t11\t4.5",
-        "Tbx5\t27\t8.2"
-    ),
-    quant_paths[[1L]]
-)
-writeLines(
-    c(
-        "gene_id\traw_counts\tTPM",
-        "Gata4\t14\t5.1",
-        "Tbx5\t31\t9.0"
-    ),
-    quant_paths[[2L]]
+downloaded <- encode_download(
+    selected,
+    directory = "encode-data"
 )
 
-downloaded <- encode_results(planned)
-downloaded$local_path <- quant_paths
-downloaded$download_status <- "downloaded"
+download_table <- encode_results(downloaded)
+download_table[, c(
+    "file_accession", "download_status", "local_path",
+    "size_verified", "md5_verified"
+)]
 
 loaded <- encode_read(
     downloaded,
     values = c("raw_counts", "tpm")
 )
 
-names(loaded)
 loaded$metadata[, c("file_accession", "local_path")]
 loaded$row_data
 loaded$matrices$raw_counts
 loaded$matrices$tpm
-```
 
-The `metadata` component is the complete input file table. `data` contains one
-native object per file. `row_data` and each numeric matrix share row names, and
-matrix columns are file accessions. Use `simplify_quant = FALSE` when the exact
-downloaded columns must be preserved. A combined matrix is created only when
-every table shares a complete, unique feature key; ambiguous tables remain in
-`data` without an inferred row alignment.
+manifest <- encode_manifest(
+    loaded,
+    path = "encode-manifest.json"
+)
 
-# Read genomic intervals
-
-A local BED-like file returns `GenomicRanges::GRanges` by default. The same
-call can return a data frame when a tabular representation is more convenient.
-
-```{r read-bed}
-bed_path <- tempfile(fileext = ".bed")
-writeLines("chr1\t0\t10\tpeak1\t100\t+", bed_path)
-
-ranges <- encode_read(bed_path)
-ranges
-
-encode_read(bed_path, as = "data.frame")
-```
-
-FASTQ and alignment formats remain local path objects for dedicated sequence
-readers. For optional native readers, `unsupported = "return_path"` retains the
-path and the reader diagnostic when the file schema cannot be imported safely.
-
-# Record provenance
-
-`encode_manifest()` captures the package version, retrieval context, files,
-loaded object classes, and ENCODE attribution fields. Set `path` to write the
-same manifest as JSON.
-
-```{r manifest}
-manifest <- encode_manifest(loaded, include_session = FALSE)
-names(manifest)
+manifest$retrieval
 manifest$attribution[, c(
     "experiment_accession", "file_accession", "file_format", "output_type"
 )]
 ```
 
-# Live ENCODE workflow
+## Search and file selection
 
-The same sequence can start from a live query. This block runs only in an
-interactive R session, keeping package builds deterministic.
+`encode_search()` accepts common biological fields directly and prints a
+compact result. `encode_results()` exposes the complete table for filtering,
+joins, or export. A known ENCSR accession can be passed directly to
+`encode_list_files()` when metadata discovery is unnecessary.
 
-```{r live-workflow}
-if (interactive()) {
-    experiments <- encode_search(
-        type = "Experiment",
-        organism = "mouse",
-        assay = "rna-seq",
-        organ = "heart",
-        limit = 5
-    )
+`encode_select_files()` retains selected rows in `files`, non-selected rows and
+reasons in `excluded`, and all applied choices in `criteria`. In the workflow,
+`preferred_processed` keeps the highest-priority preset output type within each
+experiment without discarding files tied at that priority.
 
-    files <- encode_list_files(
-        experiments,
-        file_format = "tsv",
-        output_type = "gene quantifications",
-        assembly = "mm10"
-    )
+## Transfer and returned objects
 
-    selected <- encode_select_files(
-        files,
-        preset = "rnaseq_gene_quant",
-        quiet = TRUE
-    )
-    encode_download(
-        selected,
-        directory = tempdir(),
-        dry_run = TRUE,
-        quiet = TRUE
-    )
-}
-```
+`encode_download()` checks individual and total size limits before transfer.
+Existing files are not overwritten by default, and replacement files are
+installed only after available size and MD5 checks pass. Set `directory = NULL`
+to use the persistent package cache.
+
+A completed download table produces one `encode_loaded_files` object whether it
+contains one file or several:
+
+- `metadata` contains the complete input file table and provenance.
+- `data` contains one native object per file.
+- `row_data` describes features aligned to combined matrices.
+- `matrices` contains the requested numeric expression matrices.
+
+Combined matrices are created only when every participating table has a
+complete, unique feature key. Otherwise, the original tables remain in `data`
+without an inferred row-order alignment. Matrix columns use file accessions,
+and matrix row names match `row_data`.
+
+## Other supported formats
+
+For a single local path, `encode_read()` returns the native object for that
+format. BED, narrowPeak, and broadPeak files return
+`GenomicRanges::GRanges` by default; use `as = "data.frame"` for a plain table.
+GFF, GTF, BigWig, and BigBed files use `rtracklayer`, and FASTA files use
+`Biostrings`, when those packages are installed. FASTQ, BAM, CRAM, and SAM
+files remain path objects for dedicated sequence and alignment readers.
+
+Indexed BigWig and BigBed files require a genomic `region` unless
+`allow_large = TRUE` is set deliberately.
+
+## Provenance
+
+`encode_manifest()` records the source query, active filters, file metadata,
+loaded object classes, ENCODE attribution fields, package version, and R
+session. Supplying `path` writes the same structure as JSON.
 
 # Session information
 

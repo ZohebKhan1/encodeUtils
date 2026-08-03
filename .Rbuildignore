@@ -13,3 +13,4 @@
 ^.*\.Rcheck$
 ^.*\.BiocCheck$
 ^\.Rproj\.user$
+^\.r_codex_utils$

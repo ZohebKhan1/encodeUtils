@@ -181,8 +181,7 @@ encode_annotate_loaded_data <- function(data, files) {
         encode_gene_annotation_package(files[i, , drop = FALSE])
     }, character(1L))
 
-    ## Annotation is opportunistic. Missing organism annotation packages should
-    ## not prevent the original quantification table from being returned.
+    # Keep the original table when an optional organism annotation is unavailable.
     for (package in unique(stats::na.omit(packages))) {
         indexes <- which(packages == package)
         requested <- unique(unlist(gene_ids[indexes], use.names = FALSE))
@@ -308,8 +307,7 @@ encode_gene_annotation_for_package <- function(gene_id, package) {
     annotation
 }
 
-## Cache AnnotationDbi lookups for this R session and suppress package messages
-## so optional annotation does not dominate read output.
+# Cache AnnotationDbi lookups and suppress incidental package output.
 encode_gene_annotation_lookup <- function(package, keytype, keys, columns) {
     keys <- unique(keys[!is.na(keys) & nzchar(keys)])
     if (length(keys) == 0L) {
@@ -495,8 +493,7 @@ encode_is_interval_table <- function(x) {
     all(c("chrom", "start", "end") %in% names(x))
 }
 
-# Matrix construction requires one complete, unique feature key shared by every
-# table; otherwise the files remain separate to avoid ambiguous row alignment.
+# Require one complete, unique feature key shared by every table.
 encode_common_feature_column <- function(data) {
     candidates <- c(
         "gene_symbol", "ensembl_id", "entrez_id", "gene_id", "gene_name", "gene", "transcript_id", "transcript_name",

@@ -39,5 +39,14 @@ jobs:
         run: |
           coverage <- covr::package_coverage()
           print(coverage)
-          cat(sprintf("Total coverage: %.1f%%\n", covr::percent_coverage(coverage)))
+          measured <- sprintf("%.1f", covr::percent_coverage(coverage))
+          readme <- paste(readLines("README.md", warn = FALSE), collapse = "\n")
+          badge_match <- regmatches(
+            readme,
+            regexec("img\\.shields\\.io/badge/coverage-([0-9]+[.][0-9]+)%25", readme)
+          )[[1L]]
+          if (length(badge_match) != 2L || !identical(badge_match[[2L]], measured)) {
+            stop(sprintf("README coverage badge does not match measured coverage %.1f%%.", as.numeric(measured)))
+          }
+          cat(sprintf("Total coverage: %s%%\n", measured))
         shell: Rscript {0}

@@ -15,24 +15,19 @@
 #'
 #' @return An `encode_manifest` list. Components include `package`,
 #'   `retrieval`, `filters`, and `object_type`. Depending on input, the manifest
-#'   also includes `experiments`, `selected_files`, `excluded_files`,
-#'   `downloaded_files`, `files`, `object`, or `accessions`. When requested and
+#'   also includes `experiments`, `records`, `selected_files`, `excluded_files`,
+#'   `downloaded_files`, `files`, or `accessions`. When requested and
 #'   available, it includes ENCODE `attribution` and captured R `session`
 #'   information. If `path` is supplied, the same manifest is written as JSON
 #'   and the path is stored as an attribute.
 #' @export
 #'
 #' @examples
-#' files <- data.frame(
-#'     file_accession = "ENCFF000AAA",
-#'     experiment_accession = "ENCSR000AAA",
-#'     file_format = "txt",
-#'     output_type = "metadata",
-#'     status = "released"
-#' )
-#' path <- tempfile(fileext = ".json")
-#' manifest <- encode_manifest(files, include_session = FALSE, path = path)
-#' names(manifest)
+#' if (interactive()) {
+#'     files <- encode_list_files("ENCSR389GJZ", file_format = "tsv")
+#'     manifest <- encode_manifest(files, path = "encode-manifest.json")
+#'     names(manifest)
+#' }
 encode_manifest <- function(
     x,
     include_attribution = TRUE,
@@ -40,23 +35,35 @@ encode_manifest <- function(
     path = NULL,
     pretty = TRUE
 ) {
+    include_attribution <- encode_validate_flag(include_attribution, "include_attribution")
+    include_session <- encode_validate_flag(include_session, "include_session")
+    path <- encode_validate_scalar(path, "path")
+    pretty <- encode_validate_flag(pretty, "pretty")
     manifest <- list(
         package = list(
             name = "encodeUtils",
             version = encode_package_version()
         ),
         retrieval = list(
-            date = as.character(Sys.time()),
+            created_at = encode_manifest_timestamp(Sys.time()),
             encode_base_url = attr(x, "encode_base_url", exact = TRUE) %||% encode_base_url(),
             query_url = encode_query_url(x),
-            retrieved_at = as.character(attr(x, "retrieved_at", exact = TRUE) %||% NA_character_)
+            retrieved_at = encode_manifest_timestamp(
+                attr(x, "retrieved_at", exact = TRUE)
+            )
         ),
         filters = encode_filters(x),
         object_type = class(x)[[1L]]
     )
 
     if (inherits(x, "encode_search_result")) {
-        manifest$experiments <- x$results
+        if (inherits(x$results, "encode_file_table")) {
+            manifest$files <- x$results
+        } else if (inherits(x$results, "encode_experiment_table")) {
+            manifest$experiments <- x$results
+        } else {
+            manifest$records <- x$results
+        }
     } else if (inherits(x, "encode_selected_files")) {
         manifest$selected_files <- x$files
         manifest$excluded_files <- x$excluded
@@ -84,18 +91,7 @@ encode_manifest <- function(
     }
 
     if (isTRUE(include_attribution)) {
-        ## Manifest creation should not fail for materialized result objects if
-        ## optional attribution is unavailable; raw accession input still requires
-        ## attribution resolution.
-        manifest$attribution <- tryCatch(
-            encode_attribution(x, enrich = FALSE, quiet = TRUE),
-            error = function(cnd) {
-                if (is.character(x)) {
-                    cli::cli_abort(conditionMessage(cnd))
-                }
-                NULL
-            }
-        )
+        manifest$attribution <- encode_attribution(x, enrich = FALSE, quiet = TRUE)
     }
     if (isTRUE(include_session)) {
         manifest$session <- utils::capture.output(utils::sessionInfo())
@@ -106,6 +102,16 @@ encode_manifest <- function(
         attr(manifest, "path") <- path
     }
     manifest
+}
+
+encode_manifest_timestamp <- function(x) {
+    if (is.null(x) || length(x) == 0L || all(is.na(x))) {
+        return(NA_character_)
+    }
+    if (!inherits(x, "POSIXt")) {
+        return(as.character(x))
+    }
+    format(x, "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
 }
 
 encode_write_manifest_json <- function(manifest, path, pretty = TRUE) {

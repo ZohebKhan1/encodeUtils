@@ -29,8 +29,8 @@ written to disk.}
 \value{
 An `encode_manifest` list. Components include `package`,
   `retrieval`, `filters`, and `object_type`. Depending on input, the manifest
-  also includes `experiments`, `selected_files`, `excluded_files`,
-  `downloaded_files`, `files`, `object`, or `accessions`. When requested and
+  also includes `experiments`, `records`, `selected_files`, `excluded_files`,
+  `downloaded_files`, `files`, or `accessions`. When requested and
   available, it includes ENCODE `attribution` and captured R `session`
   information. If `path` is supplied, the same manifest is written as JSON
   and the path is stored as an attribute.
@@ -41,14 +41,9 @@ metadata, and optional R session information. Provide `path` to save the
 manifest as JSON.
 }
 \examples{
-files <- data.frame(
-    file_accession = "ENCFF000AAA",
-    experiment_accession = "ENCSR000AAA",
-    file_format = "txt",
-    output_type = "metadata",
-    status = "released"
-)
-path <- tempfile(fileext = ".json")
-manifest <- encode_manifest(files, include_session = FALSE, path = path)
-names(manifest)
+if (interactive()) {
+    files <- encode_list_files("ENCSR389GJZ", file_format = "tsv")
+    manifest <- encode_manifest(files, path = "encode-manifest.json")
+    names(manifest)
+}
 }

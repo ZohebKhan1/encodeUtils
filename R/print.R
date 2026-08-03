@@ -7,7 +7,7 @@ print.encode_search_result <- function(x, ..., verbose = FALSE) {
     cli::cli_text("- returned: {.val {nrow(x$results)}}")
     encode_print_table("Results", encode_result_display(x$results))
     if (isTRUE(verbose)) {
-        cli::cli_text("- URL: {x$query_url %||% x$url}")
+        cli::cli_text("- URL: {x$query_url}")
         encode_print_table("Active filters", x$filters)
         encode_print_table("Top facets", encode_top_facets(x$facets))
     }
@@ -144,9 +144,9 @@ print.encode_file_summary <- function(x, ..., verbose = FALSE) {
 #' @export
 print.encode_manifest <- function(x, ..., verbose = FALSE) {
     cli::cli_text("ENCODE manifest")
-    cli::cli_text("- package: {.val {x$package$name}} {.val {x$package$version}}")
-    cli::cli_text("- date: {.val {x$retrieval$date}}")
-    cli::cli_text("- object type: {.val {x$object_type}}")
+    cli::cli_text("- package: {x$package$name} {x$package$version}")
+    cli::cli_text("- created: {x$retrieval$created_at}")
+    cli::cli_text("- object type: {x$object_type}")
     path <- attr(x, "path", exact = TRUE)
     if (!is.null(path)) {
         cli::cli_text("- path: {.path {path}}")

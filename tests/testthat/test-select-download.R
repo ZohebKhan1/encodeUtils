@@ -8,6 +8,7 @@ test_that("selection presets are canonical and selection records exclusions", {
         )
     )
     expect_error(encode_file_presets("peaks"), "must be one of")
+    expect_error(encode_file_presets(NA_character_), "must be one of")
     expect_error(encode_select_files(), "argument.*files.*missing")
 
     files <- fixture_file_table()
@@ -57,6 +58,13 @@ test_that("download planning is bounded and uses explicit limit naming", {
     expect_equal(nrow(planned), 1L)
     expect_equal(planned$download_status, "planned")
     expect_true(startsWith(planned$local_path, directory))
+    expect_true(all(c(
+        "download_status", "downloaded_at", "downloaded_size", "observed_md5",
+        "size_verified", "md5_verified", "failure_reason"
+    ) %in% names(planned)))
+    expect_false(any(c(
+        "md5sum_expected", "md5sum_observed", "size_ok", "md5_ok"
+    ) %in% names(planned)))
 
     output <- capture_print(planned)
     expect_true(any(grepl("ENCODE download", output, fixed = TRUE)))
@@ -134,6 +142,48 @@ test_that("verified replacement is installed atomically", {
     expect_equal(result$download_status, "downloaded")
     expect_true(result$size_verified)
     expect_true(result$md5_verified)
+    expect_equal(result$observed_md5, result$md5sum)
     expect_equal(readChar(path, nchars = 3L), "new")
     expect_length(list.files(directory, pattern = "backup", all.files = TRUE), 0L)
+})
+
+test_that("transfer errors retain a complete result schema", {
+    files <- data.frame(
+        file_accession = "ENCFF000AAA",
+        href = "/files/ENCFF000AAA/@@download/ENCFF000AAA.txt",
+        file_size = 3,
+        md5sum = "22af645d1859cb5ca6da0c484f1f37ea",
+        stringsAsFactors = FALSE
+    )
+    testthat::local_mocked_bindings(
+        encode_perform_file = function(url, path, timeout = NULL) {
+            stop("network unavailable")
+        },
+        .package = "encodeUtils"
+    )
+
+    expect_warning(
+        result <- encode_download(
+            files,
+            directory = withr::local_tempdir(),
+            quiet = TRUE
+        ),
+        "Failed to download or verify"
+    )
+    expect_equal(result$download_status, "failed")
+    expect_match(result$failure_reason, "network unavailable")
+    expect_true(is.na(result$downloaded_size))
+    expect_true(is.na(result$observed_md5))
+    expect_true(is.na(result$size_verified))
+    expect_true(is.na(result$md5_verified))
+})
+
+test_that("selection and download flags require logical values", {
+    files <- fixture_file_table()
+    expect_error(encode_select_files(files, prefer_default = 1, quiet = TRUE), "prefer_default")
+    expect_error(encode_select_files(files, require_href = NA, quiet = TRUE), "require_href")
+    expect_error(encode_download(files[1L, ], dry_run = "yes", quiet = TRUE), "dry_run")
+    expect_error(encode_download(files[1L, ], overwrite = NA, quiet = TRUE), "overwrite")
+    expect_error(encode_download(files[1L, ], directory = character(), quiet = TRUE), "directory")
+    expect_error(encode_download(files[1L, ], max_file_size = "large", quiet = TRUE), "max_file_size")
 })

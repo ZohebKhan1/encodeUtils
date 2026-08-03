@@ -362,6 +362,38 @@ encode_bind_rows <- function(rows, columns = NULL) {
 
 # Public-argument validation
 
+encode_validate_scalar <- function(x, arg, allow_null = TRUE) {
+    if (is.null(x) && isTRUE(allow_null)) {
+        return(NULL)
+    }
+    if (!is.character(x) || length(x) != 1L || is.na(x) || !nzchar(trimws(x))) {
+        cli::cli_abort("{.arg {arg}} must be one non-empty string.")
+    }
+    trimws(x)
+}
+
+encode_validate_values <- function(x, arg, allow_null = TRUE) {
+    if (is.null(x) && isTRUE(allow_null)) {
+        return(NULL)
+    }
+    if (!is.character(x) || anyNA(x)) {
+        cli::cli_abort("{.arg {arg}} must be a non-empty character vector.")
+    }
+    x <- unique(trimws(x))
+    x <- x[nzchar(x)]
+    if (length(x) == 0L) {
+        cli::cli_abort("{.arg {arg}} must be a non-empty character vector.")
+    }
+    x
+}
+
+encode_validate_flag <- function(x, arg) {
+    if (!is.logical(x) || length(x) != 1L || is.na(x)) {
+        cli::cli_abort("{.arg {arg}} must be TRUE or FALSE.")
+    }
+    x
+}
+
 encode_validate_filters <- function(filters) {
     if (!is.list(filters)) {
         cli::cli_abort("{.arg filters} must be a named list.")
@@ -465,16 +497,6 @@ encode_metadata_request <- function(metadata = NULL, frame = NULL) {
         metadata = metadata,
         frame = frame
     )
-}
-
-encode_result_kind <- function(type = NULL) {
-    if (identical(type, "Experiment")) {
-        return("experiment search results")
-    }
-    if (identical(type, "File")) {
-        return("file search results")
-    }
-    "search results"
 }
 
 encode_normalize_query_names <- function(query) {

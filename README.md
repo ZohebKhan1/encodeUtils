@@ -2,130 +2,105 @@
 
 [![R-CMD-check](https://github.com/ZohebKhan1/encodeUtils/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/ZohebKhan1/encodeUtils/actions/workflows/R-CMD-check.yaml)
 [![pkgdown](https://github.com/ZohebKhan1/encodeUtils/actions/workflows/pkgdown.yaml/badge.svg)](https://github.com/ZohebKhan1/encodeUtils/actions/workflows/pkgdown.yaml)
+[![coverage 62.1%](https://img.shields.io/badge/coverage-62.1%25-yellow)](https://github.com/ZohebKhan1/encodeUtils/actions/workflows/test-coverage.yaml)
+[![R >= 4.6.0](https://img.shields.io/badge/R-%E2%89%A5%204.6.0-276DC3?logo=r)](https://www.r-project.org/)
 
-`encodeUtils` provides a focused R workflow for querying ENCODE Portal
-metadata, selecting files, planning bounded downloads, reading supported local
-formats, and recording provenance. It converts nested ENCODE responses into
-traceable experiment and file tables for downstream Bioconductor analyses.
+`encodeUtils` searches the ENCODE Portal, converts nested metadata into
+traceable experiment and file tables, selects files using explicit criteria,
+downloads verified files, reads supported formats, and records provenance for
+downstream Bioconductor analyses.
 
 The package is not affiliated with or endorsed by the ENCODE Project.
 
 ## Installation
 
-Once `encodeUtils` is available through Bioconductor, install it with:
-
-```r
-if (!requireNamespace("BiocManager", quietly = TRUE)) {
-  install.packages("BiocManager")
-}
-BiocManager::install("encodeUtils")
-```
-
-For the current development version, install from GitHub:
+Install the current development version from GitHub:
 
 ```r
 if (!requireNamespace("pak", quietly = TRUE)) {
-  install.packages("pak")
+    install.packages("pak")
 }
 pak::pak("ZohebKhan1/encodeUtils")
 ```
 
-## Workflow
+## End-to-end workflow
 
-The exported API follows one sequence:
-
-1. `encode_search()` finds ENCODE records.
-2. `encode_list_files()` lists files attached to experiments.
-3. `encode_select_files()` applies explicit criteria or a canonical preset.
-4. `encode_download()` plans or transfers files.
-5. `encode_read()` reads supported files already on disk.
-6. `encode_manifest()` records query, file, download, and attribution metadata.
-
-Use `encode_results()` whenever an ordinary data frame is needed.
-
-You can enter the workflow at the point matching what you already have:
-
-- search criteria: start with `encode_search()`;
-- ENCSR experiment accessions: start with `encode_list_files()`;
-- ENCFF file accessions: pass them directly to `encode_download()`;
-- local paths or a completed download table: start with `encode_read()`.
+This example finds a released mouse heart RNA-seq experiment, selects its gene
+quantification files, downloads them to a project directory, assembles count
+and TPM matrices, and writes a provenance manifest.
 
 ```r
 library(encodeUtils)
 
 experiments <- encode_search(
-  type = "Experiment",
-  organism = "mouse",
-  assay = "rna-seq",
-  organ = "heart",
-  limit = 5
+    organism = "mouse",
+    assay = "rna-seq",
+    organ = "heart",
+    limit = 1
 )
 
-files <- encode_list_files(
-  experiments,
-  file_format = "tsv",
-  output_type = "gene quantifications",
-  assembly = "mm10"
-)
+files <- encode_list_files(experiments)
 
 selected <- encode_select_files(
-  files,
-  preset = "rnaseq_gene_quant",
-  quiet = TRUE
+    files,
+    preset = "rnaseq_gene_quant",
+    assembly = "mm10",
+    replicate_policy = "preferred_processed"
 )
 
-plan <- encode_download(
-  selected,
-  directory = tempdir(),
-  dry_run = TRUE
+downloaded <- encode_download(
+    selected,
+    directory = "encode-data"
 )
 
-# After reviewing the plan:
-# downloaded <- encode_download(selected, directory = NULL)
-# loaded <- encode_read(downloaded, values = c("raw_counts", "tpm"))
+loaded <- encode_read(
+    downloaded,
+    values = c("raw_counts", "tpm")
+)
 
-manifest <- encode_manifest(plan, include_session = FALSE)
+manifest <- encode_manifest(
+    loaded,
+    path = "encode-manifest.json"
+)
 ```
 
-`encode_download()` only transfers files. `directory = NULL` uses the
-persistent cache returned by `tools::R_user_dir("encodeUtils", "cache")`; use
-`tempdir()` for transient work. Existing destinations are not overwritten by
-default, and replacement downloads are verified before the previous file is
-removed.
-
-A local path passed to `encode_read()` returns the native reader output. A
-downloaded-file table always returns an `encode_loaded_files` collection with
-four components:
-
-- `metadata`: complete input file metadata and provenance;
-- `data`: one native object per file;
-- `row_data`: feature identifiers aligned to combined expression matrices;
-- `matrices`: numeric `raw_counts`, `tpm`, `fpkm`, or `rpkm` matrices when the
-  requested values can be combined safely.
+Use `encode_results()` to extract an ordinary data frame from a search,
+selection, download, or loaded-file result. The complete input file table is
+also available as `loaded$metadata`; `loaded$data` contains one native object
+per file; `loaded$row_data` describes aligned features; and `loaded$matrices`
+contains the requested numeric matrices.
 
 Matrices are created only when all participating tables share a complete,
-unique feature key. Files with ambiguous identifiers remain available in
-`data` instead of being aligned by row order.
+unique feature identifier. Tables with ambiguous identifiers remain available
+in `loaded$data` and are not aligned by row order.
 
-BED-like files return `GenomicRanges::GRanges` by default; use
-`as = "data.frame"` for a plain table. FASTQ and alignment files are returned
-as local path objects for use with dedicated sequence-processing packages.
-When an optional native reader rejects a nonstandard file schema,
-`unsupported = "return_path"` preserves the local path and records the reader
-error rather than discarding file metadata.
+## Other entry points and formats
 
-## Network behavior
+You can start with the information already available:
 
-Routine examples and tests are network-independent. Live requests use bounded
-retries, a conservative default request rate, informative HTTP errors, and a
-configurable cap on server-requested retry delays. Start with narrow searches
-and use `dry_run = TRUE` before transferring ENCODE files.
+- ENCSR experiment accessions: pass them to `encode_list_files()`.
+- ENCFF file accessions: pass them to `encode_download()`.
+- Local paths or completed download rows: pass them to `encode_read()`.
+
+BED, narrowPeak, and broadPeak files return `GenomicRanges::GRanges` by
+default. GFF, GTF, BigWig, and BigBed files use `rtracklayer` when installed,
+and FASTA files use `Biostrings`. FASTQ and alignment files remain local path
+objects for dedicated sequence-processing packages. Use
+`encode_read(path, as = "data.frame")` when a BED-like table is preferable to
+genomic ranges.
+
+`encode_download()` limits individual and total transfer size, refuses
+unknown-size transfers unless explicitly allowed, verifies available size and
+MD5 metadata, and installs replacement files only after verification. With
+`directory = NULL`, files are stored in the package cache returned by
+`tools::R_user_dir("encodeUtils", "cache")`.
 
 ## Documentation
 
 See the [getting-started
 vignette](https://zohebkhan1.github.io/encodeUtils/articles/get-started.html)
-for a complete offline example and an interactive live-query pattern.
+and [function reference](https://zohebkhan1.github.io/encodeUtils/reference/)
+for the complete workflow and object contracts.
 
 ## References
 

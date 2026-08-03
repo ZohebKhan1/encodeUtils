@@ -47,8 +47,8 @@ experiment accession.}
 \item{limit}{Optional number of files to use from the top of `x`.}
 
 \item{directory}{Destination directory. If `NULL`, a package cache directory
-from `tools::R_user_dir("encodeUtils", "cache")` is used. Use `tempdir()`
-for non-persistent example or testing downloads.}
+from `tools::R_user_dir("encodeUtils", "cache")` is used. Supply an
+explicit project directory for reusable data.}
 
 \item{max_file_size}{Maximum allowed size per file, as bytes or a string like
 `"500MB"`.}
@@ -75,9 +75,9 @@ verification.}
 \value{
 An `encode_download_result` data frame. Dry runs return planned rows
   with destination `local_path`, known-size totals, unknown-size counts, and
-  `download_status = "planned"`. Real downloads return one row per file with
-  `download_status`, `downloaded_size`, expected and observed MD5 values,
-  size/MD5 verification flags, and `failure_reason` for failed transfers.
+  `download_status = "planned"`. Transfers return one row per file with
+  `download_status`, `downloaded_at`, `downloaded_size`, the expected
+  `md5sum`, `observed_md5`, verification flags, and `failure_reason`.
   Printing the result shows the transfer status and local destination; use
   `encode_results()` for the complete table.
 }
@@ -88,21 +88,11 @@ are not overwritten by default, files are written through a temporary `.part`
 path, and size/MD5 checks are used when ENCODE provides the metadata.
 }
 \examples{
-files <- data.frame(
-    file_accession = "ENCFF000AAA",
-    href = "/files/ENCFF000AAA/@@download/ENCFF000AAA.txt",
-    file_size = 3,
-    md5sum = NA_character_
-)
-encode_download(files, directory = tempdir(), dry_run = TRUE, quiet = TRUE)
-
-# Live ENCODE example:
-# downloaded <- encode_download(
-#   "ENCSR083OKX",
-#   file_format = "tsv",
-#   output_type = "gene quantifications",
-#   assembly = "mm10",
-#   directory = NULL
-# )
-# loaded <- encode_read(downloaded)
+if (interactive()) {
+    downloaded <- encode_download(
+        "ENCFF973TYM",
+        directory = "encode-data"
+    )
+    encode_results(downloaded)
+}
 }

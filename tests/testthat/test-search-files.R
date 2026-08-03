@@ -25,6 +25,18 @@ test_that("experiment searches flatten fixture metadata and preserve request con
     expect_equal(result$facets$term[[1L]], "total RNA-seq")
     expect_match(result$query_url, "frame=embedded", fixed = TRUE)
     expect_true(all(c("results", "raw", "filters", "request") %in% names(result)))
+    expect_named(result, c(
+        "results", "raw", "total", "filters", "facets", "columns",
+        "query_url", "encode_base_url", "frame", "metadata", "limit", "request"
+    ))
+})
+
+test_that("search arguments reject ambiguous values", {
+    expect_error(encode_search(type = character(), quiet = TRUE), "type")
+    expect_error(encode_search(search = c("heart", "brain"), quiet = TRUE), "search")
+    expect_error(encode_search(file_format = 1, quiet = TRUE), "file_format")
+    expect_error(encode_search(include_facets = NA, quiet = TRUE), "include_facets")
+    expect_error(encode_search(quiet = 0), "quiet")
 })
 
 test_that("biological search arguments compile to ENCODE query fields", {
@@ -93,4 +105,11 @@ test_that("file listing validates scope and enriches parent experiment metadata"
     expect_equal(nrow(files), 3L)
     expect_true(any(grepl("dataset=%2Fexperiments%2FENCSRREAL01%2F", observed_urls, fixed = TRUE)))
     expect_true(any(grepl("type=Experiment", observed_urls, fixed = TRUE)))
+    expect_equal(sum(grepl("type=Experiment", observed_urls, fixed = TRUE)), 1L)
+})
+
+test_that("file listing validates filters and logical controls", {
+    expect_error(encode_list_files("ENCSRREAL01", assembly = 1, quiet = TRUE), "assembly")
+    expect_error(encode_list_files("ENCSRREAL01", allow_many = NA, quiet = TRUE), "allow_many")
+    expect_error(encode_list_files("ENCSRREAL01", quiet = "yes"), "quiet")
 })

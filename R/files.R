@@ -32,11 +32,8 @@
 #' @examples
 #' if (interactive()) {
 #'     files <- encode_list_files(
-#'         "ENCSR083OKX",
-#'         file_format = "tsv",
-#'         output_type = "gene quantifications",
-#'         assembly = "mm10",
-#'         quiet = TRUE
+#'         "ENCSR389GJZ",
+#'         file_format = "tsv"
 #'     )
 #'     encode_results(files)
 #' }
@@ -51,6 +48,12 @@ encode_list_files <- function(
     allow_many = FALSE,
     quiet = FALSE
 ) {
+    file_format <- encode_validate_values(file_format, "file_format")
+    output_type <- encode_validate_values(output_type, "output_type")
+    assembly <- encode_validate_values(assembly, "assembly")
+    status <- encode_validate_values(status, "status")
+    allow_many <- encode_validate_flag(allow_many, "allow_many")
+    quiet <- encode_validate_flag(quiet, "quiet")
     metadata_request <- encode_metadata_request(metadata)
     frame <- metadata_request$frame
     metadata <- metadata_request$metadata
@@ -89,22 +92,15 @@ encode_list_files <- function(
         include_facets = TRUE,
         quiet = TRUE
     )
-    files <- encode_bind_rows(
-        lapply(search_result$raw$`@graph` %||% list(), encode_flatten_file),
-        names(encode_empty_results("File"))
-    )
+    files <- encode_results(search_result)
     files <- encode_attach_metadata(
         files,
         query_url = search_result$query_url,
         retrieved_at = search_result$request$retrieved_at,
         filters = search_result$filters
     )
-    experiment_metadata <- encode_fetch_experiment_metadata_for_files(experiment_paths, metadata = metadata)
-    files <- encode_fill_file_experiment_metadata(files, experiment_metadata)
     class(files) <- c("encode_file_table", "data.frame")
     attr(files, "total") <- search_result$total
-    attr(files, "total_results") <- search_result$total
-    attr(files, "url") <- search_result$url
     attr(files, "query_url") <- search_result$query_url
     attr(files, "retrieved_at") <- search_result$request$retrieved_at
     attr(files, "metadata") <- metadata
@@ -121,9 +117,6 @@ encode_list_files <- function(
             cli::cli_inform(
                 "ENCODE file listing returned {nrow(files)} file record(s) ({encode_pretty_bytes(known_size)} with known sizes)."
             )
-            cli::cli_inform(
-                "Returned a file metadata table. Print the result to view files, or use {.code encode_results()} for the table."
-            )
         }
     }
     files
@@ -131,8 +124,7 @@ encode_list_files <- function(
 
 # Parent experiment enrichment
 
-## Parent experiment metadata is enrichment, not the primary file result. Return
-## file rows when enrichment fails, but warn and preserve the error.
+# Preserve file rows when optional parent-experiment enrichment fails.
 encode_fetch_experiment_metadata_for_files <- function(experiment_paths, metadata = "basic") {
     accessions <- vapply(experiment_paths, encode_accession_from_path, character(1L))
     accessions <- unique(accessions[encode_is_experiment_accession(accessions)])
@@ -195,7 +187,7 @@ encode_enrich_file_table_from_parent_experiments <- function(files, metadata = "
         return(files)
     }
     experiment_paths <- encode_experiment_paths_from_file_table(files)
-    experiments <- encode_fetch_experiment_metadata_for_files(experiment_paths, metadata = "full")
+    experiments <- encode_fetch_experiment_metadata_for_files(experiment_paths, metadata = metadata)
     files <- encode_fill_file_experiment_metadata(files, experiments)
     errors <- attr(experiments, "metadata_enrichment_error", exact = TRUE)
     if (!is.null(errors) && length(errors) > 0L) {
@@ -234,8 +226,7 @@ encode_experiment_paths_from_file_table <- function(files) {
     paths[grepl("^/experiments/", paths)]
 }
 
-## Fill only missing file-table provenance columns; file-level values take
-## precedence over parent experiment values.
+# Fill missing provenance only; file-level values take precedence.
 encode_fill_file_experiment_metadata <- function(files, experiments) {
     if (!is.data.frame(files) || nrow(files) == 0L ||
         !is.data.frame(experiments) || nrow(experiments) == 0L ||

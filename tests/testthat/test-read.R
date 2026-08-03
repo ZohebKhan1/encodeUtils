@@ -128,6 +128,56 @@ test_that("matrix assembly requires a shared unique biological key", {
     expect_false(any(grepl("[.]encode_feature_id", names(loaded$data[[1L]]))))
 })
 
+test_that("mixed gene identifiers retain a complete matrix key", {
+    directory <- withr::local_tempdir()
+    paths <- file.path(directory, c("mixed-a.tsv", "mixed-b.tsv"))
+    writeLines(
+        c(
+            "gene_id\texpected_count\tTPM",
+            "10000\t10\t1.0",
+            "ENSMUSG00000000001\t20\t2.0",
+            "Gata4\t30\t3.0"
+        ),
+        paths[[1L]]
+    )
+    writeLines(
+        c(
+            "gene_id\texpected_count\tTPM",
+            "10000\t11\t1.1",
+            "ENSMUSG00000000001\t21\t2.1",
+            "Gata4\t31\t3.1"
+        ),
+        paths[[2L]]
+    )
+    files <- data.frame(
+        file_accession = c("ENCFFMIX001", "ENCFFMIX002"),
+        file_format = "tsv",
+        local_path = paths,
+        download_status = "downloaded",
+        stringsAsFactors = FALSE
+    )
+
+    loaded <- encode_read(files, values = c("raw_counts", "tpm"))
+
+    expect_true("gene_id" %in% names(loaded$data[[1L]]))
+    expect_equal(names(loaded$matrices), c("raw_counts", "tpm"))
+    expect_equal(nrow(loaded$row_data), 3L)
+    expect_equal(unname(loaded$matrices$raw_counts[, 1L]), c(10, 20, 30))
+})
+
+test_that("headerless and featureCounts tables expose raw counts consistently", {
+    htseq <- withr::local_tempfile(fileext = ".tsv")
+    writeLines(c("ENSMUSG00000000001\t10", "N_unmapped\t2"), htseq)
+    feature_counts <- withr::local_tempfile(fileext = ".tsv")
+    writeLines(c(
+        "Geneid\tChr\tStart\tEnd\tStrand\tLength\tsample.bam",
+        "ENSMUSG00000000001\t1\t1\t100\t+\t100\t12"
+    ), feature_counts)
+
+    expect_named(encode_read(htseq), c("gene_id", "raw_counts"))
+    expect_named(encode_read(feature_counts), c("gene_id", "raw_counts"))
+})
+
 test_that("loaded print output is compact", {
     path <- withr::local_tempfile(fileext = ".tsv")
     writeLines(c("gene_id\texpected_count", "Gata4\t10"), path)
@@ -144,4 +194,13 @@ test_that("loaded print output is compact", {
     expect_true(any(grepl("ENCODE loaded files", output, fixed = TRUE)))
     expect_true(any(grepl("feature rows", output, fixed = TRUE)))
     expect_false(any(grepl("by_experiment", output, fixed = TRUE)))
+})
+
+test_that("read controls reject ambiguous values", {
+    path <- withr::local_tempfile(fileext = ".csv")
+    writeLines(c("gene,value", "MYC,2.5"), path)
+
+    expect_error(encode_read(path, format = c("csv", "tsv")), "format")
+    expect_error(encode_read(path, allow_large = 1), "allow_large")
+    expect_error(encode_read(path, simplify_quant = NA), "simplify_quant")
 })

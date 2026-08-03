@@ -1,213 +1,139 @@
-## CHANGES IN VERSION 0.99.7
+# encodeUtils 0.99.8
+
+## API and behavior
 
-USER-VISIBLE CHANGES
+- Validate public string, string-vector, and logical arguments before issuing
+  requests or reading files. Invalid values now identify the responsible
+  argument instead of being coerced or ignored.
+- Give search results one canonical query field (`query_url`) and remove the
+  duplicate `url`, `total_results`, and `requested_limit` fields.
+- Give download results a stable status schema for planned, downloaded,
+  existing, verification-failed, and transfer-failed rows. ENCODE's `md5sum`
+  remains the expected checksum; `observed_md5` records the local checksum.
+  Redundant checksum and verification aliases were removed.
+- Preserve `gene_id` while simplifying quantification tables and normalize
+  featureCounts and HTSeq count columns to `raw_counts`. Mixed identifier types
+  can now use the complete source identifier to assemble aligned matrices.
+- Reuse the enriched File search table in `encode_list_files()` instead of
+  flattening the response and retrieving parent experiments a second time.
+- Label File search records as `files` in manifests and report requested
+  attribution failures instead of silently omitting the attribution component.
+- Record manifest creation times as second-resolution UTC ISO 8601 values and
+  print manifest identifiers without decorative quoting.
 
-    o Standardize selection messages on quiet = FALSE, matching search, file
-      listing, and download functions.
+## Documentation and tests
 
-    o Make printed download results show transfer status, verification flags,
-      destination paths, and failure reasons when present.
+- Replace the simulated vignette with a direct ENCODE RNA-seq workflow covering
+  search, file listing, selection, download, matrix assembly, and manifest
+  creation. Reference examples now use supported ENCODE calls rather than test
+  fixtures.
+- Add measured-coverage and R-version badges while retaining the R CMD check
+  and pkgdown badges. The coverage workflow verifies the displayed percentage.
+- Add contract tests for argument validation, result schemas, transfer failures,
+  File search manifests, and duplicate parent-metadata requests.
 
-BUG FIXES
+# encodeUtils 0.99.7
 
-    o Build combined expression matrices only when every table shares a
-      complete, unique biological feature key; keep ambiguous tables separate
-      instead of creating row-order-dependent identifiers.
+## API and behavior
+
+- Use `quiet` consistently in search, file-listing, selection, and download
+  functions.
+- Print transfer status, verification results, destination paths, and failure
+  reasons for download results.
+- Build expression matrices only when all input tables share a complete, unique
+  biological feature key. Tables with ambiguous identifiers remain separate.
+- Construct experiment attribution URLs from experiment accessions rather than
+  assuming every parent dataset is an Experiment.
+
+## Documentation
+
+- Document the public workflow, matrix alignment rules, native file readers,
+  and development installation.
+- Group internal helper families and apply four-space indentation to R source.
+
+# encodeUtils 0.99.6
+
+## File import
+
+- Import GFF files that begin with UCSC `track` or `browser` directives.
+- Apply the documented fallback when an optional native reader rejects a
+  nonstandard file schema.
+
+# encodeUtils 0.99.5
+
+## Bioconductor integration
+
+- Move `GenomicRanges` and `IRanges` to core dependencies so BED-like imports
+  return `GRanges` consistently.
+- Correct package metadata and exclude generated check directories from package
+  builds.
+
+# encodeUtils 0.99.4
+
+## Documentation and continuous integration
+
+- Consolidate introductory material into one vignette and add installation and
+  workflow sections to the README.
+- Remove generated database-overview images and unused data exclusions.
+- Add package build, vignette, manual, and check jobs for release and development
+  R environments.
+
+# encodeUtils 0.99.3
+
+## Public API
+
+- Limit the exported API to eight workflow functions and remove obsolete
+  schema, interactive-selection, count, and local-filter interfaces.
+- Separate transfer from import: `encode_download()` returns download records,
+  and `encode_read()` loads local files.
+- Standardize download arguments, selection presets, and the
+  `encode_loaded_files` structure.
+
+## Reliability
+
+- Preserve raw quantification columns when simplification is disabled.
+- Verify replacement downloads before removing an existing destination.
+- Cap server-requested retry delays and validate retry and throttle options.
+- Replace duplicated implementation tests with fixture-backed tests of public
+  contracts, provenance, retries, matrix alignment, and atomic replacement.
+
+# encodeUtils 0.99.2
+
+## Documentation
 
-    o Construct experiment attribution URLs from experiment accessions rather
-      than assuming every file's parent dataset is an Experiment record.
+- Define return-value contracts for search, file listing, file selection,
+  download, read, manifest, and result-accessor functions.
+- Clarify package scope and document file-search fallback, transfer safety,
+  genomic imports, and matrix construction.
 
-DOCUMENTATION AND STYLE
+# encodeUtils 0.99.1
 
-    o Refine the README, vignette, reference text, and pkgdown organization
-      around practical entry points, safe matrix assembly, native file readers,
-      and current development installation.
+## Download safety
 
-    o Organize internal helper families with concise navigation comments and
-      apply the Bioconductor four-space indentation preference consistently.
+- Set default transfer limits to 250 MB per file and 500 MB in total.
+- Require direct experiment downloads to be narrowed before transfer.
+- Include the request URL and final connection error when retries are exhausted.
+- Preserve existing destination files when a replacement fails verification.
 
-## CHANGES IN VERSION 0.99.6
+## Metadata
 
-BUG FIXES
+- Record parent-enrichment failures on returned file tables.
+- Read organism metadata from nested biosamples and recognize common ENCODE
+  model organisms.
+- Avoid append-style list growth for broad file and attribution result sets.
 
-    o Import ENCODE GFF files that begin with UCSC track directives, and honor
-      the documented path fallback when an optional native reader rejects a
-      valid but nonstandard file schema.
+# encodeUtils 0.99.0
 
-DOCUMENTATION
+## Initial release
 
-    o Add the reviewer-required vignette introduction, Bioconductor
-      installation section, and comparison with existing ENCODE and file-import
-      infrastructure.
-
-## CHANGES IN VERSION 0.99.5
-
-VALIDATION AND INTEGRATION
-
-    o Make GenomicRanges and IRanges core dependencies so BED-like imports have
-      a deterministic GRanges default and the package has a substantive
-      Bioconductor integration point.
-
-    o Remove generated check and temporary install directories before
-      BiocCheck, and correct DESCRIPTION continuation formatting found by the
-      built-package validation run.
-
-## CHANGES IN VERSION 0.99.4
-
-DOCUMENTATION AND INFRASTRUCTURE
-
-    o Replace duplicated introductory material with one evaluated,
-      network-independent vignette that demonstrates selection, dry-run
-      planning, multi-file reading, aligned matrices, and provenance capture.
-
-    o Add Bioconductor installation instructions and a concise public workflow
-      to the README; remove the unmaintained generated database-overview image.
-
-    o Refine package metadata, move optional annotation support to Suggests,
-      and remove data/ from repository and build ignore rules.
-
-    o Run full build, vignette, manual, and check jobs across current R release
-      and development platforms in continuous integration.
-
-## CHANGES IN VERSION 0.99.3
-
-USER-VISIBLE CHANGES
-
-    o Keep the public API focused on eight workflow functions and remove
-      obsolete internal object, schema, interactive-selection, count, and
-      local-filter compatibility layers.
-
-    o Separate transfer from import: encode_download() now returns download
-      records, and encode_read() handles all local-file loading.
-
-    o Standardize download arguments as status and limit, use directory = NULL
-      for the persistent package cache, and require files in
-      encode_select_files().
-
-    o Reduce file-selection presets to eight canonical, assay-aware names.
-
-    o Make downloaded-table input to encode_read() return one stable
-      encode_loaded_files shape with metadata, data, row_data, and matrices.
-      Expression matrices are numeric, use lower-case names, and align with
-      row_data.
-
-BUG FIXES
-
-    o Preserve raw quantification columns when simplify_quant = FALSE instead
-      of simplifying them again during collection assembly.
-
-    o Verify temporary downloads before replacing an existing destination and
-      preserve the existing file when verification or installation fails.
-
-    o Cap Retry-After delays and validate request-throttle and retry options.
-
-TESTING
-
-    o Replace duplicated implementation-level tests with deterministic,
-      fixture-backed tests of public contracts, provenance, retry behavior,
-      matrix alignment, and atomic download replacement.
-
-## CHANGES IN VERSION 0.99.2
-
-DOCUMENTATION
-
-    o Clarify exported return-value contracts for search, file listing, file
-      selection, download, read, manifest, and result-accessor functions.
-
-    o Tighten README and DESCRIPTION wording around the read-only,
-      accession-aware ENCODE workflow.
-
-    o Add targeted maintainer comments for ENCODE file-search fallbacks,
-      conservative download handling, optional genomic import behavior, and
-      expression-matrix construction.
-
-## CHANGES IN VERSION 0.99.1
-
-USER-VISIBLE CHANGES
-
-    o encode_download() now uses smaller default transfer safety limits:
-      max_file_size = "250MB" and max_total_size = "500MB". Larger transfers
-      remain possible by explicitly increasing these arguments.
-
-    o encode_download() now refuses unrestricted real downloads from ENCSR
-      experiment accessions. Use dry_run = TRUE to inspect the full plan, or
-      narrow real downloads with file_format, output_type, file_accession, or n.
-
-    o Download examples now use the package cache or tempdir() rather than a
-      home-directory path.
-
-BUG FIXES
-
-    o Retry-exhaustion errors now include the request URL and final connection
-      error in the top-level message.
-
-    o File metadata enrichment now warns when parent experiment metadata cannot
-      be retrieved and records the enrichment error on the returned table.
-
-    o File and experiment organism extraction now reads nested biosample
-      organism metadata and recognizes common non-human ENCODE organisms such as
-      Caenorhabditis elegans.
-
-    o Internal file-search and attribution assembly avoid append-style list
-      growth for broad result sets.
-
-## CHANGES IN VERSION 0.99.0
-
-NEW FEATURES
-
-    o Query ENCODE search endpoints from R.
-
-    o Search common ENCODE biology fields with direct arguments such as
-      organism, assay, biosample, organ, system, life_stage, target,
-      target_category, and exclude_controls.
-
-    o List file metadata for ENCODE experiments, including file accessions,
-      formats, output types, assemblies, file sizes, checksums, download URLs,
-      biosample fields, targets, controls, and analysis accessions when present.
-
-    o Select files by accession, status, format, output type, assembly, and
-      ENCODE preferred-default status.
-
-    o Provide selection presets for common ENCODE file types, including raw
-      FASTQ files, RNA-seq gene quantification tables, ATAC-seq peaks,
-      ChIP-seq IDR peaks, and ChIP-seq signal bigWig files.
-
-    o Check downloads before transfer with encode_download(dry_run = TRUE),
-      including destination paths, known total size, and unknown-size counts.
-
-    o Download selected files with existing-file checks, temporary partial files,
-      file-size verification, and MD5 verification when metadata are available.
-
-    o Download and read supported files in one step with
-      encode_download(read = TRUE). RNA-seq gene-quantification tables can be
-      merged into raw-count, TPM, FPKM, or RPKM matrices.
-
-    o Read supported local text, table, JSON, interval, and sequence files.
-      BED-like interval files use GRanges via rtracklayer when available, and
-      users can request plain tables with encode_read(as = "data.frame").
-
-    o Preserve raw ENCODE gene-quantification columns with
-      encode_read(simplify_quant = FALSE) when the normalized expression-column
-      view is not desired.
-
-    o Create reproducibility manifests with ENCODE dataset and file attribution.
-
-USER-VISIBLE CHANGES
-
-    o The package is named encodeUtils.
-
-    o Search and file-list outputs print compact tables by default. Use
-      encode_results() to extract the underlying data frame.
-
-    o The README includes ENCODE database overview figures for common RNA-seq,
-      ChIP-seq, and ATAC-seq experiment metadata.
-
-    o encode_search() defaults to metadata = "full" so common
-      lab, organism, biosample, target, control, and release-date fields are
-      available in printed tables.
-
-    o encode_download() refuses real downloads with missing file_size metadata
-      unless allow_unknown_size = TRUE. Dry-runs still report those files.
-
-    o encode_manifest() records the query, selected files, downloads, and
-      ENCODE attribution metadata.
+- Search current ENCODE Portal records with accession-aware and biological
+  filters.
+- Flatten experiment and file metadata while retaining query, request, and
+  attribution context.
+- List and select ENCODE files by accession, status, format, output type,
+  assembly, preset, and preferred-default status.
+- Download files with size limits, temporary partial files, existing-file
+  checks, and size or MD5 verification.
+- Read supported text, JSON, interval, sequence, and quantification files.
+- Combine compatible RNA-seq tables into aligned count or expression matrices.
+- Create JSON-ready provenance manifests for ENCODE experiments and files.

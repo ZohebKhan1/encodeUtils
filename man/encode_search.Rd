@@ -145,25 +145,22 @@ to the attached File records.
 }
 \examples{
 if (interactive()) {
-    res <- encode_search(
-        type = "Experiment",
+    experiments <- encode_search(
         organism = "mouse",
         assay = "rna-seq",
         organ = "heart",
-        limit = 1,
-        quiet = TRUE
+        limit = 1
     )
-    encode_results(res)
+    encode_results(experiments)
 
-    chip <- encode_search(
-        type = "Experiment",
+    files <- encode_search(
+        type = "File",
         organism = "mouse",
-        assay = "histone chip-seq",
-        target = "H3K27ac",
+        assay = "rna-seq",
         organ = "heart",
-        exclude_controls = TRUE,
-        limit = 1,
-        quiet = TRUE
+        file_format = "tsv",
+        output_type = "gene quantifications",
+        limit = 2
     )
 }
 }

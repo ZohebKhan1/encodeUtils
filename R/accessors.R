@@ -14,11 +14,14 @@
 #' @export
 #'
 #' @examples
-#' tbl <- data.frame(
-#'     accession = "ENCSR000AAA",
-#'     assay_title = "ChIP-seq"
-#' )
-#' encode_results(tbl)
+#' if (interactive()) {
+#'     experiments <- encode_search(
+#'         organism = "mouse",
+#'         assay = "rna-seq",
+#'         limit = 1
+#'     )
+#'     encode_results(experiments)
+#' }
 encode_results <- function(x) {
     if (inherits(x, "encode_search_result")) {
         return(x$results)
