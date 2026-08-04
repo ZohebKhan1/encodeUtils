@@ -2,7 +2,7 @@
 
 [![R-CMD-check](https://github.com/ZohebKhan1/encodeUtils/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/ZohebKhan1/encodeUtils/actions/workflows/R-CMD-check.yaml)
 [![pkgdown](https://github.com/ZohebKhan1/encodeUtils/actions/workflows/pkgdown.yaml/badge.svg)](https://github.com/ZohebKhan1/encodeUtils/actions/workflows/pkgdown.yaml)
-[![coverage 62.1%](https://img.shields.io/badge/coverage-62.1%25-yellow)](https://github.com/ZohebKhan1/encodeUtils/actions/workflows/test-coverage.yaml)
+[![coverage 62.7%](https://img.shields.io/badge/coverage-62.7%25-yellow)](https://github.com/ZohebKhan1/encodeUtils/actions/workflows/test-coverage.yaml)
 [![R >= 4.6.0](https://img.shields.io/badge/R-%E2%89%A5%204.6.0-276DC3?logo=r)](https://www.r-project.org/)
 
 `encodeUtils` searches the ENCODE Portal, converts nested metadata into

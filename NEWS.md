@@ -1,3 +1,34 @@
+# encodeUtils 0.99.9
+
+## Provenance
+
+- Record the ENCODE query URL, retrieval time, and active filters in manifests
+  built from `encode_select_files()` and `encode_read()` results. These fields
+  were previously empty for the workflow ending in `encode_manifest(loaded)`,
+  even though the selected-file and loaded-file tables carried them.
+- Carry the metadata retrieval time of the input through `encode_download()`,
+  so planned and completed download results report when the ENCODE file
+  metadata was retrieved rather than leaving `retrieved_at` empty.
+- Document that manifest attribution reuses the metadata already held by the
+  input and issues no further requests. For processed ENCODE files, `lab`,
+  `institution`, and `project` describe the processing pipeline, not the
+  originating laboratory.
+
+## Reading and printing
+
+- Apply `row_names` to CSV input, matching the existing behavior for TSV and
+  text tables.
+- Print known file sizes without surrounding quotation marks in file, summary,
+  and local-file output.
+
+## Internal
+
+- Remove three unreachable code paths: the unused `frame` branch of the
+  metadata-request helper, the cloud-URL branch of the flattened download-URL
+  helper, and the duplicate-name fixup that followed `make.unique()`.
+- Drop roxygen examples from internal `@noRd` blocks, which were never rendered
+  or checked.
+
 # encodeUtils 0.99.8
 
 ## API and behavior

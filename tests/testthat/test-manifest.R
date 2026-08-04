@@ -26,6 +26,63 @@ test_that("manifests capture file provenance and round-trip to JSON", {
     expect_false(any(grepl('"encodeUtils"', output, fixed = TRUE)))
 })
 
+test_that("manifests keep request provenance for loaded collections", {
+    path <- withr::local_tempfile(fileext = ".tsv")
+    writeLines(c("gene_id\texpected_count", "Gata4\t10"), path)
+    files <- data.frame(
+        file_accession = "ENCFFLOAD01",
+        file_format = "tsv",
+        local_path = path,
+        download_status = "downloaded",
+        stringsAsFactors = FALSE
+    )
+    attr(files, "query_url") <- "https://www.encodeproject.org/search/?type=File"
+    attr(files, "retrieved_at") <- as.POSIXct("2024-01-02 03:04:05", tz = "UTC")
+    attr(files, "filters") <- data.frame(field = "status", value = "released")
+
+    loaded <- encode_read(files)
+    manifest <- encode_manifest(
+        loaded,
+        include_attribution = FALSE,
+        include_session = FALSE
+    )
+
+    expect_equal(manifest$retrieval$query_url, attr(files, "query_url"))
+    expect_equal(manifest$retrieval$retrieved_at, "2024-01-02T03:04:05Z")
+    expect_equal(manifest$filters$field, "status")
+})
+
+test_that("selection and download carry the provenance of their input", {
+    retrieved_at <- as.POSIXct("2024-01-02 03:04:05", tz = "UTC")
+    files <- fixture_file_table()[1L, ]
+    attr(files, "query_url") <- "https://www.encodeproject.org/search/?type=File"
+    attr(files, "retrieved_at") <- retrieved_at
+    attr(files, "filters") <- data.frame(field = "file_format", value = "bed")
+
+    selected <- encode_select_files(files, quiet = TRUE)
+    planned <- encode_download(
+        selected,
+        directory = withr::local_tempdir(),
+        dry_run = TRUE,
+        quiet = TRUE
+    )
+    selected_manifest <- encode_manifest(
+        selected,
+        include_attribution = FALSE,
+        include_session = FALSE
+    )
+    manifest <- encode_manifest(
+        planned,
+        include_attribution = FALSE,
+        include_session = FALSE
+    )
+
+    expect_equal(selected_manifest$filters$field, "file_format")
+    expect_equal(attr(planned, "retrieved_at", exact = TRUE), retrieved_at)
+    expect_equal(manifest$retrieval$retrieved_at, "2024-01-02T03:04:05Z")
+    expect_equal(manifest$filters$field, "file_format")
+})
+
 test_that("manifests support loaded collections and reject unsupported objects", {
     path <- withr::local_tempfile(fileext = ".tsv")
     writeLines(c("gene_id\texpected_count", "Gata4\t10"), path)

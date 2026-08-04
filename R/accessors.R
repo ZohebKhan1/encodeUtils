@@ -48,12 +48,12 @@ encode_results <- function(x) {
 #' @return A single URL string, or `NA_character_` when no query URL is
 #'   available.
 #'
-#' @examples
-#' tbl <- data.frame(accession = "ENCSR000AAA")
-#' attr(tbl, "query_url") <- "https://www.encodeproject.org/search/?type=Experiment"
-#' encode_query_url(tbl)
 #' @noRd
 encode_query_url <- function(x) {
+    # Loaded collections carry request provenance on their metadata table.
+    if (inherits(x, "encode_loaded_files")) {
+        return(encode_query_url(x$metadata))
+    }
     query_url <- attr(x, "query_url", exact = TRUE)
     if (!is.null(query_url)) {
         return(query_url)
@@ -77,12 +77,15 @@ encode_query_url <- function(x) {
 #'
 #' @return A data frame with filter fields and values, or an empty data frame.
 #'
-#' @examples
-#' tbl <- data.frame(accession = "ENCSR000AAA")
-#' attr(tbl, "filters") <- data.frame(field = "status", value = "released")
-#' encode_filters(tbl)
 #' @noRd
 encode_filters <- function(x) {
+    # Collections keep the active filters on their file or metadata table.
+    if (inherits(x, "encode_loaded_files")) {
+        return(encode_filters(x$metadata))
+    }
+    if (inherits(x, "encode_selected_files")) {
+        return(encode_filters(x$files))
+    }
     if (is.list(x) && !is.null(x$filters)) {
         return(x$filters)
     }

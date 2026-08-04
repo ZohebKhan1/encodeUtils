@@ -5,16 +5,6 @@
 #'
 #' @return A file-summary list.
 #'
-#' @examples
-#' files <- data.frame(
-#'     file_accession = c("ENCFF000AAA", "ENCFF000AAB"),
-#'     experiment_accession = c("ENCSR000AAA", "ENCSR000AAA"),
-#'     file_format = c("bed", "bigWig"),
-#'     output_type = c("peaks", "signal"),
-#'     assembly = c("GRCh38", "GRCh38"),
-#'     file_size = c(100, 200)
-#' )
-#' encode_file_summary(files)
 #' @noRd
 encode_file_summary <- function(files) {
     if (inherits(files, "encode_selected_files")) {
@@ -46,8 +36,6 @@ encode_file_summary <- function(files) {
 #'
 #' @return Total known size in bytes.
 #'
-#' @examples
-#' encode_size(data.frame(file_size = c(100, NA, 50)))
 #' @noRd
 encode_size <- function(files) {
     files <- as.data.frame(files, stringsAsFactors = FALSE)
@@ -64,9 +52,6 @@ encode_size <- function(files) {
 #'
 #' @return A data frame sorted by descending known file size.
 #'
-#' @examples
-#' files <- data.frame(file_accession = c("a", "b"), file_size = c(1, 10))
-#' encode_largest_files(files, n = 1)
 #' @noRd
 encode_largest_files <- function(files, n = 10L) {
     files <- as.data.frame(files, stringsAsFactors = FALSE)

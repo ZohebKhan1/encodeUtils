@@ -120,9 +120,7 @@ encode_loaded_file_names <- function(files) {
     } else {
         tools::file_path_sans_ext(basename(files$local_path))
     }
-    names <- encode_valid_object_names(names)
-    names[duplicated(names)] <- paste0(names[duplicated(names)], "_", seq_len(sum(duplicated(names))))
-    names
+    encode_valid_object_names(names)
 }
 
 encode_valid_object_names <- function(x) {

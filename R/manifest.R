@@ -7,7 +7,12 @@
 #' @param x ENCODE accession(s), result object, file table, selected files, or
 #'   download result.
 #' @param include_attribution Whether to include ENCODE dataset and file
-#'   attribution metadata when supported.
+#'   attribution metadata when supported. Attribution reuses the metadata
+#'   already held by `x` and issues no further requests, so `lab`,
+#'   `institution`, and `project` describe the record that produced each file.
+#'   For processed ENCODE files that is the processing pipeline rather than the
+#'   originating laboratory; use the parent experiment table when citing data
+#'   producers.
 #' @param include_session Whether to include `utils::sessionInfo()`.
 #' @param path Optional destination JSON path. If supplied, the manifest is also
 #'   written to disk.
@@ -39,6 +44,15 @@ encode_manifest <- function(
     include_session <- encode_validate_flag(include_session, "include_session")
     path <- encode_validate_scalar(path, "path")
     pretty <- encode_validate_flag(pretty, "pretty")
+
+    # Loaded collections keep request provenance on their metadata table.
+    provenance <- if (inherits(x, "encode_loaded_files")) x$metadata else x
+    base_url <- attr(provenance, "encode_base_url", exact = TRUE)
+    retrieved_at <- attr(provenance, "retrieved_at", exact = TRUE)
+    if (is.null(retrieved_at) && is.list(provenance)) {
+        retrieved_at <- provenance$retrieved_at
+    }
+
     manifest <- list(
         package = list(
             name = "encodeUtils",
@@ -46,11 +60,9 @@ encode_manifest <- function(
         ),
         retrieval = list(
             created_at = encode_manifest_timestamp(Sys.time()),
-            encode_base_url = attr(x, "encode_base_url", exact = TRUE) %||% encode_base_url(),
+            encode_base_url = base_url %||% encode_base_url(),
             query_url = encode_query_url(x),
-            retrieved_at = encode_manifest_timestamp(
-                attr(x, "retrieved_at", exact = TRUE)
-            )
+            retrieved_at = encode_manifest_timestamp(retrieved_at)
         ),
         filters = encode_filters(x),
         object_type = class(x)[[1L]]

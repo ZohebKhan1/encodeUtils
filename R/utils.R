@@ -69,13 +69,6 @@ encode_object_url_one <- function(path) {
     paste0(encode_base_url(), path)
 }
 
-encode_download_url <- function(href, cloud_url = NA_character_) {
-    if (!is.na(cloud_url) && nzchar(cloud_url)) {
-        return(cloud_url)
-    }
-    encode_object_url(href)
-}
-
 encode_scalar <- function(x) {
     if (is.null(x) || length(x) == 0L) {
         return(NA_character_)
@@ -473,29 +466,17 @@ encode_filter_file_accessions <- function(files, file_accession = NULL) {
 
 # Request metadata
 
-encode_metadata_request <- function(metadata = NULL, frame = NULL) {
-    if (!is.null(metadata)) {
-        if (length(metadata) > 1L) {
-            metadata <- metadata[[1L]]
-        }
-        if (!is.character(metadata) || length(metadata) != 1L || is.na(metadata)) {
-            cli::cli_abort("{.arg metadata} must be {.val full} or {.val basic}.")
-        }
-        metadata <- match.arg(metadata, c("full", "basic"))
-        return(list(
-            metadata = metadata,
-            frame = if (identical(metadata, "full")) "embedded" else "object"
-        ))
+encode_metadata_request <- function(metadata) {
+    if (length(metadata) > 1L) {
+        metadata <- metadata[[1L]]
     }
-
-    if (length(frame) > 1L) {
-        frame <- frame[[1L]]
+    if (!is.character(metadata) || length(metadata) != 1L || is.na(metadata)) {
+        cli::cli_abort("{.arg metadata} must be {.val full} or {.val basic}.")
     }
-    frame <- match.arg(frame, c("embedded", "object"))
-    metadata <- if (identical(frame, "embedded")) "full" else "basic"
+    metadata <- match.arg(metadata, c("full", "basic"))
     list(
         metadata = metadata,
-        frame = frame
+        frame = if (identical(metadata, "full")) "embedded" else "object"
     )
 }
 

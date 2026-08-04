@@ -90,6 +90,13 @@ encode_download <- function(
     prefer_cloud <- encode_validate_flag(prefer_cloud, "prefer_cloud")
     quiet <- encode_validate_flag(quiet, "quiet")
     verify <- encode_normalize_verify(verify)
+
+    # Carry the metadata retrieval time of the input through to the result.
+    retrieved_at <- attr(x, "retrieved_at", exact = TRUE)
+    if (is.null(retrieved_at) && is.list(x)) {
+        retrieved_at <- x$retrieved_at
+    }
+
     # Require a narrowed ENCSR request for transfer, but allow unrestricted planning.
     encode_check_experiment_download_scope(
         x,
@@ -152,7 +159,12 @@ encode_download <- function(
         attr(files, "known_total_size") <- known_size
         attr(files, "unknown_size_count") <- unknown_size
         class(files) <- c("encode_download_result", "encode_file_table", "data.frame")
-        files <- encode_attach_metadata(files, query_url = encode_query_url(x), filters = encode_filters(x))
+        files <- encode_attach_metadata(
+            files,
+            query_url = encode_query_url(x),
+            retrieved_at = retrieved_at,
+            filters = encode_filters(x)
+        )
         return(files)
     }
 
@@ -187,7 +199,12 @@ encode_download <- function(
     }
     result <- encode_bind_rows(rows, names(rows[[1L]]))
     class(result) <- c("encode_download_result", "encode_file_table", "data.frame")
-    result <- encode_attach_metadata(result, query_url = encode_query_url(x), filters = encode_filters(x))
+    result <- encode_attach_metadata(
+        result,
+        query_url = encode_query_url(x),
+        retrieved_at = retrieved_at,
+        filters = encode_filters(x)
+    )
     failed <- result$download_status %in% "failed"
     if (any(failed)) {
         cli::cli_warn(

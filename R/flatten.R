@@ -24,12 +24,6 @@ encode_active_filters <- function(raw, query) {
 #'
 #' @return A data frame with facet field, term, count, and title columns.
 #'
-#' @examples
-#' raw <- list(facets = list(list(
-#'     field = "assay_title",
-#'     terms = list(list(key = "total RNA-seq", doc_count = 3))
-#' )))
-#' encode_facets(raw)
 #' @noRd
 encode_facets <- function(x) {
     if (inherits(x, "encode_search_result")) {
@@ -199,7 +193,7 @@ encode_flatten_file <- function(item) {
         status = encode_scalar(item$status),
         date_released = date_released,
         href = href,
-        download_url = encode_download_url(href, cloud_url = NA_character_),
+        download_url = encode_object_url(href),
         cloud_url = cloud_url,
         biological_replicates = encode_collapse_vector(item$biological_replicates),
         technical_replicates = encode_collapse_vector(item$technical_replicates),

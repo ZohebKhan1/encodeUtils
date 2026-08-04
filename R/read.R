@@ -131,7 +131,10 @@ encode_read <- function(
         ))
     }
     if (format %in% c("csv")) {
-        return(utils::read.csv(path, stringsAsFactors = FALSE, ...))
+        return(encode_set_row_names(
+            utils::read.csv(path, stringsAsFactors = FALSE, ...),
+            row_names
+        ))
     }
     if (format %in% c("json")) {
         return(jsonlite::fromJSON(path, simplifyVector = FALSE))

@@ -33,7 +33,7 @@ print.encode_file_table <- function(x, ..., verbose = FALSE) {
         cli::cli_text("- experiments: {.val {summary$n_experiments}}")
     }
     if ("file_size" %in% names(x)) {
-        cli::cli_text("- known total size: {.val {summary$total_size_pretty}}")
+        cli::cli_text("- known total size: {summary$total_size_pretty}")
     }
     table_label <- if (is_download) "Download records" else "Files"
     encode_print_table(
@@ -132,7 +132,7 @@ print.encode_file_summary <- function(x, ..., verbose = FALSE) {
     cli::cli_text("ENCODE file summary")
     cli::cli_text("- files: {.val {x$n_files}}")
     cli::cli_text("- experiments: {.val {x$n_experiments}}")
-    cli::cli_text("- known total size: {.val {x$total_size_pretty}}")
+    cli::cli_text("- known total size: {x$total_size_pretty}")
     encode_print_table("Formats", x$formats)
     if (isTRUE(verbose)) {
         encode_print_table("Assemblies", x$assemblies)
@@ -162,7 +162,7 @@ print.encode_local_file <- function(x, ...) {
     cli::cli_text("<encode_local_file>")
     cli::cli_text("Path: {.path {x$path}}")
     cli::cli_text("Reason: {x$reason}")
-    cli::cli_text("Size: {.val {x$file_size_pretty}}")
+    cli::cli_text("Size: {x$file_size_pretty}")
     invisible(x)
 }
 

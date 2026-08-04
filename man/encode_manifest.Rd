@@ -17,7 +17,12 @@ encode_manifest(
 download result.}
 
 \item{include_attribution}{Whether to include ENCODE dataset and file
-attribution metadata when supported.}
+attribution metadata when supported. Attribution reuses the metadata
+already held by `x` and issues no further requests, so `lab`,
+`institution`, and `project` describe the record that produced each file.
+For processed ENCODE files that is the processing pipeline rather than the
+originating laboratory; use the parent experiment table when citing data
+producers.}
 
 \item{include_session}{Whether to include `utils::sessionInfo()`.}
 
