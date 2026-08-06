@@ -23,56 +23,68 @@ if (!requireNamespace("pak", quietly = TRUE)) {
 pak::pak("ZohebKhan1/encodeUtils")
 ```
 
-## End-to-end workflow
+## End-to-end retrieval
 
-This example finds a released mouse heart RNA-seq experiment, selects its gene
-quantification files, downloads them to a project directory, assembles count
-and TPM matrices, and writes a provenance manifest.
+In `encodeUtils`, an end-to-end workflow is a deliberate path from a biological
+query to local, inspectable R objects:
+
+1. Find candidate experiments.
+2. Review their metadata and choose an experiment accession.
+3. List its file records, then state the file-selection criteria.
+4. Inspect a no-transfer download plan before downloading.
+5. Verify the completed transfer, read compatible files, and record a manifest.
+
+This is a retrieval and provenance workflow, not a substitute for assessing
+biological comparability or designing a downstream analysis. The
+[getting-started vignette](https://zohebkhan1.github.io/encodeUtils/articles/get-started.html)
+walks through each decision and result object. The compact example below shows
+the same sequence.
 
 ```r
 library(encodeUtils)
 
+# Find one candidate. `limit = 1` keeps the example small; inspect it before use.
 experiments <- encode_search(
     organism = "mouse",
     assay = "rna-seq",
     organ = "heart",
     limit = 1
 )
+experiment_table <- encode_results(experiments)
+chosen_experiment <- experiment_table$accession[[1L]]
 
-files <- encode_list_files(experiments)
-
+# List metadata first; this does not download file contents.
+files <- encode_list_files(chosen_experiment)
 selected <- encode_select_files(
     files,
     preset = "rnaseq_gene_quant",
     assembly = "mm10",
     replicate_policy = "preferred_processed"
 )
+encode_results(selected)
+selected$excluded
 
-downloaded <- encode_download(
+# Resolve paths and size limits without transferring bytes.
+plan <- encode_download(
     selected,
-    directory = "encode-data"
+    directory = "encode-data",
+    dry_run = TRUE
 )
+encode_results(plan)
 
-loaded <- encode_read(
-    downloaded,
-    values = c("raw_counts", "tpm")
-)
-
-manifest <- encode_manifest(
-    loaded,
-    path = "encode-manifest.json"
-)
+# After reviewing the selected files and plan:
+downloaded <- encode_download(selected, directory = "encode-data")
+loaded <- encode_read(downloaded, values = c("raw_counts", "tpm"))
+manifest <- encode_manifest(loaded, path = "encode-manifest.json")
 ```
 
-Use `encode_results()` to extract an ordinary data frame from a search,
-selection, download, or loaded-file result. The complete input file table is
-also available as `loaded$metadata`; `loaded$data` contains one native object
-per file; `loaded$row_data` describes aligned features; and `loaded$matrices`
-contains the requested numeric matrices.
-
-Matrices are created only when all participating tables share a complete,
-unique feature identifier. Tables with ambiguous identifiers remain available
-in `loaded$data` and are not aligned by row order.
+`encode_results()` extracts the main data frame from each workflow result. For
+the loaded collection, `metadata` contains the input file table, `data`
+contains one native object per file, `row_data` describes matrix features, and
+`matrices` contains the requested numeric matrices. Matrices are created only
+when every participating table has a complete, unique feature identifier;
+otherwise the original tables remain in `loaded$data` without inferred
+row-order alignment.
 
 ## Other entry points and formats
 
