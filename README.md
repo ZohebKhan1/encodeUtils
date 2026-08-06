@@ -86,6 +86,11 @@ when every participating table has a complete, unique feature identifier;
 otherwise the original tables remain in `loaded$data` without inferred
 row-order alignment.
 
+When compatible matrices are available, use
+`encode_read(downloaded, as = "SummarizedExperiment")` to pass the expression
+assays, feature metadata, and file metadata to Bioconductor methods in one
+standard container.
+
 ## Other entry points and formats
 
 You can start with the information already available:

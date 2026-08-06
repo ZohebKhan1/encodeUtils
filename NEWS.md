@@ -1,3 +1,29 @@
+# encodeUtils 0.99.10
+
+## Bioconductor readiness
+
+- Add a small, evaluated offline vignette workflow using packaged synthetic
+  quantification tables. The live ENCODE workflow remains one clearly marked
+  network-dependent code block.
+- Replace interactive wrappers in offline-capable examples with runnable
+  examples for selection, download planning, result extraction, reading, and
+  manifest creation.
+- Return an aligned `SummarizedExperiment` directly from
+  `encode_read(..., as = "SummarizedExperiment")` when compatible matrices
+  are available, while retaining the heterogeneous `encode_loaded_files`
+  collection as the default.
+
+## Provenance
+
+- Preserve a search result's recorded ENCODE base URL and retrieval time in
+  manifests.
+- Normalize download input before carrying provenance forward, so direct
+  accession and search-result download routes report the request that supplied
+  their file metadata.
+- Clarify that manifest attribution is request-free for existing result
+  objects and file tables, but character ENCSR or ENCFF input must first query
+  ENCODE metadata.
+
 # encodeUtils 0.99.9
 
 ## Provenance

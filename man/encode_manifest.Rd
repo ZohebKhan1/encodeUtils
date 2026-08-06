@@ -17,8 +17,9 @@ encode_manifest(
 download result.}
 
 \item{include_attribution}{Whether to include ENCODE dataset and file
-attribution metadata when supported. Attribution reuses the metadata
-already held by `x` and issues no further requests, so `lab`,
+attribution metadata when supported. Result objects and file tables reuse
+metadata already held by `x` and issue no further requests. Character
+ENCSR or ENCFF input first retrieves the required ENCODE metadata. `lab`,
 `institution`, and `project` describe the record that produced each file.
 For processed ENCODE files that is the processing pipeline rather than the
 originating laboratory; use the parent experiment table when citing data
@@ -46,9 +47,10 @@ metadata, and optional R session information. Provide `path` to save the
 manifest as JSON.
 }
 \examples{
-if (interactive()) {
-    files <- encode_list_files("ENCSR389GJZ", file_format = "tsv")
-    manifest <- encode_manifest(files, path = "encode-manifest.json")
-    names(manifest)
-}
+example_dir <- system.file("example-data", package = "encodeUtils")
+files <- utils::read.csv(file.path(example_dir, "files.csv"))
+files$local_path <- file.path(example_dir, files$local_name)
+manifest <- encode_manifest(files, include_attribution = FALSE,
+                            include_session = FALSE)
+names(manifest)
 }

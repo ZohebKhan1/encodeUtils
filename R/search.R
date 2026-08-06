@@ -79,25 +79,14 @@
 #' @export
 #'
 #' @examples
-#' if (interactive()) {
-#'     experiments <- encode_search(
-#'         organism = "mouse",
-#'         assay = "rna-seq",
-#'         organ = "heart",
-#'         limit = 1
-#'     )
-#'     encode_results(experiments)
-#'
-#'     files <- encode_search(
-#'         type = "File",
-#'         organism = "mouse",
-#'         assay = "rna-seq",
-#'         organ = "heart",
-#'         file_format = "tsv",
-#'         output_type = "gene quantifications",
-#'         limit = 2
-#'     )
-#' }
+#' experiments <- encode_search(
+#'     organism = "mouse",
+#'     assay = "rna-seq",
+#'     organ = "heart",
+#'     limit = 1,
+#'     quiet = TRUE
+#' )
+#' encode_results(experiments)
 encode_search <- function(
     type = "Experiment",
     filters = list(),

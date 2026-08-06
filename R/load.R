@@ -86,6 +86,30 @@ encode_load_downloaded_files <- function(
     result
 }
 
+encode_loaded_summarized_experiment <- function(loaded) {
+    assays <- lapply(loaded$matrices, identity)
+    if (length(assays) == 0L) {
+        cli::cli_abort(
+            "No compatible expression matrices were assembled, so a SummarizedExperiment cannot be created."
+        )
+    }
+    samples <- colnames(assays[[1L]])
+    features <- rownames(assays[[1L]])
+    col_data <- S4Vectors::DataFrame(
+        as.data.frame(loaded$metadata, stringsAsFactors = FALSE),
+        row.names = samples
+    )
+    row_data <- S4Vectors::DataFrame(
+        as.data.frame(loaded$row_data, stringsAsFactors = FALSE),
+        row.names = features
+    )
+    SummarizedExperiment::SummarizedExperiment(
+        assays = assays,
+        rowData = row_data,
+        colData = col_data
+    )
+}
+
 encode_set_row_names <- function(x, row_names) {
     if (identical(row_names, "none")) {
         if (is.data.frame(x)) {

@@ -83,6 +83,110 @@ test_that("selection and download carry the provenance of their input", {
     expect_equal(manifest$filters$field, "file_format")
 })
 
+test_that("search-result manifests keep the recorded request provenance", {
+    retrieved_at <- as.POSIXct("2024-02-03 04:05:06", tz = "UTC")
+    result <- structure(
+        list(
+            results = fixture_file_table()[1L, ],
+            query_url = "https://encode.example/search/?type=File",
+            encode_base_url = "https://encode.example",
+            request = list(retrieved_at = retrieved_at),
+            filters = data.frame(field = "status", value = "released")
+        ),
+        class = c("encode_search_result", "list")
+    )
+
+    manifest <- encode_manifest(
+        result,
+        include_attribution = FALSE,
+        include_session = FALSE
+    )
+
+    expect_equal(manifest$retrieval$encode_base_url, "https://encode.example")
+    expect_equal(manifest$retrieval$query_url, result$query_url)
+    expect_equal(manifest$retrieval$retrieved_at, "2024-02-03T04:05:06Z")
+})
+
+test_that("direct file downloads keep provenance from normalized metadata", {
+    retrieved_at <- as.POSIXct("2024-02-03 04:05:06", tz = "UTC")
+    files <- fixture_file_table()[1L, ]
+    files <- encode_attach_metadata(
+        files,
+        query_url = "https://encode.example/search/?type=File",
+        retrieved_at = retrieved_at,
+        filters = data.frame(field = "accession", value = "ENCFF000AAA"),
+        base_url = "https://encode.example"
+    )
+    class(files) <- c("encode_file_table", "data.frame")
+    testthat::local_mocked_bindings(
+        encode_search = function(...) {
+            structure(list(results = files), class = c("encode_search_result", "list"))
+        },
+        .package = "encodeUtils"
+    )
+
+    planned <- encode_download(
+        "ENCFF000AAA",
+        directory = withr::local_tempdir(),
+        dry_run = TRUE,
+        quiet = TRUE
+    )
+    manifest <- encode_manifest(
+        planned,
+        include_attribution = FALSE,
+        include_session = FALSE
+    )
+
+    expect_equal(attr(planned, "retrieved_at", exact = TRUE), retrieved_at)
+    expect_equal(attr(planned, "encode_base_url", exact = TRUE), "https://encode.example")
+    expect_equal(manifest$retrieval$retrieved_at, "2024-02-03T04:05:06Z")
+    expect_equal(manifest$retrieval$encode_base_url, "https://encode.example")
+})
+
+test_that("selected local files complete the download-read-manifest workflow", {
+    directory <- withr::local_tempdir()
+    path <- file.path(directory, "ENCFFLOCAL01.tsv")
+    writeLines(c("gene_id\texpected_count", "Gata4\t10", "Tbx5\t20"), path)
+    files <- data.frame(
+        file_accession = "ENCFFLOCAL01",
+        experiment_accession = "ENCSRLOCAL01",
+        file_format = "tsv",
+        output_type = "gene quantifications",
+        assembly = "mm10",
+        status = "released",
+        href = "/files/ENCFFLOCAL01/@@download/ENCFFLOCAL01.tsv",
+        file_size = as.numeric(file.info(path)$size),
+        md5sum = unname(tools::md5sum(path)),
+        stringsAsFactors = FALSE
+    )
+    selected <- encode_select_files(
+        files,
+        preset = "rnaseq_gene_quant",
+        assembly = "mm10",
+        quiet = TRUE
+    )
+    plan <- encode_download(
+        selected,
+        directory = directory,
+        dry_run = TRUE,
+        quiet = TRUE
+    )
+    downloaded <- encode_download(selected, directory = directory, quiet = TRUE)
+    loaded <- encode_read(downloaded)
+    manifest <- encode_manifest(
+        loaded,
+        include_attribution = FALSE,
+        include_session = FALSE
+    )
+
+    expect_equal(plan$local_path, path)
+    expect_equal(downloaded$download_status, "exists")
+    expect_true(downloaded$size_verified)
+    expect_true(downloaded$md5_verified)
+    expect_equal(loaded$matrices$raw_counts["Gata4", "ENCFFLOCAL01"], 10)
+    expect_equal(manifest$files$file_accession, "ENCFFLOCAL01")
+})
+
 test_that("manifests support loaded collections and reject unsupported objects", {
     path <- withr::local_tempfile(fileext = ".tsv")
     writeLines(c("gene_id\texpected_count", "Gata4\t10"), path)

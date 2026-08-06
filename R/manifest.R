@@ -7,8 +7,9 @@
 #' @param x ENCODE accession(s), result object, file table, selected files, or
 #'   download result.
 #' @param include_attribution Whether to include ENCODE dataset and file
-#'   attribution metadata when supported. Attribution reuses the metadata
-#'   already held by `x` and issues no further requests, so `lab`,
+#'   attribution metadata when supported. Result objects and file tables reuse
+#'   metadata already held by `x` and issue no further requests. Character
+#'   ENCSR or ENCFF input first retrieves the required ENCODE metadata. `lab`,
 #'   `institution`, and `project` describe the record that produced each file.
 #'   For processed ENCODE files that is the processing pipeline rather than the
 #'   originating laboratory; use the parent experiment table when citing data
@@ -28,11 +29,12 @@
 #' @export
 #'
 #' @examples
-#' if (interactive()) {
-#'     files <- encode_list_files("ENCSR389GJZ", file_format = "tsv")
-#'     manifest <- encode_manifest(files, path = "encode-manifest.json")
-#'     names(manifest)
-#' }
+#' example_dir <- system.file("example-data", package = "encodeUtils")
+#' files <- utils::read.csv(file.path(example_dir, "files.csv"))
+#' files$local_path <- file.path(example_dir, files$local_name)
+#' manifest <- encode_manifest(files, include_attribution = FALSE,
+#'                             include_session = FALSE)
+#' names(manifest)
 encode_manifest <- function(
     x,
     include_attribution = TRUE,
@@ -49,8 +51,11 @@ encode_manifest <- function(
     provenance <- if (inherits(x, "encode_loaded_files")) x$metadata else x
     base_url <- attr(provenance, "encode_base_url", exact = TRUE)
     retrieved_at <- attr(provenance, "retrieved_at", exact = TRUE)
-    if (is.null(retrieved_at) && is.list(provenance)) {
-        retrieved_at <- provenance$retrieved_at
+    if (is.list(provenance)) {
+        base_url <- base_url %||% provenance$encode_base_url
+        retrieved_at <- retrieved_at %||%
+            provenance$retrieved_at %||%
+            provenance$request$retrieved_at
     }
 
     manifest <- list(

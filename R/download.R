@@ -48,13 +48,11 @@
 #' @export
 #'
 #' @examples
-#' if (interactive()) {
-#'     downloaded <- encode_download(
-#'         "ENCFF973TYM",
-#'         directory = "encode-data"
-#'     )
-#'     encode_results(downloaded)
-#' }
+#' example_dir <- system.file("example-data", package = "encodeUtils")
+#' files <- utils::read.csv(file.path(example_dir, "files.csv"))
+#' plan <- encode_download(files, directory = tempdir(), dry_run = TRUE,
+#'                         quiet = TRUE)
+#' encode_results(plan)
 encode_download <- function(
     x,
     file_accession = NULL,
@@ -91,12 +89,6 @@ encode_download <- function(
     quiet <- encode_validate_flag(quiet, "quiet")
     verify <- encode_normalize_verify(verify)
 
-    # Carry the metadata retrieval time of the input through to the result.
-    retrieved_at <- attr(x, "retrieved_at", exact = TRUE)
-    if (is.null(retrieved_at) && is.list(x)) {
-        retrieved_at <- x$retrieved_at
-    }
-
     # Require a narrowed ENCSR request for transfer, but allow unrestricted planning.
     encode_check_experiment_download_scope(
         x,
@@ -113,6 +105,12 @@ encode_download <- function(
         assembly = assembly,
         status = status
     )
+    # Normalize first so accession, search-result, and table routes preserve
+    # the request that actually supplied the file metadata.
+    query_url <- encode_query_url(files)
+    retrieved_at <- attr(files, "retrieved_at", exact = TRUE)
+    filters <- encode_filters(files)
+    base_url <- attr(files, "encode_base_url", exact = TRUE) %||% encode_base_url()
     if (nrow(files) == 0L) {
         encode_abort_no_matching_download_files(
             x,
@@ -161,9 +159,10 @@ encode_download <- function(
         class(files) <- c("encode_download_result", "encode_file_table", "data.frame")
         files <- encode_attach_metadata(
             files,
-            query_url = encode_query_url(x),
+            query_url = query_url,
             retrieved_at = retrieved_at,
-            filters = encode_filters(x)
+            filters = filters,
+            base_url = base_url
         )
         return(files)
     }
@@ -201,9 +200,10 @@ encode_download <- function(
     class(result) <- c("encode_download_result", "encode_file_table", "data.frame")
     result <- encode_attach_metadata(
         result,
-        query_url = encode_query_url(x),
+        query_url = query_url,
         retrieved_at = retrieved_at,
-        filters = encode_filters(x)
+        filters = filters,
+        base_url = base_url
     )
     failed <- result$download_status %in% "failed"
     if (any(failed)) {

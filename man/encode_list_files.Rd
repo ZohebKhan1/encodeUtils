@@ -57,11 +57,11 @@ The default `limit = "all"` requests the complete file list for the selected
 experiments.
 }
 \examples{
-if (interactive()) {
-    files <- encode_list_files(
-        "ENCSR389GJZ",
-        file_format = "tsv"
-    )
-    encode_results(files)
-}
+files <- encode_list_files(
+    "ENCSR389GJZ",
+    file_format = "tsv",
+    limit = 1,
+    quiet = TRUE
+)
+encode_results(files)
 }

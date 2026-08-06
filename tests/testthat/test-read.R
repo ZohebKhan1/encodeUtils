@@ -80,6 +80,40 @@ test_that("table input always returns a stable loaded-file collection", {
     expect_equal(encode_results(loaded), loaded$metadata)
 })
 
+test_that("aligned tables can be returned as a SummarizedExperiment", {
+    directory <- withr::local_tempdir()
+    paths <- file.path(directory, c("a.tsv", "b.tsv"))
+    writeLines(c("gene_id\texpected_count\tTPM", "Gata4\t10\t2.5", "Tbx5\t20\t3.5"), paths[[1L]])
+    writeLines(c("gene_id\texpected_count\tTPM", "Gata4\t12\t2.8", "Tbx5\t25\t4.0"), paths[[2L]])
+    files <- data.frame(
+        file_accession = c("ENCFFSE001", "ENCFFSE002"),
+        file_format = "tsv",
+        local_path = paths,
+        download_status = "downloaded",
+        stringsAsFactors = FALSE
+    )
+
+    se <- encode_read(
+        files,
+        values = c("raw_counts", "tpm"),
+        as = "SummarizedExperiment"
+    )
+
+    expect_s4_class(se, "SummarizedExperiment")
+    expect_equal(SummarizedExperiment::assayNames(se), c("raw_counts", "tpm"))
+    expect_equal(colnames(se), files$file_accession)
+    expect_equal(rownames(se), c("Gata4", "Tbx5"))
+    expect_equal(SummarizedExperiment::colData(se)$file_accession, files$file_accession)
+    expect_equal(unname(SummarizedExperiment::assay(se, "raw_counts")["Gata4", ]), c(10, 12))
+
+    duplicate <- files
+    writeLines(c("gene_id\texpected_count", "Gata4\t10", "Gata4\t20"), duplicate$local_path[[2L]])
+    expect_error(
+        encode_read(duplicate, as = "SummarizedExperiment"),
+        "No compatible expression matrices"
+    )
+})
+
 test_that("simplify_quant false preserves raw table columns", {
     path <- withr::local_tempfile(fileext = ".tsv")
     writeLines(c("gene_id\texpected_count\tTPM", "Gata4\t10\t2.5"), path)

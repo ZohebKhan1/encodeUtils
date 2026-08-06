@@ -1,7 +1,7 @@
 Package: encodeUtils
 Type: Package
 Title: Query and Retrieve ENCODE Portal Metadata and Files
-Version: 0.99.9
+Version: 0.99.10
 Authors@R: person(
     given = "Zoheb",
     family = "Khan",
@@ -29,7 +29,9 @@ Imports:
     httr2,
     IRanges,
     jsonlite,
+    S4Vectors,
     stats,
+    SummarizedExperiment,
     tools,
     utils
 Suggests:

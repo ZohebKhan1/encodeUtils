@@ -28,7 +28,9 @@
 #'   formats, including `GRanges` for BED-like intervals. Use `"data.frame"`
 #'   to force tabular BED-like output,
 #'   `"GRanges"` to require genomic ranges for BED-like formats, or `"path"` to
-#'   return an `encode_local_file` path object.
+#'   return an `encode_local_file` path object. For a downloaded-file table,
+#'   use `"SummarizedExperiment"` to return aligned expression matrices with
+#'   feature and file metadata in a `SummarizedExperiment`.
 #' @param row_names Column to use for row names in loaded expression tables.
 #'   Use `"none"` to keep default integer row names.
 #' @param values Expression values to combine across files. Defaults to
@@ -50,19 +52,20 @@
 #'   frame unless `as = "GRanges"` is requested. FASTQ and alignment formats
 #'   return `encode_local_file` path objects by default. Downloaded-file tables
 #'   return an `encode_loaded_files` object with `metadata`, `data`, `row_data`,
-#'   and `matrices` components.
+#'   and `matrices` components. With `as = "SummarizedExperiment"`, a
+#'   downloaded-file table returns a `SummarizedExperiment` when compatible
+#'   matrices were assembled.
 #' @export
 #'
 #' @examples
-#' if (interactive()) {
-#'     downloaded <- encode_download(
-#'         "ENCFF973TYM",
-#'         directory = "encode-data"
-#'     )
-#'     loaded <- encode_read(downloaded, values = c("raw_counts", "tpm"))
-#'     loaded$metadata
-#'     loaded$matrices
-#' }
+#' example_dir <- system.file("example-data", package = "encodeUtils")
+#' files <- utils::read.csv(file.path(example_dir, "files.csv"))
+#' files$local_path <- file.path(example_dir, files$local_name)
+#' files$download_status <- "exists"
+#' loaded <- encode_read(files, values = c("raw_counts", "tpm"))
+#' loaded$matrices$raw_counts
+#' encode_read(files, values = c("raw_counts", "tpm"),
+#'             as = "SummarizedExperiment")
 encode_read <- function(
     path,
     format = NULL,
@@ -70,7 +73,7 @@ encode_read <- function(
     region = NULL,
     allow_large = FALSE,
     unsupported = c("return_path", "error"),
-    as = c("auto", "data.frame", "GRanges", "path"),
+    as = c("auto", "data.frame", "GRanges", "path", "SummarizedExperiment"),
     row_names = c("gene_symbol", "ensembl_id", "entrez_id", "none"),
     values = "raw_counts",
     simplify_quant = TRUE,
@@ -87,19 +90,28 @@ encode_read <- function(
         if (!"local_path" %in% names(path)) {
             cli::cli_abort("{.arg path} table input must include {.field local_path}.")
         }
-        return(encode_load_downloaded_files(
+        loaded <- encode_load_downloaded_files(
             path,
             max_size = max_size,
             format = format,
             region = region,
             allow_large = allow_large,
             unsupported = unsupported,
-            as = as,
+            as = if (identical(as, "SummarizedExperiment")) "auto" else as,
             row_names = row_names,
             matrix_values = values,
             simplify_quant = simplify_quant,
             quiet = TRUE
-        ))
+        )
+        if (identical(as, "SummarizedExperiment")) {
+            return(encode_loaded_summarized_experiment(loaded))
+        }
+        return(loaded)
+    }
+    if (identical(as, "SummarizedExperiment")) {
+        cli::cli_abort(
+            "{.arg as = 'SummarizedExperiment'} requires a downloaded-file table with {.field local_path}."
+        )
     }
     path <- encode_read_path(path)
     if (!file.exists(path)) {

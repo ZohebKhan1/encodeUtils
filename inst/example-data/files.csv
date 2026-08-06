@@ -1,0 +1,3 @@
+file_accession,experiment_accession,file_format,output_type,assembly,status,href,file_size,biological_replicates,preferred_default,local_name
+ENCFFDEMO001,ENCSRDEMO001,tsv,gene quantifications,mm10,released,/files/ENCFFDEMO001/@@download/ENCFFDEMO001.tsv,74,1,TRUE,mouse-heart-rnaseq-1.tsv
+ENCFFDEMO002,ENCSRDEMO001,tsv,gene quantifications,mm10,released,/files/ENCFFDEMO002/@@download/ENCFFDEMO002.tsv,75,2,TRUE,mouse-heart-rnaseq-2.tsv

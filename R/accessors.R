@@ -14,14 +14,11 @@
 #' @export
 #'
 #' @examples
-#' if (interactive()) {
-#'     experiments <- encode_search(
-#'         organism = "mouse",
-#'         assay = "rna-seq",
-#'         limit = 1
-#'     )
-#'     encode_results(experiments)
-#' }
+#' example_dir <- system.file("example-data", package = "encodeUtils")
+#' files <- utils::read.csv(file.path(example_dir, "files.csv"))
+#' selected <- encode_select_files(files, preset = "rnaseq_gene_quant",
+#'                                 assembly = "mm10", quiet = TRUE)
+#' encode_results(selected)
 encode_results <- function(x) {
     if (inherits(x, "encode_search_result")) {
         return(x$results)

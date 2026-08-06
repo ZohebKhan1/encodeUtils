@@ -88,11 +88,9 @@ are not overwritten by default, files are written through a temporary `.part`
 path, and size/MD5 checks are used when ENCODE provides the metadata.
 }
 \examples{
-if (interactive()) {
-    downloaded <- encode_download(
-        "ENCFF973TYM",
-        directory = "encode-data"
-    )
-    encode_results(downloaded)
-}
+example_dir <- system.file("example-data", package = "encodeUtils")
+files <- utils::read.csv(file.path(example_dir, "files.csv"))
+plan <- encode_download(files, directory = tempdir(), dry_run = TRUE,
+                        quiet = TRUE)
+encode_results(plan)
 }

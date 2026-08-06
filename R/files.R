@@ -30,13 +30,13 @@
 #' @export
 #'
 #' @examples
-#' if (interactive()) {
-#'     files <- encode_list_files(
-#'         "ENCSR389GJZ",
-#'         file_format = "tsv"
-#'     )
-#'     encode_results(files)
-#' }
+#' files <- encode_list_files(
+#'     "ENCSR389GJZ",
+#'     file_format = "tsv",
+#'     limit = 1,
+#'     quiet = TRUE
+#' )
+#' encode_results(files)
 encode_list_files <- function(
     x,
     file_format = NULL,

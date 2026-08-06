@@ -71,13 +71,13 @@ Use `encode_file_presets()` to list available presets or inspect one preset.
 encode_file_presets()
 encode_file_presets("chipseq_peaks")
 
-if (interactive()) {
-    files <- encode_list_files("ENCSR389GJZ")
-    selected <- encode_select_files(
-        files,
-        preset = "rnaseq_gene_quant",
-        assembly = "mm10"
-    )
-    encode_results(selected)
-}
+example_dir <- system.file("example-data", package = "encodeUtils")
+files <- utils::read.csv(file.path(example_dir, "files.csv"))
+selected <- encode_select_files(
+    files,
+    preset = "rnaseq_gene_quant",
+    assembly = "mm10",
+    quiet = TRUE
+)
+encode_results(selected)
 }
