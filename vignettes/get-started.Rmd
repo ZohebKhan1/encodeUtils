@@ -1,12 +1,12 @@
 ---
-title: "Query and retrieve ENCODE files"
+title: "From an ENCODE query to an expression matrix"
 author: "Zoheb Khan"
 output:
   BiocStyle::html_document:
     toc: true
     toc_depth: 2
 vignette: >
-  %\VignetteIndexEntry{Query and retrieve ENCODE files}
+  %\VignetteIndexEntry{From an ENCODE query to an expression matrix}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -21,31 +21,52 @@ library(encodeUtils)
 
 # Overview
 
-`encodeUtils` provides one auditable path from an ENCODE metadata query to
-local files, R objects, expression matrices, and a provenance manifest. Search
-and file results retain the ENCODE query URL, active filters, retrieval time,
-and flattened record metadata.
+This vignette retrieves a small set of mouse heart RNA-seq gene-quantification
+files from ENCODE and turns compatible tables into count and TPM matrices. The
+result is not just downloaded files: it is an auditable hand-off to downstream
+analysis, with file metadata, verification results, and ENCODE attribution
+recorded in a manifest.
 
-Install the current development version from GitHub as described in the package
-[README](https://github.com/ZohebKhan1/encodeUtils#installation).
+Here, *end-to-end* has a specific meaning. It follows one deliberate set of
+records from discovery to local R objects:
 
-# File-selection presets
+| Stage | Question answered | Main result |
+|:--|:--|:--|
+| Search | Which released experiments could answer the biological question? | `experiments` |
+| Review | Which experiment will be used? | `chosen_experiment` |
+| List files | What files does that experiment provide? | `files` |
+| Select | Which files meet the stated format, output, and assembly criteria? | `selected` |
+| Plan and download | Where will files be stored, and did transfer checks pass? | `plan`, then `downloaded` |
+| Read | Can the selected tables be safely combined into matrices? | `loaded` |
+| Record | What local inputs and software context produced these objects? | `manifest` |
 
-Presets provide format and output-type preferences for common assays. Inspect a
-preset before using it when the exact priorities matter.
+The workflow makes data retrieval and file choice reproducible; it does not
+decide whether experiments are biologically comparable or supply a
+differential-expression design. Review the experiment metadata, replicates,
+life stage, treatment, and processing details before drawing biological
+conclusions.
 
-```{r presets}
-encode_file_presets()
-encode_file_presets("rnaseq_gene_quant")
-```
+The code below is not evaluated when the vignette is built because it makes a
+live ENCODE request and writes files. Run the sections in order in a project
+directory. The search result can change as ENCODE records change, so use an
+explicit ENCSR accession after you have chosen a dataset for a durable
+analysis.
 
-# End-to-end RNA-seq workflow
+# Goal and starting point
 
-The workflow below finds one released mouse heart RNA-seq experiment, selects
-gene quantification files, downloads them to an `encode-data` directory in the
-current project, assembles count and TPM matrices, and writes a JSON manifest.
+Our immediate goal is deliberately modest: find one *released* mouse heart
+RNA-seq experiment, inspect it, select its `mm10` gene-quantification files,
+and create matrices when their feature identifiers can be aligned. The
+`limit = 1` setting keeps this teaching example small; it does **not** mean
+that the first matching experiment is automatically the right experiment for a
+scientific analysis.
 
-```{r workflow, eval=FALSE}
+## 1. Find, inspect, and choose an experiment
+
+`encode_search()` searches metadata only. It does not list or download files.
+The default `status = "released"` excludes unreleased records.
+
+```{r search-experiments, eval=FALSE}
 experiments <- encode_search(
     organism = "mouse",
     assay = "rna-seq",
@@ -57,9 +78,65 @@ experiment_table <- encode_results(experiments)
 experiment_table[, c(
     "accession", "assay_title", "biosample_summary", "organism", "status"
 )]
+```
 
-files <- encode_list_files(experiments)
+Check that this row has the tissue, assay, and experimental context you intend
+to analyse. With a broader search, filter `experiment_table` using those
+metadata and choose an accession explicitly. In this example there should be
+one row; save its accession so the next step has an unambiguous input.
 
+```{r choose-experiment, eval=FALSE}
+if (nrow(experiment_table) != 1L) {
+    stop("Choose one experiment before listing its files.")
+}
+
+chosen_experiment <- experiment_table$accession[[1L]]
+chosen_experiment
+```
+
+For a reproducible analysis, replace the search and choice above with the
+recorded accession, for example `chosen_experiment <- "ENCSR..."`.
+
+## 2. List the available file records
+
+An experiment may have raw reads, alignments, signal tracks, and several types
+of processed output. `encode_list_files()` retrieves their *metadata*, not
+their contents. Start by seeing what is available before applying a filter.
+
+```{r list-files, eval=FALSE}
+files <- encode_list_files(chosen_experiment)
+file_table <- encode_results(files)
+
+file_table[, c(
+    "file_accession", "file_format", "output_type", "assembly",
+    "biological_replicates", "preferred_default", "file_size_pretty"
+)]
+```
+
+At this point, decide what kind of result is appropriate. This tutorial uses
+processed gene-quantification tables, not FASTQ reads or alignments. The
+`biological_replicates` and `preferred_default` columns are useful checks, but
+they do not replace a review of the experiment's design and processing.
+
+## 3. State and audit the file-selection rule
+
+`encode_select_files()` makes the file choice explicit. A preset is a named
+format and output-type preference, not a black-box recommendation. Inspect it
+before relying on it:
+
+```{r inspect-preset, eval=FALSE}
+encode_file_presets("rnaseq_gene_quant")
+```
+
+For this preset, the package keeps tabular files and ranks gene-quantification
+output types. The additional `assembly = "mm10"` requirement prevents a
+mixture of genome assemblies. `preferred_processed` retains every matching
+file with the highest-priority output type *within each experiment*; it does
+not select a single representative file or discard ties. Add
+`prefer_default = TRUE` when you specifically want to restrict to ENCODE files
+marked `preferred_default`, if any are available.
+
+```{r select-files, eval=FALSE}
 selected <- encode_select_files(
     files,
     preset = "rnaseq_gene_quant",
@@ -70,11 +147,52 @@ selected <- encode_select_files(
 selected_table <- encode_results(selected)
 selected_table[, c(
     "experiment_accession", "file_accession", "file_format",
-    "output_type", "assembly", "file_size_pretty"
+    "output_type", "assembly", "biological_replicates", "file_size_pretty"
 )]
+
+# Why did other file records not qualify, and which settings were applied?
 selected$excluded
 selected$criteria
+```
 
+Do not proceed if `selected_table` is empty or includes files that you would
+not analyse. Adjust the biological search, assembly, preset, or selection
+policy and inspect this table again.
+
+## 4. Plan the transfer before downloading
+
+First make a dry run. It resolves destination paths and applies the same size
+limits as a real transfer, but does not download any bytes. Use a project
+directory so that the downloaded files and manifest can travel with the
+analysis.
+
+```{r plan-download, eval=FALSE}
+plan <- encode_download(
+    selected,
+    directory = "encode-data",
+    dry_run = TRUE
+)
+
+plan_table <- encode_results(plan)
+plan_table[, c(
+    "file_accession", "file_size_pretty", "download_status", "local_path"
+)]
+```
+
+Review the file count, sizes, and local paths in `plan_table`. By default,
+real transfers are bounded to 250 MB per file and 500 MB in total. Files with
+unknown sizes are refused. Set `allow_unknown_size = TRUE` only after reviewing
+the plan.
+
+## 5. Download and verify the selected files
+
+Remove `dry_run = TRUE` only after the plan looks right. A transfer result has
+one row per requested file. A status of `"downloaded"` means this run completed
+the transfer; `"exists"` means a matching local file was already present and
+passed the requested available checks. `"failed"` must be resolved before
+reading the files.
+
+```{r download-files, eval=FALSE}
 downloaded <- encode_download(
     selected,
     directory = "encode-data"
@@ -83,19 +201,59 @@ downloaded <- encode_download(
 download_table <- encode_results(downloaded)
 download_table[, c(
     "file_accession", "download_status", "local_path",
-    "size_verified", "md5_verified"
+    "size_verified", "md5_verified", "failure_reason"
 )]
 
+ready <- download_table$download_status %in% c("downloaded", "exists")
+if (!all(ready)) {
+    print(download_table[!ready, c("file_accession", "failure_reason")])
+    stop("Resolve failed downloads before reading files.")
+}
+```
+
+`size_verified` and `md5_verified` are `TRUE` when ENCODE supplied the
+corresponding value and that check passed. They are `NA` when no expected value
+was available or the check was not requested. Existing files are not
+overwritten by default.
+
+## 6. Read compatible quantification tables into R
+
+Pass the completed download table to `encode_read()`. For gene-quantification
+tables, it standardizes recognized count columns to `raw_counts` and requests
+the expression values you want assembled. Here we request both raw counts and
+TPM; raw counts are ordinarily the appropriate input for count-based models,
+whereas TPM is useful for descriptive comparisons.
+
+```{r read-files, eval=FALSE}
 loaded <- encode_read(
     downloaded,
     values = c("raw_counts", "tpm")
 )
 
+# One row per local input file, including the original ENCODE metadata.
 loaded$metadata[, c("file_accession", "local_path")]
+
+# Feature annotation and the requested matrices, if safe alignment was possible.
 loaded$row_data
 loaded$matrices$raw_counts
 loaded$matrices$tpm
+```
 
+`loaded$data` always retains the individual objects. When every participating
+table has a complete, unique feature identifier, `loaded$row_data` and each
+matrix share the same rows, and matrix columns are file accessions. If that
+condition is not met, `loaded$matrices` is empty rather than aligning rows by
+position; inspect the original tables in `loaded$data` before deciding how to
+handle them.
+
+## 7. Write a provenance manifest
+
+Finish by writing a machine-readable record alongside the data. Calling
+`encode_manifest()` on `loaded` records file metadata and download outcomes,
+loaded object classes, ENCODE attribution, package version, and R session
+information.
+
+```{r manifest, eval=FALSE}
 manifest <- encode_manifest(
     loaded,
     path = "encode-manifest.json"
@@ -107,55 +265,25 @@ manifest$attribution[, c(
 )]
 ```
 
-## Search and file selection
+The in-memory `manifest` and `encode-manifest.json` contain the same
+information. Keep the manifest with downstream scripts, matrices, and any
+derived results.
 
-`encode_search()` accepts common biological fields directly and prints a
-compact result. `encode_results()` exposes the complete table for filtering,
-joins, or export. A known ENCSR accession can be passed directly to
-`encode_list_files()` when metadata discovery is unnecessary.
+# Starting elsewhere
 
-`encode_select_files()` retains selected rows in `files`, non-selected rows and
-reasons in `excluded`, and all applied choices in `criteria`. In the workflow,
-`preferred_processed` keeps the highest-priority preset output type within each
-experiment without discarding files tied at that priority.
+You do not need to begin with a metadata search every time:
 
-## Transfer and returned objects
+- With an ENCSR experiment accession, begin at `encode_list_files()`.
+- With ENCFF file accessions, begin at `encode_download()`.
+- With downloaded paths or a completed download table, begin at `encode_read()`.
 
-`encode_download()` checks individual and total size limits before transfer.
-Existing files are not overwritten by default, and replacement files are
-installed only after available size and MD5 checks pass. Set `directory = NULL`
-to use the persistent package cache.
-
-A completed download table produces one `encode_loaded_files` object whether it
-contains one file or several:
-
-- `metadata` contains the complete input file table and provenance.
-- `data` contains one native object per file.
-- `row_data` describes features aligned to combined matrices.
-- `matrices` contains the requested numeric expression matrices.
-
-Combined matrices are created only when every participating table has a
-complete, unique feature key. Otherwise, the original tables remain in `data`
-without an inferred row-order alignment. Matrix columns use file accessions,
-and matrix row names match `row_data`.
-
-## Other supported formats
-
-For a single local path, `encode_read()` returns the native object for that
-format. BED, narrowPeak, and broadPeak files return
-`GenomicRanges::GRanges` by default; use `as = "data.frame"` for a plain table.
-GFF, GTF, BigWig, and BigBed files use `rtracklayer`, and FASTA files use
-`Biostrings`, when those packages are installed. FASTQ, BAM, CRAM, and SAM
-files remain path objects for dedicated sequence and alignment readers.
-
-Indexed BigWig and BigBed files require a genomic `region` unless
-`allow_large = TRUE` is set deliberately.
-
-## Provenance
-
-`encode_manifest()` records the source query, active filters, file metadata,
-loaded object classes, ENCODE attribution fields, package version, and R
-session. Supplying `path` writes the same structure as JSON.
+For one local path, `encode_read()` returns the native object for that format.
+BED, narrowPeak, and broadPeak files return `GenomicRanges::GRanges` by
+default; use `as = "data.frame"` for a plain table. GFF, GTF, BigWig, and
+BigBed files use `rtracklayer`, and FASTA files use `Biostrings`, when those
+packages are installed. FASTQ, BAM, CRAM, and SAM files remain path objects for
+dedicated sequence and alignment readers. Indexed BigWig and BigBed files
+require a genomic `region` unless `allow_large = TRUE` is set deliberately.
 
 # Session information
 
