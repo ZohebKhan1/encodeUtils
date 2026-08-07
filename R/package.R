@@ -5,17 +5,17 @@
 #' scripted analyses, including accessions, assays, biosamples, organisms,
 #' targets, assemblies, output types, file sizes, checksums, and download URLs.
 #'
-#' Use it to search RNA-seq, ChIP-seq, and ATAC-seq experiments, list files from
-#' ENCODE accessions, select common outputs, preview downloads before transfer,
-#' load supported local files into native R objects, and write reproducibility
-#' manifests for downstream R and Bioconductor workflows. The introductory
-#' vignette and help pages use deliberately small live requests; the separate
+#' Use it to search ENCODE records with exact Portal filters, list files from
+#' experiment accessions, apply reusable file presets, preview and verify
+#' downloads, read local files without implicit simplification, explicitly
+#' assemble quantification tables, and write reproducibility manifests. The
+#' introductory vignette uses a deliberately small live request; the separate
 #' live smoke test is opt-in.
 #'
 #' This package is not affiliated with or endorsed by the ENCODE Project.
 #'
-#' The package uses a conservative default request throttle below the ENCODE
-#' REST API limit for programmatic GET requests.
+#' The package uses `httr2` to throttle requests to five per second, below the
+#' ENCODE limit for programmatic GET requests.
 #'
 #' @section Development provenance:
 #' AI (Codex 5.6 Sol) was used to write code for the test suite. All other code

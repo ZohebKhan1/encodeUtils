@@ -4,59 +4,30 @@
 \alias{encode_manifest}
 \title{Build an ENCODE reproducibility manifest}
 \usage{
-encode_manifest(
-  x,
-  include_attribution = TRUE,
-  include_session = TRUE,
-  path = NULL,
-  pretty = TRUE
-)
+encode_manifest(x, path = NULL, include_session = TRUE)
 }
 \arguments{
-\item{x}{ENCODE accession(s), result object, file table, selected files, or
-download result.}
+\item{x}{ENCODE accession(s), result object, file table, selected files,
+download result, or loaded-file object.}
 
-\item{include_attribution}{Whether to include ENCODE dataset and file
-attribution metadata when supported. Result objects and file tables reuse
-metadata already held by \code{x} and issue no further requests. Character
-ENCSR or ENCFF input first retrieves the required ENCODE metadata. \code{lab},
-\code{institution}, and \code{project} describe the record that produced each file.
-For processed ENCODE files that is the processing pipeline rather than the
-originating laboratory; use the parent experiment table when citing data
-producers. Attribution \code{retrieval_date} is \code{NA} when the input has no
-recorded retrieval timestamp; manifest \code{created_at} remains separate.}
+\item{path}{Optional destination JSON path.}
 
 \item{include_session}{Whether to include \code{utils::sessionInfo()}.}
-
-\item{path}{Optional destination JSON path. If supplied, the manifest is also
-written to disk.}
-
-\item{pretty}{Whether to pretty-print JSON when \code{path} is supplied.}
 }
 \value{
-An \code{encode_manifest} list. Components include \code{package},
-\code{retrieval}, \code{filters}, and \code{object_type}. Available request history and
-file-selection criteria are stored in \code{requests} and
-\code{selection_criteria}. Depending on input, the manifest also includes
-experiments, records, selected or excluded files, downloaded or loaded
-files, loaded-object classes, matrix dimensions, or accessions. When
-requested and available, it includes ENCODE \code{attribution} and captured R
-\code{session} information. If \code{path} is supplied, the same manifest is written
-as JSON and the path is stored as an attribute.
+An \code{encode_manifest} list. If \code{path} is supplied, the same manifest
+is written as JSON and the path is stored as an attribute.
 }
 \description{
-Capture the query, selected files, download records, ENCODE attribution
-metadata, and optional R session information. Provide \code{path} to save the
-manifest as JSON.
+Capture query provenance, selection criteria, file records, loaded-object
+classes, and optional R session information. The function uses metadata
+already present in \code{x} and never issues an ENCODE request.
 }
 \examples{
 files <- data.frame(
     file_accession = "ENCFFLOCAL1",
     local_path = tempfile(fileext = ".tsv")
 )
-
-manifest <- encode_manifest(files, include_attribution = FALSE,
-                            include_session = FALSE)
-
+manifest <- encode_manifest(files, include_session = FALSE)
 names(manifest)
 }

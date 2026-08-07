@@ -1,384 +1,115 @@
-test_that("manifests capture file provenance and round-trip to JSON", {
-    files <- fixture_file_table()[1L, ]
-    files$dataset <- "/annotations/ENCSRANN001/"
-    files$dataset_accession <- "ENCSRANN001"
-    files$dataset_type <- "Annotation"
-    attr(files, "query_url") <- "https://www.encodeproject.org/search/?type=File"
+test_that("manifests preserve provenance after ordinary row subsetting", {
+    files <- fixture_file_table()
+    class(files) <- c("encode_file_table", "data.frame")
+    attr(files, "query_url") <- "https://encode.example/search/?type=File"
+    attr(files, "retrieved_at") <- as.POSIXct(
+        "2026-08-07 12:00:00", tz = "UTC"
+    )
+    attr(files, "filters") <- data.frame(
+        field = "status", value = "released"
+    )
+    attr(files, "request_history") <- list(list(
+        role = "search", url = attr(files, "query_url")
+    ))
+
+    manifest <- encode_manifest(files[1:2, ], include_session = FALSE)
+    expect_equal(manifest$retrieval$query_url, attr(files, "query_url"))
+    expect_equal(manifest$retrieval$retrieved_at, "2026-08-07T12:00:00Z")
+    expect_equal(manifest$filters, attr(files, "filters"))
+    expect_equal(manifest$requests, attr(files, "request_history"))
+    expect_equal(nrow(manifest$files), 2L)
+})
+
+test_that("manifests round-trip to JSON without API requests", {
     path <- withr::local_tempfile(fileext = ".json")
+    testthat::local_mocked_bindings(
+        encode_perform_json = function(...) stop("unexpected API request"),
+        .package = "encodeUtils"
+    )
+
     manifest <- encode_manifest(
-        files,
-        include_session = FALSE,
-        path = path
+        c("ENCFF000AAA", "ENCSR000AAA"),
+        path = path,
+        include_session = FALSE
     )
     parsed <- jsonlite::fromJSON(path, simplifyVector = FALSE)
 
     expect_s3_class(manifest, "encode_manifest")
-    expect_s3_class(manifest$attribution, "encode_attribution_table")
-    expect_equal(manifest$attribution$file_accession, "ENCFF000AAA")
-    expect_true(is.na(manifest$attribution$retrieval_date))
-    expect_match(manifest$attribution$dataset_url, "/annotations/ENCSRANN001/$")
-    expect_match(manifest$attribution$experiment_url, "/experiments/ENCSR000AAA/$")
-    expect_equal(manifest$retrieval$query_url, attr(files, "query_url"))
     expect_equal(parsed$package$name, "encodeUtils")
-    expect_match(parsed$retrieval$created_at, "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")
-    expect_equal(attr(manifest, "path", exact = TRUE), path)
-    output <- capture_print(manifest)
-    expect_true(any(grepl("created: [0-9]{4}-[0-9]{2}-[0-9]{2}T", output)))
-    expect_false(any(grepl('"encodeUtils"', output, fixed = TRUE)))
+    expect_equal(length(parsed$accessions), 2L)
+    expect_equal(attr(manifest, "path"), path)
 })
 
-test_that("attribution preserves dataset identity and known retrieval dates", {
-    retrieved_at <- as.POSIXct("2024-03-04 05:06:07", tz = "UTC")
-    files <- data.frame(
-        file_accession = "ENCFFATTR01",
-        experiment_accession = "ENCSRATTR01",
-        file_format = "tsv",
-        status = "released",
-        stringsAsFactors = FALSE
-    )
-    attr(files, "retrieved_at") <- retrieved_at
-
-    attribution <- encode_attribution(files, enrich = FALSE)
-
-    expect_equal(attribution$dataset_accession, "ENCSRATTR01")
-    expect_equal(attribution$dataset_type, "Experiment")
-    expect_match(attribution$dataset_url, "/experiments/ENCSRATTR01/$")
-    expect_equal(attribution$retrieval_date, "2024-03-04")
-
-    experiments <- data.frame(
-        accession = "ENCSRATTR02",
-        url = "https://encode.example/experiments/ENCSRATTR02/",
-        status = "released",
-        stringsAsFactors = FALSE
-    )
-    attr(experiments, "retrieved_at") <- retrieved_at
-    experiment_attribution <- encode_attribution(experiments)
-
-    expect_equal(experiment_attribution$dataset_type, "Experiment")
-    expect_equal(experiment_attribution$experiment_url, experiments$url)
-    expect_true(is.na(experiment_attribution$file_accession))
-    expect_equal(experiment_attribution$retrieval_date, "2024-03-04")
-})
-
-test_that("attribution enrichment is bounded and fills parent metadata", {
-    files <- data.frame(
-        file_accession = c("ENCFFATTR01", "ENCFFATTR02"),
-        experiment_accession = c("ENCSRATTR01", "ENCSRATTR02"),
-        stringsAsFactors = FALSE
-    )
-
-    expect_true(encode_should_enrich_file_attribution(files, TRUE, 1L, TRUE))
-    expect_false(encode_should_enrich_file_attribution(files, FALSE, 1L, TRUE))
-    expect_false(encode_should_enrich_file_attribution(files, "auto", 1L, TRUE))
-    expect_error(
-        encode_should_enrich_file_attribution(files, "sometimes", 1L, TRUE),
-        "must be.*auto"
-    )
-
-    experiments <- data.frame(
-        accession = c("ENCSRATTR01", "ENCSRATTR02"),
-        lab = c("Lab A", "Lab B"),
-        institution = c("Institute A", "Institute B"),
-        project = "ENCODE",
-        assay_title = "RNA-seq",
-        biosample_summary = c("heart", "brain"),
-        organism = "Mus musculus",
-        stringsAsFactors = FALSE
-    )
-    testthat::local_mocked_bindings(
-        encode_search = function(...) {
-            structure(
-                list(results = experiments),
-                class = c("encode_search_result", "list")
-            )
-        },
-        .package = "encodeUtils"
-    )
-
-    enriched <- encode_enrich_file_attribution(files)
-
-    expect_equal(enriched$lab, c("Lab A", "Lab B"))
-    expect_equal(enriched$biosample_summary, c("heart", "brain"))
-    expect_equal(enriched$organism, rep("Mus musculus", 2L))
-})
-
-test_that("character attribution accepts file and experiment accessions", {
-    files <- data.frame(
-        file_accession = "ENCFFATTR01",
-        experiment_accession = "ENCSRATTR01",
-        stringsAsFactors = FALSE
-    )
-    experiments <- data.frame(
-        accession = "ENCSRATTR01",
-        url = "https://encode.example/experiments/ENCSRATTR01/",
-        stringsAsFactors = FALSE
-    )
-    testthat::local_mocked_bindings(
-        encode_file_table_from_input = function(...) files,
-        encode_search = function(...) {
-            structure(
-                list(results = experiments),
-                class = c("encode_search_result", "list")
-            )
-        },
-        .package = "encodeUtils"
-    )
-
-    attribution <- encode_attribution(
-        c("ENCFFATTR01", "ENCSRATTR01"),
-        quiet = TRUE
-    )
-
-    expect_equal(nrow(attribution), 2L)
-    expect_setequal(
-        attribution$file_accession[!is.na(attribution$file_accession)],
-        "ENCFFATTR01"
-    )
-    expect_error(encode_attribution("ENCBS000AAA"), "supports ENCSR and ENCFF")
-})
-
-test_that("manifests keep request provenance for loaded collections", {
-    path <- withr::local_tempfile(fileext = ".tsv")
-    writeLines(c("gene_id\texpected_count", "Gata4\t10"), path)
-    files <- data.frame(
-        file_accession = "ENCFFLOAD01",
-        file_format = "tsv",
-        local_path = path,
-        download_status = "downloaded",
-        stringsAsFactors = FALSE
-    )
-    attr(files, "query_url") <- "https://www.encodeproject.org/search/?type=File"
-    attr(files, "retrieved_at") <- as.POSIXct("2024-01-02 03:04:05", tz = "UTC")
-    attr(files, "filters") <- data.frame(field = "status", value = "released")
-
-    loaded <- encode_read(files)
-    manifest <- encode_manifest(
-        loaded,
-        include_attribution = FALSE,
-        include_session = FALSE
-    )
-
-    expect_equal(manifest$retrieval$query_url, attr(files, "query_url"))
-    expect_equal(manifest$retrieval$retrieved_at, "2024-01-02T03:04:05Z")
-    expect_equal(manifest$filters$field, "status")
-})
-
-test_that("selection and download carry the provenance of their input", {
-    retrieved_at <- as.POSIXct("2024-01-02 03:04:05", tz = "UTC")
-    files <- fixture_file_table()[1L, ]
-    attr(files, "query_url") <- "https://www.encodeproject.org/search/?type=File"
-    attr(files, "retrieved_at") <- retrieved_at
-    attr(files, "filters") <- data.frame(field = "file_format", value = "bed")
-    attr(files, "request_history") <- list(list(
-        role = "file_chunk",
-        url = attr(files, "query_url")
-    ))
-
-    selected <- encode_select_files(files, quiet = TRUE)
-    planned <- encode_download(
-        selected,
-        directory = withr::local_tempdir(),
-        dry_run = TRUE,
-        quiet = TRUE
-    )
-    selected_manifest <- encode_manifest(
-        selected,
-        include_attribution = FALSE,
-        include_session = FALSE
-    )
-    manifest <- encode_manifest(
-        planned,
-        include_attribution = FALSE,
-        include_session = FALSE
-    )
-
-    expect_equal(selected_manifest$filters$field, "file_format")
-    expect_equal(attr(planned, "retrieved_at", exact = TRUE), retrieved_at)
-    expect_equal(manifest$retrieval$retrieved_at, "2024-01-02T03:04:05Z")
-    expect_equal(manifest$filters$field, "file_format")
-    expect_equal(manifest$requests[[1L]]$role, "file_chunk")
-    expect_equal(manifest$selection_criteria, selected$criteria)
-})
-
-test_that("search-result manifests keep the recorded request provenance", {
-    retrieved_at <- as.POSIXct("2024-02-03 04:05:06", tz = "UTC")
-    result <- structure(
-        list(
-            results = fixture_file_table()[1L, ],
-            query_url = "https://encode.example/search/?type=File",
-            encode_base_url = "https://encode.example",
-            request = list(retrieved_at = retrieved_at),
-            filters = data.frame(field = "status", value = "released")
-        ),
-        class = c("encode_search_result", "list")
-    )
-
-    manifest <- encode_manifest(
-        result,
-        include_attribution = FALSE,
-        include_session = FALSE
-    )
-
-    expect_equal(manifest$retrieval$encode_base_url, "https://encode.example")
-    expect_equal(manifest$retrieval$query_url, result$query_url)
-    expect_equal(manifest$retrieval$retrieved_at, "2024-02-03T04:05:06Z")
-})
-
-test_that("direct file downloads keep provenance from normalized metadata", {
-    retrieved_at <- as.POSIXct("2024-02-03 04:05:06", tz = "UTC")
-    files <- fixture_file_table()[1L, ]
-    files <- encode_attach_metadata(
-        files,
-        query_url = "https://encode.example/search/?type=File",
-        retrieved_at = retrieved_at,
-        filters = data.frame(field = "accession", value = "ENCFF000AAA"),
-        base_url = "https://encode.example"
-    )
-    class(files) <- c("encode_file_table", "data.frame")
-    testthat::local_mocked_bindings(
-        encode_search = function(...) {
-            structure(list(results = files), class = c("encode_search_result", "list"))
-        },
-        .package = "encodeUtils"
-    )
-
-    planned <- encode_download(
-        "ENCFF000AAA",
-        directory = withr::local_tempdir(),
-        dry_run = TRUE,
-        quiet = TRUE
-    )
-    manifest <- encode_manifest(
-        planned,
-        include_attribution = FALSE,
-        include_session = FALSE
-    )
-
-    expect_equal(attr(planned, "retrieved_at", exact = TRUE), retrieved_at)
-    expect_equal(attr(planned, "encode_base_url", exact = TRUE), "https://encode.example")
-    expect_equal(manifest$retrieval$retrieved_at, "2024-02-03T04:05:06Z")
-    expect_equal(manifest$retrieval$encode_base_url, "https://encode.example")
-})
-
-test_that("selected local files complete the download-read-manifest workflow", {
+test_that("selection, download, and loading retain one provenance chain", {
     directory <- withr::local_tempdir()
-    path <- file.path(directory, "ENCFFLOCAL01.tsv")
-    writeLines(c("gene_id\texpected_count", "Gata4\t10", "Tbx5\t20"), path)
+    local_path <- file.path(directory, "ENCFFLOCAL01.tsv")
+    writeLines(c("gene_id\texpected_count", "Gata4\t10"), local_path)
     files <- data.frame(
         file_accession = "ENCFFLOCAL01",
         experiment_accession = "ENCSRLOCAL01",
         file_format = "tsv",
         output_type = "gene quantifications",
-        assembly = "mm10",
-        status = "released",
         href = "/files/ENCFFLOCAL01/@@download/ENCFFLOCAL01.tsv",
-        file_size = as.numeric(file.info(path)$size),
-        md5sum = unname(tools::md5sum(path)),
-        stringsAsFactors = FALSE
+        file_size = as.numeric(file.info(local_path)$size),
+        md5sum = unname(tools::md5sum(local_path))
     )
+    attr(files, "query_url") <- "https://encode.example/search/?type=File"
+    attr(files, "filters") <- data.frame(
+        field = "dataset", value = "ENCSRLOCAL01"
+    )
+    attr(files, "request_history") <- list(list(role = "search"))
+
     selected <- encode_select_files(
         files,
         preset = "rnaseq_gene_quant",
-        assembly = "mm10",
         quiet = TRUE
     )
-    plan <- encode_download(
+    downloaded <- encode_download(
         selected,
         directory = directory,
-        dry_run = TRUE,
         quiet = TRUE
     )
-    downloaded <- encode_download(selected, directory = directory, quiet = TRUE)
-    loaded <- encode_read(downloaded)
-    manifest <- encode_manifest(
-        loaded,
-        include_attribution = FALSE,
-        include_session = FALSE
-    )
-
-    expect_equal(plan$local_path, path)
-    expect_equal(downloaded$download_status, "exists")
-    expect_true(downloaded$size_verified)
-    expect_true(downloaded$md5_verified)
-    expect_equal(loaded$matrices$raw_counts["Gata4", "ENCFFLOCAL01"], 10)
-    expect_equal(manifest$files$file_accession, "ENCFFLOCAL01")
-    expect_equal(manifest$matrices$name, "raw_counts")
-    observed_dimensions <- manifest$matrices[, c("rows", "columns")]
-    row.names(observed_dimensions) <- NULL
-    expect_equal(observed_dimensions, data.frame(
-        rows = 2L,
-        columns = 1L
-    ))
-    expect_equal(manifest$selection_criteria, selected$criteria)
-})
-
-test_that("manifests support loaded collections and reject unsupported objects", {
-    path <- withr::local_tempfile(fileext = ".tsv")
-    writeLines(c("gene_id\texpected_count", "Gata4\t10"), path)
-    files <- data.frame(
-        file_accession = "ENCFFLOAD01",
-        experiment_accession = "ENCSRLOAD01",
-        file_format = "tsv",
-        output_type = "gene quantifications",
-        local_path = path,
-        download_status = "downloaded",
-        stringsAsFactors = FALSE
-    )
-    loaded <- encode_read(files)
+    loaded <- encode_read_all(downloaded, quiet = TRUE)
     manifest <- encode_manifest(loaded, include_session = FALSE)
 
-    expect_equal(manifest$files$file_accession, "ENCFFLOAD01")
-    expect_equal(manifest$loaded_objects$name, "ENCFFLOAD01")
+    expect_equal(downloaded$download_status, "exists")
+    expect_equal(manifest$retrieval$query_url, attr(files, "query_url"))
+    expect_equal(manifest$filters, attr(files, "filters"))
+    expect_equal(manifest$selection_criteria, selected$criteria)
+    expect_equal(manifest$loaded_objects$name, "ENCFFLOCAL01")
+})
+
+test_that("search-result manifests distinguish files from generic records", {
+    file_results <- fixture_file_table()[1L, ]
+    class(file_results) <- c("encode_file_table", "data.frame")
+    file_search <- structure(
+        list(results = file_results),
+        class = c("encode_search_result", "list")
+    )
+    generic_search <- structure(
+        list(results = data.frame(accession = "ENCBS000AAA")),
+        class = c("encode_search_result", "list")
+    )
+
+    expect_true("files" %in% names(encode_manifest(
+        file_search, include_session = FALSE
+    )))
+    expect_true("records" %in% names(encode_manifest(
+        generic_search, include_session = FALSE
+    )))
+})
+
+test_that("manifest arguments and unsupported objects fail clearly", {
     expect_error(
         encode_manifest(list(unrelated = TRUE), include_session = FALSE),
         "not a supported"
-    )
-    expect_error(
-        encode_manifest("ENCBS000AAA", include_session = FALSE),
-        "supports ENCSR and ENCFF"
-    )
-})
-
-test_that("manifests fail when requested attribution cannot be constructed", {
-    expect_error(
-        encode_manifest(data.frame(unrelated = TRUE), include_session = FALSE),
-        "converted to ENCODE attribution"
     )
     expect_error(
         encode_manifest(fixture_file_table(), include_session = NA),
         "include_session"
     )
     expect_error(
-        encode_manifest(fixture_file_table(), path = character(), include_session = FALSE),
+        encode_manifest(fixture_file_table(), path = character()),
         "path"
     )
-})
-
-test_that("file-search manifests label file records accurately", {
-    local_encode_test_options()
-    result <- httr2::with_mocked_responses(
-        function(req) fixture_json_response("file-search-mixed.json"),
-        encode_search(type = "File", status = NULL, quiet = TRUE)
-    )
-    manifest <- encode_manifest(result, include_attribution = FALSE, include_session = FALSE)
-
-    expect_true("files" %in% names(manifest))
-    expect_false("experiments" %in% names(manifest))
-    expect_equal(manifest$files$file_accession, result$results$file_accession)
-})
-
-test_that("other search manifests use a generic record label", {
-    results <- data.frame(accession = "ENCBS000AAA")
-    result <- structure(
-        list(results = results),
-        class = c("encode_search_result", "list")
-    )
-    manifest <- encode_manifest(
-        result,
-        include_attribution = FALSE,
-        include_session = FALSE
-    )
-
-    expect_equal(manifest$records$accession, "ENCBS000AAA")
-    expect_false("experiments" %in% names(manifest))
 })

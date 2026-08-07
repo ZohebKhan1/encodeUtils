@@ -2,124 +2,105 @@
 
 #' @export
 print.encode_search_result <- function(x, ..., verbose = FALSE) {
-    cli::cli_text("ENCODE search")
-    cli::cli_text("- total matches: {.val {x$total}}")
-    cli::cli_text("- returned: {.val {nrow(x$results)}}")
-    encode_print_table("Results", encode_result_display(x$results))
-    if (isTRUE(verbose)) {
-        cli::cli_text("- URL: {x$query_url}")
-        encode_print_table("Active filters", x$filters)
-        encode_print_table("Top facets", encode_top_facets(x$facets))
+    cli::cli_text("ENCODE search: {nrow(x$results)} of {x$total} match(es)")
+    encode_print_head(x$results)
+    if (verbose) {
+        encode_print_head(x$filters, label = "Filters")
+        encode_print_head(
+            x$facets[order(x$facets$count, decreasing = TRUE), , drop = FALSE],
+            label = "Facets"
+        )
+        cli::cli_text("URL: {x$query_url}")
     }
-    invisible(x)
-}
-
-#' @export
-print.encode_experiment_table <- function(x, ...) {
-    cli::cli_text("ENCODE experiments")
-    cli::cli_text("- experiments: {.val {nrow(x)}}")
-    encode_print_table("Experiments", encode_experiment_display(x))
     invisible(x)
 }
 
 #' @export
 print.encode_file_table <- function(x, ..., verbose = FALSE) {
-    is_download <- inherits(x, "encode_download_result")
-    summary <- encode_file_summary(x)
-    heading <- if (is_download) "ENCODE download" else "ENCODE files"
-    cli::cli_text(heading)
-    cli::cli_text("- files: {.val {summary$n_files}}")
-    if ("experiment_accession" %in% names(x)) {
-        cli::cli_text("- experiments: {.val {summary$n_experiments}}")
+    cli::cli_text("ENCODE files: {nrow(x)}")
+    columns <- if (inherits(x, "encode_download_result")) {
+        c(
+            "file_accession", "file_format", "output_type", "file_size_pretty",
+            "download_status", "size_verified", "md5_verified", "local_path"
+        )
+    } else {
+        c(
+            "file_accession", "experiment_accession", "file_format",
+            "output_type", "assembly", "file_size_pretty", "status"
+        )
     }
-    if ("file_size" %in% names(x)) {
-        cli::cli_text("- known total size: {summary$total_size_pretty}")
-    }
-    table_label <- if (is_download) "Download records" else "Files"
-    encode_print_table(
-        table_label,
-        encode_display_columns(x, encode_file_display_columns(download = is_download))
-    )
-    if (isTRUE(verbose)) {
-        encode_print_table("Formats", summary$formats)
-        encode_print_table("Assemblies", summary$assemblies)
-        encode_print_table("Output types", summary$output_types)
+    encode_print_head(x, columns = columns)
+    if (verbose) {
+        cli::cli_text("Known total size: {encode_pretty_bytes(encode_size(x))}")
     }
     invisible(x)
 }
 
 #' @export
 print.encode_selected_files <- function(x, ..., verbose = FALSE) {
-    cli::cli_text("ENCODE selected files")
-    cli::cli_text("- selected: {.val {nrow(x$files)}}")
-    cli::cli_text("- excluded: {.val {nrow(x$excluded)}}")
-    encode_print_table("Selected files", encode_display_columns(x$files, encode_file_display_columns()))
-    if (isTRUE(verbose)) {
-        encode_print_table("Criteria", encode_filter_table(x$criteria))
-    }
+    cli::cli_text(
+        "ENCODE selected files: {nrow(x$files)} selected, {nrow(x$excluded)} excluded"
+    )
+    encode_print_head(x$files)
+    if (verbose) encode_print_head(encode_filter_table(x$criteria), "Criteria")
     invisible(x)
 }
 
 #' @export
 print.encode_loaded_files <- function(x, ..., verbose = FALSE) {
-    cli::cli_text("ENCODE loaded files")
-    cli::cli_text("- files: {.val {nrow(x$metadata)}}")
-    cli::cli_text("- file objects: {.val {length(x$data)}}")
-    cli::cli_text("- feature rows: {.val {nrow(x$row_data)}}")
-    cli::cli_text("- matrices: {.val {length(x$matrices)}}")
-    encode_print_table("Metadata", encode_display_columns(x$metadata, encode_loaded_display_columns()))
-    if (isTRUE(verbose)) {
-        encode_print_table("Full metadata", x$metadata, n = nrow(x$metadata))
+    cli::cli_text(
+        "ENCODE loaded files: {length(x$data)} object(s) from {nrow(x$metadata)} file(s)"
+    )
+    encode_print_head(x$metadata)
+    if (verbose && length(x$data) > 0L) {
         objects <- data.frame(
             name = names(x$data),
-            class = vapply(x$data, function(value) paste(class(value), collapse = ", "), character(1L)),
-            stringsAsFactors = FALSE
+            class = vapply(
+                x$data,
+                function(value) paste(class(value), collapse = ", "),
+                character(1L)
+            )
         )
-        encode_print_table("Loaded objects", objects, n = length(objects$name))
+        encode_print_head(objects, "Objects")
     }
     invisible(x)
 }
 
 #' @export
-print.encode_data_list <- function(x, ...) {
-    cli::cli_text("ENCODE loaded data")
-    cli::cli_text("- file objects: {.val {length(x)}}")
-    if (length(x) == 0L) {
-        return(invisible(x))
-    }
-    objects <- data.frame(
-        file = names(x),
-        rows = vapply(x, NROW, integer(1L)),
-        columns = vapply(x, NCOL, integer(1L)),
-        class = vapply(x, function(value) paste(class(value), collapse = ", "), character(1L)),
-        stringsAsFactors = FALSE
+print.encode_manifest <- function(x, ..., verbose = FALSE) {
+    cli::cli_text(
+        "ENCODE manifest: {x$object_type}, created {x$retrieval$created_at}"
     )
-    encode_print_table("Objects", objects, n = nrow(objects))
+    path <- attr(x, "path", exact = TRUE)
+    if (!is.null(path)) cli::cli_text("Path: {.path {path}}")
+    if (verbose) cli::cli_text("URL: {x$retrieval$query_url}")
     invisible(x)
 }
 
 #' @export
-print.encode_matrix_list <- function(x, ...) {
-    cli::cli_text("ENCODE matrices")
-    cli::cli_text("- matrices: {.val {length(x)}}")
-    if (length(x) == 0L) {
-        return(invisible(x))
-    }
-    matrices <- data.frame(
-        matrix = names(x),
-        rows = vapply(x, NROW, integer(1L)),
-        columns = vapply(x, NCOL, integer(1L)),
-        stringsAsFactors = FALSE
-    )
-    encode_print_table("Matrices", matrices, n = nrow(matrices))
+print.encode_local_file <- function(x, ...) {
+    cli::cli_text("ENCODE local path: {.path {x$path}}")
+    cli::cli_text("Reason: {x$reason}")
     invisible(x)
 }
 
 #' @export
 `[.encode_file_table` <- function(x, i, j, drop = FALSE) {
+    provenance <- lapply(
+        c(
+            "query_url", "retrieved_at", "filters", "encode_base_url",
+            "request_history", "selection_criteria", "total"
+        ),
+        function(name) attr(x, name, exact = TRUE)
+    )
+    names(provenance) <- c(
+        "query_url", "retrieved_at", "filters", "encode_base_url",
+        "request_history", "selection_criteria", "total"
+    )
     out <- NextMethod("[")
-    if (!is.data.frame(out)) {
-        return(out)
+    if (!is.data.frame(out)) return(out)
+    for (name in names(provenance)) {
+        if (!is.null(provenance[[name]])) attr(out, name) <- provenance[[name]]
     }
     if (!missing(j) && !all(encode_file_core_columns() %in% names(out))) {
         class(out) <- setdiff(class(out), "encode_file_table")
@@ -127,198 +108,21 @@ print.encode_matrix_list <- function(x, ...) {
     out
 }
 
-#' @export
-print.encode_file_summary <- function(x, ..., verbose = FALSE) {
-    cli::cli_text("ENCODE file summary")
-    cli::cli_text("- files: {.val {x$n_files}}")
-    cli::cli_text("- experiments: {.val {x$n_experiments}}")
-    cli::cli_text("- known total size: {x$total_size_pretty}")
-    encode_print_table("Formats", x$formats)
-    if (isTRUE(verbose)) {
-        encode_print_table("Assemblies", x$assemblies)
-        encode_print_table("Output types", x$output_types)
-    }
-    invisible(x)
+encode_file_core_columns <- function() {
+    c("file_accession", "file_format", "output_type")
 }
 
-#' @export
-print.encode_manifest <- function(x, ..., verbose = FALSE) {
-    cli::cli_text("ENCODE manifest")
-    cli::cli_text("- package: {x$package$name} {x$package$version}")
-    cli::cli_text("- created: {x$retrieval$created_at}")
-    cli::cli_text("- object type: {x$object_type}")
-    path <- attr(x, "path", exact = TRUE)
-    if (!is.null(path)) {
-        cli::cli_text("- path: {.path {path}}")
-    }
-    if (isTRUE(verbose)) {
-        cli::cli_text("- query URL: {x$retrieval$query_url}")
-    }
-    invisible(x)
-}
-
-#' @export
-print.encode_local_file <- function(x, ...) {
-    cli::cli_text("<encode_local_file>")
-    cli::cli_text("Path: {.path {x$path}}")
-    cli::cli_text("Reason: {x$reason}")
-    cli::cli_text("Size: {x$file_size_pretty}")
-    invisible(x)
-}
-
-# Display-table helpers
-
-encode_print_table <- function(label, table, n = 10L) {
-    if (is.null(table) || NROW(table) == 0L) {
-        cli::cli_text("{label}: no rows.")
+encode_print_head <- function(x, label = NULL, columns = NULL, n = 10L) {
+    if (!is.null(label)) cli::cli_text("{label}:")
+    if (is.null(x) || NROW(x) == 0L) {
+        cli::cli_text("No rows.")
         return(invisible(NULL))
     }
-    cli::cli_text("{label}:")
-    display <- utils::head(table, n)
-    display <- encode_truncate_display_strings(display)
-    if (is.data.frame(display)) {
-        class(display) <- "data.frame"
+    table <- as.data.frame(x, stringsAsFactors = FALSE)
+    if (!is.null(columns)) {
+        columns <- intersect(columns, names(table))
+        if (length(columns) > 0L) table <- table[columns]
     }
-    print(display, row.names = FALSE)
+    print(utils::head(table, n), row.names = FALSE)
     invisible(NULL)
-}
-
-encode_file_core_columns <- function() {
-    c(
-        "file_accession", "experiment_accession", "file_format", "output_type",
-        "assembly", "file_size"
-    )
-}
-
-encode_file_display_columns <- function(download = FALSE) {
-    if (isTRUE(download)) {
-        return(c(
-            file = "file_accession",
-            format = "file_format",
-            output = "output_type",
-            file_size = "file_size_pretty",
-            download = "download_status",
-            size_ok = "size_verified",
-            md5_ok = "md5_verified",
-            path = "local_path",
-            failure = "failure_reason"
-        ))
-    }
-    c(
-        file = "file_accession",
-        experiment = "experiment_accession",
-        assay = "assay_title",
-        organism = "organism",
-        biosample = "biosample_term_name",
-        format = "file_format",
-        output = "output_type",
-        assembly = "assembly",
-        file_size = "file_size_pretty",
-        status = "status"
-    )
-}
-
-encode_loaded_display_columns <- function() {
-    c(
-        file = "file_accession",
-        experiment = "experiment_accession",
-        assay = "assay_title",
-        organism = "organism",
-        biosample = "biosample_term_name",
-        assembly = "assembly",
-        file_size = "file_size_pretty",
-        status = "status"
-    )
-}
-
-encode_experiment_display_columns <- function() {
-    c(
-        experiment = "accession",
-        assay = "assay_title",
-        target = "target",
-        control_type = "control_type",
-        organism = "organism",
-        biosample = "biosample_term_name",
-        biosample_type = "biosample_classification",
-        age = "life_stage_age",
-        sex = "sex",
-        sample = "sample_summary",
-        treatment = "treatment",
-        lab = "lab",
-        project = "project",
-        files = "file_count",
-        date_released = "date_released",
-        status = "status"
-    )
-}
-
-encode_result_display <- function(x) {
-    if (inherits(x, "encode_file_table") ||
-        (is.data.frame(x) && "file_accession" %in% names(x))) {
-        return(encode_display_columns(x, encode_file_display_columns()))
-    }
-    if (inherits(x, "encode_experiment_table") ||
-        (is.data.frame(x) && "assay_title" %in% names(x) && "file_count" %in% names(x))) {
-        return(encode_experiment_display(x))
-    }
-    x
-}
-
-encode_experiment_display <- function(x) {
-    encode_display_columns(x, encode_experiment_display_columns())
-}
-
-encode_display_columns <- function(x, columns) {
-    if (!is.data.frame(x)) {
-        return(x)
-    }
-    source_columns <- unname(columns)
-    display_names <- names(columns)
-    display_names[!nzchar(display_names)] <- source_columns[!nzchar(display_names)]
-    keep <- intersect(source_columns, names(x))
-    if (length(keep) == 0L) {
-        return(x)
-    }
-    labels <- display_names[match(keep, source_columns)]
-    out <- as.data.frame(x, stringsAsFactors = FALSE)
-    out <- out[, keep, drop = FALSE]
-    names(out) <- labels
-    available <- vapply(out, encode_display_column_available, logical(1L))
-    out <- out[, available, drop = FALSE]
-    out
-}
-
-encode_truncate_display_strings <- function(x, width = 42L) {
-    if (!is.data.frame(x)) {
-        return(x)
-    }
-    x[] <- lapply(x, function(column) {
-        if (!is.character(column)) {
-            return(column)
-        }
-        too_long <- !is.na(column) & nchar(column, type = "width") > width
-        column[too_long] <- paste0(substr(column[too_long], 1L, width - 3L), "...")
-        column
-    })
-    x
-}
-
-encode_display_column_available <- function(x) {
-    if (length(x) == 0L) {
-        return(TRUE)
-    }
-    if (is.factor(x)) {
-        x <- as.character(x)
-    }
-    if (is.character(x)) {
-        return(any(!is.na(x) & nzchar(x)))
-    }
-    any(!is.na(x))
-}
-
-encode_top_facets <- function(facets) {
-    if (is.null(facets) || NROW(facets) == 0L) {
-        return(facets)
-    }
-    facets[order(facets$count, decreasing = TRUE), , drop = FALSE]
 }

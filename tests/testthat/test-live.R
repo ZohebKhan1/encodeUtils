@@ -3,7 +3,10 @@ test_that("opt-in live ENCODE smoke test detects API drift", {
 
     result <- encode_search(
         type = "Experiment",
-        organism = "human",
+        filters = list(
+            "replicates.library.biosample.organism.scientific_name" =
+                "Homo sapiens"
+        ),
         limit = 1L,
         quiet = TRUE
     )

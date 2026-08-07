@@ -1,7 +1,4 @@
-# ENCODE request state and URL normalization
-
-encode_api_env <- new.env(parent = emptyenv())
-encode_api_env$last_request_time <- as.POSIXct(NA_real_, origin = "1970-01-01")
+# ENCODE URL normalization
 
 encode_normalize_path <- function(x) {
     if (!is.character(x) || length(x) != 1L || is.na(x) || !nzchar(x)) {
@@ -40,35 +37,6 @@ encode_normalize_path <- function(x) {
     paste0(encode_base_url(), x)
 }
 
-encode_request_throttle <- function() {
-    rate <- encode_option("encodeUtils.rate_per_second", 5)
-    if (isFALSE(rate)) {
-        return(invisible(NULL))
-    }
-    if (!is.numeric(rate) || length(rate) != 1L || is.na(rate) ||
-        !is.finite(rate) || rate < 0) {
-        cli::cli_abort(
-            "Option {.code encodeUtils.rate_per_second} must be FALSE or one finite non-negative number."
-        )
-    }
-    if (rate == 0) {
-        return(invisible(NULL))
-    }
-
-    min_interval <- 1 / rate
-    now <- Sys.time()
-    last <- encode_api_env$last_request_time
-    if (!is.na(last)) {
-        elapsed <- as.numeric(difftime(now, last, units = "secs"))
-        delay <- min_interval - elapsed
-        if (delay > 0) {
-            Sys.sleep(delay)
-        }
-    }
-    encode_api_env$last_request_time <- Sys.time()
-    invisible(NULL)
-}
-
 # Request construction and response parsing
 
 encode_build_request <- function(
@@ -95,7 +63,32 @@ encode_build_request <- function(
 
     timeout <- timeout %||% getOption("timeout", 60)
     req <- httr2::req_timeout(req, timeout)
-    httr2::req_error(req, is_error = function(resp) FALSE)
+    req <- httr2::req_error(req, is_error = function(resp) FALSE)
+    max_tries <- encode_validate_positive_whole_number(
+        encode_option("encodeUtils.max_tries", 3L),
+        "encodeUtils.max_tries"
+    )
+    req <- httr2::req_retry(
+        req,
+        max_tries = max_tries,
+        retry_on_failure = TRUE,
+        is_transient = function(resp) {
+            httr2::resp_status(resp) %in% c(429L, 500L, 502L, 503L, 504L)
+        }
+    )
+    rate <- encode_option("encodeUtils.rate_per_second", 5)
+    if (!isFALSE(rate)) {
+        if (!is.numeric(rate) || length(rate) != 1L || is.na(rate) ||
+            !is.finite(rate) || rate < 0) {
+            cli::cli_abort(
+                "Option {.code encodeUtils.rate_per_second} must be FALSE or one finite non-negative number."
+            )
+        }
+        if (rate > 0) {
+            req <- httr2::req_throttle(req, rate = rate, fill_time_s = 1)
+        }
+    }
+    req
 }
 
 encode_perform_json <- function(
@@ -105,7 +98,7 @@ encode_perform_json <- function(
     allow_search_404 = FALSE
 ) {
     req <- encode_build_request(path, query = query, timeout = timeout)
-    resp <- encode_perform_with_retry(req)
+    resp <- httr2::req_perform(req)
 
     status <- httr2::resp_status(resp)
     body <- httr2::resp_body_string(resp)
@@ -177,7 +170,7 @@ encode_parse_search_404 <- function(body, status, allow_search_404) {
     parsed
 }
 
-# File transfer and bounded retries
+# File transfer
 
 encode_perform_file <- function(url, path, timeout = NULL) {
     req <- encode_build_request(
@@ -185,7 +178,7 @@ encode_perform_file <- function(url, path, timeout = NULL) {
         timeout = timeout,
         accept = "application/octet-stream, */*"
     )
-    resp <- encode_perform_with_retry(req, path = path)
+    resp <- httr2::req_perform(req, path = path)
     status <- httr2::resp_status(resp)
 
     if (status >= 400L) {
@@ -212,106 +205,6 @@ encode_perform_file <- function(url, path, timeout = NULL) {
     )
 }
 
-encode_perform_with_retry <- function(req, path = NULL) {
-    max_tries <- encode_option("encodeUtils.max_tries", 3)
-    max_tries <- encode_validate_positive_whole_number(
-        max_tries,
-        "encodeUtils.max_tries"
-    )
-    last_error <- NULL
-
-    for (attempt in seq_len(max_tries)) {
-        encode_request_throttle()
-        resp <- tryCatch(
-            {
-                if (is.null(path)) {
-                    httr2::req_perform(req)
-                } else {
-                    httr2::req_perform(req, path = path)
-                }
-            },
-            error = identity
-        )
-
-        if (inherits(resp, "condition")) {
-            last_error <- resp
-            resp <- NULL
-        }
-
-        if (is.null(resp)) {
-            if (attempt < max_tries) {
-                encode_retry_sleep(attempt)
-                next
-            }
-            cli::cli_abort(
-                c(
-                    "ENCODE request failed.",
-                    "x" = "The request could not be completed after {max_tries} attempts.",
-                    "i" = "URL: {req$url}",
-                    "i" = "Last error: {conditionMessage(last_error)}"
-                ),
-                parent = last_error
-            )
-        }
-
-        status <- httr2::resp_status(resp)
-        if (!encode_is_transient_status(status) || attempt == max_tries) {
-            return(resp)
-        }
-        encode_retry_sleep(attempt, resp = resp)
-    }
-
-    resp
-}
-
-encode_retry_sleep <- function(attempt, resp = NULL) {
-    delay <- encode_retry_after(resp)
-    if (is.na(delay)) {
-        base <- encode_option("encodeUtils.retry_base_seconds", 0.5)
-        if (!is.numeric(base) || length(base) != 1L || is.na(base) ||
-            !is.finite(base) || base < 0) {
-            cli::cli_abort(
-                "Option {.code encodeUtils.retry_base_seconds} must be one finite non-negative number."
-            )
-        }
-        delay <- base * 2^(attempt - 1L)
-    }
-    max_delay <- encode_option("encodeUtils.max_retry_seconds", 60)
-    if (!is.numeric(max_delay) || length(max_delay) != 1L || is.na(max_delay) ||
-        !is.finite(max_delay) || max_delay < 0) {
-        cli::cli_abort(
-            "Option {.code encodeUtils.max_retry_seconds} must be one finite non-negative number."
-        )
-    }
-    delay <- min(delay, max_delay)
-    if (!is.na(delay) && delay > 0) {
-        Sys.sleep(delay)
-    }
-    invisible(delay)
-}
-
-encode_retry_after <- function(resp) {
-    if (is.null(resp)) {
-        return(NA_real_)
-    }
-    value <- httr2::resp_header(resp, "retry-after")
-    if (is.null(value) || is.na(value) || !nzchar(value)) {
-        return(NA_real_)
-    }
-    value <- trimws(value)
-    if (grepl("^[0-9]+(?:[.][0-9]+)?$", value)) {
-        return(as.numeric(value))
-    }
-    date <- tryCatch(
-        as.POSIXct(value, format = "%a, %d %b %Y %H:%M:%S", tz = "GMT"),
-        error = function(cnd) NA
-    )
-    if (is.na(date)) {
-        return(NA_real_)
-    }
-    max(0, as.numeric(difftime(date, Sys.time(), units = "secs")))
-}
-
 # HTTP error reporting
 
 encode_error_message <- function(message, url, details = "") {
@@ -320,10 +213,6 @@ encode_error_message <- function(message, url, details = "") {
         out <- c(out, stats::setNames(details, "x"))
     }
     out
-}
-
-encode_is_transient_status <- function(status) {
-    status %in% c(429L, 500L, 502L, 503L, 504L)
 }
 
 encode_error_details <- function(body) {

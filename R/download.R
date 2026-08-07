@@ -1,33 +1,20 @@
 #' Download ENCODE files
 #'
-#' Download files from an ENCODE file table, selected-file object, file search,
-#' or file accession. Planned sizes are checked before transfer, existing files
-#' are not overwritten by default, files are written through a unique temporary
-#' `.part` path, and size/MD5 checks are used when ENCODE provides the metadata.
+#' Download exact files from an ENCODE file table, selected-file object, File
+#' search, or ENCFF accession. Existing files are not overwritten by default,
+#' transfers use a temporary `.part` path, and size and MD5 checks are applied
+#' when ENCODE provides the corresponding metadata.
 #'
-#' @param x ENCFF accession(s), file metadata table, file search result,
-#'   selected-file object, or ENCSR experiment accession(s). ENCSR input is
-#'   first passed to `encode_list_files()`.
-#' @param file_accession Optional ENCODE file accession(s), such as
-#'   `"ENCFF260OJQ"`, to download from `x`. Use this when you want specific
-#'   files rather than the first `limit` rows.
-#' @param file_format Optional file-format filter used when `x` is an ENCSR
-#'   experiment accession.
-#' @param output_type Optional output-type filter used when `x` is an ENCSR
-#'   experiment accession.
-#' @param assembly Optional genome-assembly filter used when `x` is an ENCSR
-#'   experiment accession.
-#' @param status Optional file-status filter used when `x` is an ENCSR
-#'   experiment accession.
-#' @param limit Optional number of files to use from the top of `x`.
+#' @param x ENCFF accession(s), file metadata table, File search result, or
+#'   selected-file object. Use `encode_list_files()` before downloading an
+#'   experiment.
 #' @param directory Destination directory. If `NULL`, a package cache directory
 #'   from `tools::R_user_dir("encodeUtils", "cache")` is used. Supply an
 #'   explicit project directory for reusable data.
-#' @param max_file_size Maximum ENCODE-reported size accepted per file during
-#'   planning, as bytes or a string like `"500MB"`. The observed size is
-#'   checked after transfer when size verification is enabled.
-#' @param max_total_size Maximum total ENCODE-reported size accepted during
-#'   planning, as bytes or a string.
+#' @param max_file_size Optional maximum ENCODE-reported size per file, as bytes
+#'   or a string like `"500MB"`. The default `NULL` is uncapped.
+#' @param max_total_size Optional maximum total ENCODE-reported size. The
+#'   default `NULL` is uncapped.
 #' @param allow_unknown_size Whether to allow real downloads for files whose
 #'   ENCODE metadata do not include `file_size`. Dry-runs are always allowed and
 #'   report the unknown-size count.
@@ -60,15 +47,9 @@
 #' encode_results(plan)
 encode_download <- function(
     x,
-    file_accession = NULL,
-    file_format = NULL,
-    output_type = NULL,
-    assembly = NULL,
-    status = "released",
-    limit = NULL,
     directory = NULL,
-    max_file_size = "250MB",
-    max_total_size = "500MB",
+    max_file_size = NULL,
+    max_total_size = NULL,
     allow_unknown_size = FALSE,
     overwrite = FALSE,
     dry_run = FALSE,
@@ -76,17 +57,7 @@ encode_download <- function(
     verify = c("md5", "size"),
     quiet = FALSE
 ) {
-    file_accession <- encode_validate_file_accessions(file_accession)
-    file_format <- encode_validate_values(file_format, "file_format")
-    output_type <- encode_validate_values(output_type, "output_type")
-    assembly <- encode_validate_values(assembly, "assembly")
-    status <- encode_validate_values(status, "status")
-    if (!is.null(limit)) {
-        limit <- encode_validate_positive_whole_number(limit, "limit")
-    }
     directory <- encode_validate_scalar(directory, "directory")
-    max_file_size <- encode_parse_size(max_file_size, arg = "max_file_size")
-    max_total_size <- encode_parse_size(max_total_size, arg = "max_total_size")
     allow_unknown_size <- encode_validate_flag(allow_unknown_size, "allow_unknown_size")
     overwrite <- encode_validate_flag(overwrite, "overwrite")
     dry_run <- encode_validate_flag(dry_run, "dry_run")
@@ -94,23 +65,7 @@ encode_download <- function(
     quiet <- encode_validate_flag(quiet, "quiet")
     verify <- encode_normalize_verify(verify)
 
-    # Require a narrowed ENCSR request for transfer, but allow unrestricted planning.
-    encode_check_experiment_download_scope(
-        x,
-        dry_run = dry_run,
-        file_accession = file_accession,
-        file_format = file_format,
-        output_type = output_type,
-        assembly = assembly,
-        limit = limit
-    )
-    files <- encode_download_file_table(
-        x,
-        file_format = file_format,
-        output_type = output_type,
-        assembly = assembly,
-        status = status
-    )
+    files <- encode_file_table_from_input(x)
     # Normalize first so accession, search-result, and table routes preserve
     # the request that actually supplied the file metadata.
     query_url <- encode_query_url(files)
@@ -120,22 +75,8 @@ encode_download <- function(
     selection_criteria <- encode_selection_criteria(files)
     base_url <- attr(files, "encode_base_url", exact = TRUE) %||% encode_base_url()
     if (nrow(files) == 0L) {
-        encode_abort_no_matching_download_files(
-            x,
-            file_format = file_format,
-            output_type = output_type,
-            assembly = assembly,
-            status = status
-        )
+        cli::cli_abort("{.arg x} did not contain any files to download.")
     }
-    files <- encode_filter_file_accessions(files, file_accession)
-    if (nrow(files) == 0L) {
-        cli::cli_abort(c(
-            "No ENCODE files matched {.arg file_accession}.",
-            "i" = "Use {.fun encode_results} on the file table to choose valid ENCFF accessions."
-        ))
-    }
-    files <- encode_limit_file_rows(files, limit = limit, file_accession = file_accession)
     files <- encode_prepare_download_table(
         files = files,
         directory = directory,
@@ -233,106 +174,6 @@ encode_download <- function(
     result
 }
 
-# Download input normalization and safety limits
-
-encode_download_file_table <- function(x, file_format = NULL, output_type = NULL, assembly = NULL, status = "released") {
-    experiment_input <- is.character(x) && all(encode_is_experiment_accession(vapply(x, encode_normalize_accession, character(1L))))
-    filters_requested <- !is.null(file_format) || !is.null(output_type) || !is.null(assembly)
-    if (experiment_input) {
-        return(encode_list_files(
-            x,
-            file_format = file_format,
-            output_type = output_type,
-            assembly = assembly,
-            status = status,
-            limit = "all",
-            quiet = TRUE
-        ))
-    }
-    if (filters_requested) {
-        cli::cli_abort(
-            "{.arg file_format}, {.arg output_type}, and {.arg assembly} can only be used when {.arg x} is an ENCSR experiment accession."
-        )
-    }
-    encode_file_table_from_input(x, status = NULL)
-}
-
-encode_check_experiment_download_scope <- function(
-    x,
-    dry_run,
-    file_accession,
-    file_format,
-    output_type,
-    assembly,
-    limit
-) {
-    if (isTRUE(dry_run) || !encode_is_direct_experiment_download_input(x)) {
-        return(invisible(NULL))
-    }
-    narrowed <- !is.null(file_accession) ||
-        !is.null(file_format) ||
-        !is.null(output_type) ||
-        !is.null(assembly) ||
-        !is.null(limit)
-    if (narrowed) {
-        return(invisible(NULL))
-    }
-    cli::cli_abort(c(
-        "Refusing to download all files for an ENCODE experiment accession without narrowing the request.",
-        "i" = "Run {.code encode_download(x, dry_run = TRUE)} to inspect the full plan.",
-        "i" = "For real downloads, provide {.arg file_format}, {.arg output_type}, {.arg assembly}, {.arg file_accession}, or {.arg limit}."
-    ))
-}
-
-encode_is_direct_experiment_download_input <- function(x) {
-    if (!is.character(x) || length(x) == 0L) {
-        return(FALSE)
-    }
-    accessions <- vapply(x, encode_normalize_accession, character(1L))
-    all(encode_is_experiment_accession(accessions))
-}
-
-encode_abort_no_matching_download_files <- function(
-    x,
-    file_format = NULL,
-    output_type = NULL,
-    assembly = NULL,
-    status = "released"
-) {
-    if (is.character(x) && any(encode_is_experiment_accession(vapply(x, encode_normalize_accession, character(1L))))) {
-        filters <- c(
-            if (!is.null(file_format)) paste0("file_format = ", paste(file_format, collapse = ", ")),
-            if (!is.null(output_type)) paste0("output_type = ", paste(output_type, collapse = ", ")),
-            if (!is.null(assembly)) paste0("assembly = ", paste(assembly, collapse = ", ")),
-            if (!is.null(status)) paste0("status = ", paste(status, collapse = ", "))
-        )
-        details <- if (length(filters) > 0L) paste(filters, collapse = "; ") else "no file filters"
-        cli::cli_abort(c(
-            "No ENCODE files matched this experiment download request.",
-            "i" = "Input: {.val {paste(x, collapse = ', ')}}.",
-            "i" = "Filters: {details}.",
-            "i" = "Run {.code encode_list_files(x)} to inspect available files, then choose file accessions with {.arg file_accession}."
-        ))
-    }
-    cli::cli_abort(c(
-        "{.arg x} did not contain any files to download.",
-        "i" = "Use {.fun encode_results} to inspect the object before downloading."
-    ))
-}
-
-encode_limit_file_rows <- function(files, limit = NULL, file_accession = NULL) {
-    if (is.null(limit)) {
-        return(files)
-    }
-    if (!is.null(file_accession)) {
-        cli::cli_abort("Use either {.arg file_accession} or {.arg limit}, not both.")
-    }
-    if (nrow(files) <= limit) {
-        return(files)
-    }
-    files[seq_len(limit), , drop = FALSE]
-}
-
 encode_normalize_verify <- function(verify) {
     if (is.null(verify)) {
         return(character())
@@ -427,11 +268,16 @@ encode_download_urls <- function(files, prefer_cloud) {
 }
 
 encode_check_download_sizes <- function(files, max_file_size, max_total_size) {
-    max_file_size <- encode_parse_size(max_file_size, arg = "max_file_size")
-    max_total_size <- encode_parse_size(max_total_size, arg = "max_total_size")
     sizes <- encode_as_file_size(files$file_size)
+    if (!is.null(max_file_size)) {
+        max_file_size <- encode_parse_size(max_file_size, arg = "max_file_size")
+    }
+    if (!is.null(max_total_size)) {
+        max_total_size <- encode_parse_size(max_total_size, arg = "max_total_size")
+    }
 
-    too_large <- !is.na(sizes) & sizes > max_file_size
+    too_large <- !is.null(max_file_size) & !is.na(sizes) &
+        sizes > max_file_size
     if (any(too_large)) {
         details <- paste(
             paste0(files$file_accession[too_large], " (", encode_pretty_bytes(sizes[too_large]), ")"),
@@ -446,7 +292,8 @@ encode_check_download_sizes <- function(files, max_file_size, max_total_size) {
     }
 
     total_size <- sum(sizes, na.rm = TRUE)
-    if (!is.na(total_size) && total_size > max_total_size) {
+    if (!is.null(max_total_size) && !is.na(total_size) &&
+        total_size > max_total_size) {
         cli::cli_abort(
             c(
                 "Planned ENCODE download exceeds {.arg max_total_size}.",

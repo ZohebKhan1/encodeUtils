@@ -361,6 +361,13 @@ encode_bind_rows <- function(rows, columns = NULL) {
     do.call(rbind, rows)
 }
 
+encode_ensure_columns <- function(x, columns) {
+    for (column in setdiff(columns, names(x))) {
+        x[[column]] <- rep(NA_character_, nrow(x))
+    }
+    x
+}
+
 # Public-argument validation
 
 encode_validate_scalar <- function(x, arg, allow_null = TRUE) {
@@ -442,50 +449,6 @@ encode_validate_file_accessions <- function(file_accession, arg = "file_accessio
         cli::cli_abort("{.arg {arg}} must contain ENCODE file accessions like {.val ENCFF260OJQ}.")
     }
     unique(file_accession)
-}
-
-encode_file_accession_column <- function(files) {
-    if ("file_accession" %in% names(files)) {
-        return("file_accession")
-    }
-    if ("accession" %in% names(files)) {
-        return("accession")
-    }
-    cli::cli_abort("File metadata must include {.field file_accession} or {.field accession}.")
-}
-
-encode_filter_file_accessions <- function(files, file_accession = NULL) {
-    file_accession <- encode_validate_file_accessions(file_accession)
-    if (is.null(file_accession)) {
-        return(files)
-    }
-    column <- encode_file_accession_column(files)
-    available <- toupper(as.character(files[[column]]))
-    missing <- setdiff(file_accession, available)
-    if (length(missing) > 0L) {
-        cli::cli_abort(c(
-            "Requested ENCODE file accession(s) were not found in {.arg x}.",
-            "x" = "{paste(missing, collapse = ', ')}"
-        ))
-    }
-    order_index <- match(file_accession, available)
-    files[order_index, , drop = FALSE]
-}
-
-# Request metadata
-
-encode_metadata_request <- function(metadata) {
-    if (length(metadata) > 1L) {
-        metadata <- metadata[[1L]]
-    }
-    if (!is.character(metadata) || length(metadata) != 1L || is.na(metadata)) {
-        cli::cli_abort("{.arg metadata} must be {.val full} or {.val basic}.")
-    }
-    metadata <- match.arg(metadata, c("full", "basic"))
-    list(
-        metadata = metadata,
-        frame = if (identical(metadata, "full")) "embedded" else "object"
-    )
 }
 
 encode_normalize_query_names <- function(query) {

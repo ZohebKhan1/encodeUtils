@@ -11,8 +11,8 @@ Authors@R: person(
     )
 Description: Queries the ENCODE Portal REST API and converts nested metadata
     into traceable experiment and file tables. Provides accession-aware search,
-    file selection, download planning and verification, and local-file reading
-    workflows. Records request, file, and attribution metadata for reproducible
+    file selection, download planning and verification, and explicit local-file
+    reading workflows. Records request and file metadata for reproducible
     downstream R and Bioconductor analyses.
 License: Artistic-2.0
 URL: https://github.com/ZohebKhan1/encodeUtils,

@@ -17,9 +17,7 @@ fixture_json_response <- function(name, status = 200L) {
 local_encode_test_options <- function() {
     withr::local_options(list(
         encodeUtils.rate_per_second = FALSE,
-        encodeUtils.max_tries = 3L,
-        encodeUtils.retry_base_seconds = 0,
-        encodeUtils.max_retry_seconds = 0
+        encodeUtils.max_tries = 1L
     ))
 }
 

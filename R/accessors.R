@@ -4,12 +4,12 @@
 #' before filtering, joining, writing a CSV, or passing rows to another function.
 #'
 #' @param x An object returned by `encode_search()`, `encode_list_files()`,
-#'   `encode_select_files()`, `encode_download()`, or `encode_read()`.
+#'   `encode_select_files()`, `encode_download()`, or `encode_read_all()`.
 #'
 #' @return A data frame. For `encode_search()` and `encode_list_files()` output,
 #'   this is the record or file table. For `encode_select_files()`, it is the
 #'   selected file table. For `encode_download()`, it is the download-result
-#'   table. For `encode_read()` collection output, it is the loaded-file
+#'   table. For `encode_read_all()` output, it is the loaded-file
 #'   metadata table.
 #' @export
 #'
@@ -23,9 +23,10 @@
 #'     href = "/files/ENCFFONE/@@@@download/a.tsv"
 #' )
 #'
-#' selected <- encode_select_files(files,
+#' selected <- encode_select_files(
+#'     files,
 #'     preset = "rnaseq_gene_quant",
-#'     assembly = "mm10", quiet = TRUE
+#'     quiet = TRUE
 #' )
 #'
 #' encode_results(selected)

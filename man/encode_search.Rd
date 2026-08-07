@@ -8,151 +8,42 @@ encode_search(
   type = "Experiment",
   filters = list(),
   search = NULL,
-  organism = NULL,
-  assay = NULL,
-  assay_type = NULL,
-  biosample = NULL,
-  biosample_type = NULL,
-  organ = NULL,
-  cell = NULL,
-  system = NULL,
-  life_stage = NULL,
-  sex = NULL,
-  disease = NULL,
-  treatment = NULL,
-  cellular_component = NULL,
-  development = FALSE,
-  exclude_controls = FALSE,
-  target = NULL,
-  target_category = NULL,
-  file_format = NULL,
-  output_type = NULL,
-  assembly = NULL,
   status = "released",
   limit = 25,
-  metadata = c("full", "basic"),
-  include_facets = TRUE,
   quiet = FALSE
 )
 }
 \arguments{
-\item{type}{ENCODE object type to search, such as \code{"Experiment"} or \code{"File"}.
-Use \code{"Experiment"} to find datasets and \code{"File"} to find individual files.
-Use \code{NULL} only for mixed free-text searches.}
+\item{type}{ENCODE object type, such as \code{"Experiment"} or \code{"File"}. Use
+\code{NULL} only for mixed free-text searches.}
 
-\item{filters}{Named list of ENCODE search filters. ENCODE field names,
-dot notation, and negated filters such as \code{"control_type!="} are accepted.}
+\item{filters}{Named list of ENCODE search fields and values. Dot notation
+and negated fields such as \code{"control_type!="} are accepted.}
 
 \item{search}{Optional free-text search term.}
 
-\item{organism}{Optional organism filter. Common values such as \code{"mouse"},
-\code{"human"}, \code{"Mus musculus"}, and \code{"Homo sapiens"} are accepted.}
+\item{status}{Optional ENCODE status. The default keeps released records;
+use \code{NULL} to omit this filter.}
 
-\item{assay}{Optional assay filter. Common values such as \code{"rna-seq"},
-\code{"atac-seq"}, \code{"chip-seq"}, \code{"histone chip-seq"}, and \code{"tf chip-seq"}
-are expanded to ENCODE assay names.}
+\item{limit}{Number of records to return, or \code{"all"}.}
 
-\item{assay_type}{Optional broad assay category, such as \code{"Transcription"},
-\code{"DNA accessibility"}, or \code{"DNA binding"}.}
-
-\item{biosample}{Optional biosample or tissue term. This is added to the
-free-text query so broader terms such as \code{"brain"} can find forebrain,
-midbrain, hindbrain, cortex, and related ENCODE biosample terms.}
-
-\item{biosample_type}{Optional biosample class, such as \code{"tissue"},
-\code{"cell line"}, \code{"primary cell"}, or \code{"organoid"}.}
-
-\item{organ}{Optional organ facet, such as \code{"brain"}, \code{"heart"}, or
-\code{"liver"}.}
-
-\item{cell}{Optional cell facet, such as \code{"T cell"}, \code{"neural cell"}, or
-\code{"stem cell"}.}
-
-\item{system}{Optional anatomical system facet, such as \code{"immune system"} or
-\code{"central nervous system"}.}
-
-\item{life_stage}{Optional life-stage filter, such as \code{"embryonic"},
-\code{"postnatal"}, \code{"adult"}, or \code{"fetal"}. \code{"fetal"} is treated as
-\code{"embryonic"} for ENCODE mouse development searches.}
-
-\item{sex}{Optional sex filter, such as \code{"female"}, \code{"male"}, or \code{"mixed"}.}
-
-\item{disease}{Optional disease term.}
-
-\item{treatment}{Optional biosample-treatment term.}
-
-\item{cellular_component}{Optional subcellular fraction term, such as
-\code{"nucleus"} or \code{"cytosol"}.}
-
-\item{development}{If \code{TRUE}, restrict experiments to organism-development
-series records.}
-
-\item{exclude_controls}{If \code{TRUE}, remove ENCODE control experiments from
-the search result.}
-
-\item{target}{Optional ChIP-seq target label, such as \code{"TBX5"} or
-\code{"H3K27ac"}.}
-
-\item{target_category}{Optional target category, such as \code{"histone"} or
-\code{"transcription factor"}.}
-
-\item{file_format}{Optional file-format filter used when \code{type = "File"},
-such as \code{"fastq"}, \code{"bed"}, \code{"bigWig"}, or \code{"tsv"}.}
-
-\item{output_type}{Optional file-output filter used when \code{type = "File"},
-such as \code{"reads"}, \code{"gene quantifications"}, or \code{"IDR ranked peaks"}.}
-
-\item{assembly}{Optional genome-assembly filter used when \code{type = "File"},
-such as \code{"GRCh38"} or \code{"mm10"}.}
-
-\item{status}{Optional ENCODE status filter. The default keeps released
-records only. Use \code{NULL} to omit the status filter.}
-
-\item{limit}{Number of records to return, or the explicit string \code{"all"}.
-For biological File searches, \code{"all"} also explicitly permits expansion
-across more than 25 matching parent experiments.}
-
-\item{metadata}{Amount of linked metadata to request. \code{"full"} gives richer
-lab, organism, biosample, and target columns. \code{"basic"} requests fewer
-fields.}
-
-\item{include_facets}{Whether to keep ENCODE facet counts in the result
-object for verbose printing.}
-
-\item{quiet}{If \code{FALSE}, print a concise query status message.}
+\item{quiet}{If \code{FALSE}, print a concise status message.}
 }
 \value{
-An \code{encode_search_result} object. The object contains \code{results}, the
-flattened result table; \code{raw}, the parsed ENCODE response including
-\verb{@graph}; \code{total}, the total number of matching records reported by
-ENCODE; \code{filters}, the active filter table; \code{facets}, ENCODE facet counts
-when requested; \code{columns}, response column metadata; \code{query_url};
-\code{metadata}; \code{frame}; the primary request metadata; and \code{request_history},
-which records every ENCODE request used to construct the result. Use
-\code{encode_results()} to extract \code{results}.
+An \code{encode_search_result} list. Use \code{encode_results()} to extract
+its flattened result table.
 }
 \description{
-Find ENCODE experiments, files, or other records. The search returns matching
-metadata rows and the total number of matches. It does not download data
-files.
-}
-\details{
-The result prints as a compact table. Use \code{encode_results()} to extract the
-table. Use \code{print(x, verbose = TRUE)} to show the query URL, active filters,
-and ENCODE facets.
-
-File searches with biological filters such as organism, biosample, organ,
-target, or assay first search matching ENCODE Experiment records and then
-query files attached to those experiments. File-format filters are applied
-to the attached File records. Limited File searches refuse to expand more
-than 25 parent experiments. Narrow the biological filters or use
-\code{limit = "all"} only when a complete File search is intended.
+Search ENCODE records with exact Portal filter fields. The result contains a
+flattened table, match count, active filters, facets, and request provenance.
+It does not download files.
 }
 \examples{
 experiments <- encode_search(
-    organism = "mouse",
-    assay = "rna-seq",
-    organ = "heart",
+    filters = list(
+        assay_title = "microRNA-seq",
+        "biosample_ontology.organ_slims" = "heart"
+    ),
     limit = 1,
     quiet = TRUE
 )

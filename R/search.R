@@ -1,93 +1,29 @@
 #' Search ENCODE metadata
 #'
-#' Find ENCODE experiments, files, or other records. The search returns matching
-#' metadata rows and the total number of matches. It does not download data
-#' files.
+#' Search ENCODE records with exact Portal filter fields. The result contains a
+#' flattened table, match count, active filters, facets, and request provenance.
+#' It does not download files.
 #'
-#' The result prints as a compact table. Use `encode_results()` to extract the
-#' table. Use `print(x, verbose = TRUE)` to show the query URL, active filters,
-#' and ENCODE facets.
-#'
-#' File searches with biological filters such as organism, biosample, organ,
-#' target, or assay first search matching ENCODE Experiment records and then
-#' query files attached to those experiments. File-format filters are applied
-#' to the attached File records. Limited File searches refuse to expand more
-#' than 25 parent experiments. Narrow the biological filters or use
-#' `limit = "all"` only when a complete File search is intended.
-#'
-#' @param type ENCODE object type to search, such as `"Experiment"` or `"File"`.
-#'   Use `"Experiment"` to find datasets and `"File"` to find individual files.
-#'   Use `NULL` only for mixed free-text searches.
-#' @param filters Named list of ENCODE search filters. ENCODE field names,
-#'   dot notation, and negated filters such as `"control_type!="` are accepted.
+#' @param type ENCODE object type, such as `"Experiment"` or `"File"`. Use
+#'   `NULL` only for mixed free-text searches.
+#' @param filters Named list of ENCODE search fields and values. Dot notation
+#'   and negated fields such as `"control_type!="` are accepted.
 #' @param search Optional free-text search term.
-#' @param organism Optional organism filter. Common values such as `"mouse"`,
-#'   `"human"`, `"Mus musculus"`, and `"Homo sapiens"` are accepted.
-#' @param assay Optional assay filter. Common values such as `"rna-seq"`,
-#'   `"atac-seq"`, `"chip-seq"`, `"histone chip-seq"`, and `"tf chip-seq"`
-#'   are expanded to ENCODE assay names.
-#' @param assay_type Optional broad assay category, such as `"Transcription"`,
-#'   `"DNA accessibility"`, or `"DNA binding"`.
-#' @param biosample Optional biosample or tissue term. This is added to the
-#'   free-text query so broader terms such as `"brain"` can find forebrain,
-#'   midbrain, hindbrain, cortex, and related ENCODE biosample terms.
-#' @param biosample_type Optional biosample class, such as `"tissue"`,
-#'   `"cell line"`, `"primary cell"`, or `"organoid"`.
-#' @param organ Optional organ facet, such as `"brain"`, `"heart"`, or
-#'   `"liver"`.
-#' @param cell Optional cell facet, such as `"T cell"`, `"neural cell"`, or
-#'   `"stem cell"`.
-#' @param system Optional anatomical system facet, such as `"immune system"` or
-#'   `"central nervous system"`.
-#' @param life_stage Optional life-stage filter, such as `"embryonic"`,
-#'   `"postnatal"`, `"adult"`, or `"fetal"`. `"fetal"` is treated as
-#'   `"embryonic"` for ENCODE mouse development searches.
-#' @param sex Optional sex filter, such as `"female"`, `"male"`, or `"mixed"`.
-#' @param disease Optional disease term.
-#' @param treatment Optional biosample-treatment term.
-#' @param cellular_component Optional subcellular fraction term, such as
-#'   `"nucleus"` or `"cytosol"`.
-#' @param development If `TRUE`, restrict experiments to organism-development
-#'   series records.
-#' @param exclude_controls If `TRUE`, remove ENCODE control experiments from
-#'   the search result.
-#' @param target Optional ChIP-seq target label, such as `"TBX5"` or
-#'   `"H3K27ac"`.
-#' @param target_category Optional target category, such as `"histone"` or
-#'   `"transcription factor"`.
-#' @param file_format Optional file-format filter used when `type = "File"`,
-#'   such as `"fastq"`, `"bed"`, `"bigWig"`, or `"tsv"`.
-#' @param output_type Optional file-output filter used when `type = "File"`,
-#'   such as `"reads"`, `"gene quantifications"`, or `"IDR ranked peaks"`.
-#' @param assembly Optional genome-assembly filter used when `type = "File"`,
-#'   such as `"GRCh38"` or `"mm10"`.
-#' @param status Optional ENCODE status filter. The default keeps released
-#'   records only. Use `NULL` to omit the status filter.
-#' @param limit Number of records to return, or the explicit string `"all"`.
-#'   For biological File searches, `"all"` also explicitly permits expansion
-#'   across more than 25 matching parent experiments.
-#' @param metadata Amount of linked metadata to request. `"full"` gives richer
-#'   lab, organism, biosample, and target columns. `"basic"` requests fewer
-#'   fields.
-#' @param include_facets Whether to keep ENCODE facet counts in the result
-#'   object for verbose printing.
-#' @param quiet If `FALSE`, print a concise query status message.
+#' @param status Optional ENCODE status. The default keeps released records;
+#'   use `NULL` to omit this filter.
+#' @param limit Number of records to return, or `"all"`.
+#' @param quiet If `FALSE`, print a concise status message.
 #'
-#' @return An `encode_search_result` object. The object contains `results`, the
-#'   flattened result table; `raw`, the parsed ENCODE response including
-#'   `@graph`; `total`, the total number of matching records reported by
-#'   ENCODE; `filters`, the active filter table; `facets`, ENCODE facet counts
-#'   when requested; `columns`, response column metadata; `query_url`;
-#'   `metadata`; `frame`; the primary request metadata; and `request_history`,
-#'   which records every ENCODE request used to construct the result. Use
-#'   `encode_results()` to extract `results`.
+#' @return An `encode_search_result` list. Use `encode_results()` to extract
+#'   its flattened result table.
 #' @export
 #'
 #' @examples
 #' experiments <- encode_search(
-#'     organism = "mouse",
-#'     assay = "rna-seq",
-#'     organ = "heart",
+#'     filters = list(
+#'         assay_title = "microRNA-seq",
+#'         "biosample_ontology.organ_slims" = "heart"
+#'     ),
 #'     limit = 1,
 #'     quiet = TRUE
 #' )
@@ -97,190 +33,64 @@ encode_search <- function(
     type = "Experiment",
     filters = list(),
     search = NULL,
-    organism = NULL,
-    assay = NULL,
-    assay_type = NULL,
-    biosample = NULL,
-    biosample_type = NULL,
-    organ = NULL,
-    cell = NULL,
-    system = NULL,
-    life_stage = NULL,
-    sex = NULL,
-    disease = NULL,
-    treatment = NULL,
-    cellular_component = NULL,
-    development = FALSE,
-    exclude_controls = FALSE,
-    target = NULL,
-    target_category = NULL,
-    file_format = NULL,
-    output_type = NULL,
-    assembly = NULL,
     status = "released",
     limit = 25,
-    metadata = c("full", "basic"),
-    include_facets = TRUE,
     quiet = FALSE
 ) {
     type <- encode_validate_scalar(type, "type")
-    status <- encode_validate_values(status, "status")
     search <- encode_validate_scalar(search, "search")
-    include_facets <- encode_validate_flag(include_facets, "include_facets")
+    status <- encode_validate_values(status, "status")
     quiet <- encode_validate_flag(quiet, "quiet")
-    metadata_request <- encode_metadata_request(metadata)
-    frame <- metadata_request$frame
-    metadata <- metadata_request$metadata
     encode_validate_filters(filters)
     encode_validate_limit(limit)
-    filters <- encode_add_file_search_filters(
-        type = type,
-        filters = filters,
-        file_format = file_format,
-        output_type = output_type,
-        assembly = assembly
-    )
-    # Route biological file filters through their parent experiments.
-    if (encode_use_file_experiment_search(
-        type = type,
-        organism = organism,
-        assay = assay,
-        assay_type = assay_type,
-        biosample = biosample,
-        biosample_type = biosample_type,
-        organ = organ,
-        cell = cell,
-        system = system,
-        life_stage = life_stage,
-        sex = sex,
-        disease = disease,
-        treatment = treatment,
-        cellular_component = cellular_component,
-        development = development,
-        exclude_controls = exclude_controls,
-        target = target,
-        target_category = target_category
-    )) {
-        return(encode_search_files_via_experiments(
-            filters = filters,
-            search = search,
-            organism = organism,
-            assay = assay,
-            assay_type = assay_type,
-            biosample = biosample,
-            biosample_type = biosample_type,
-            organ = organ,
-            cell = cell,
-            system = system,
-            life_stage = life_stage,
-            sex = sex,
-            disease = disease,
-            treatment = treatment,
-            cellular_component = cellular_component,
-            development = development,
-            exclude_controls = exclude_controls,
-            target = target,
-            target_category = target_category,
-            status = status,
-            limit = limit,
-            frame = frame,
-            metadata = metadata,
-            include_facets = include_facets,
-            quiet = quiet
-        ))
-    }
-    standard <- encode_standard_search_filters(
-        type = type,
-        organism = organism,
-        assay = assay,
-        assay_type = assay_type,
-        biosample_type = biosample_type,
-        organ = organ,
-        cell = cell,
-        system = system,
-        life_stage = life_stage,
-        sex = sex,
-        disease = disease,
-        treatment = treatment,
-        cellular_component = cellular_component,
-        development = development,
-        exclude_controls = exclude_controls,
-        target = target,
-        target_category = target_category
-    )
-    filters <- encode_merge_search_filters(standard, filters)
-    search <- encode_search_terms(search, biosample)
-
-    # Chunk dataset filters to keep ENCODE request URLs bounded.
-    if (encode_use_file_dataset_chunks(type, filters)) {
-        return(encode_search_file_dataset_chunks(
-            experiment_paths = as.character(filters$dataset),
-            filters = filters[names(filters) != "dataset"],
-            search = search,
-            status = status,
-            limit = limit,
-            frame = frame,
-            metadata = metadata,
-            include_facets = include_facets
-        ))
-    }
+    encode_validate_search_filters(filters)
 
     query <- encode_search_query(
         type = type,
         filters = filters,
         search = search,
         status = status,
-        limit = limit,
-        frame = frame
+        limit = limit
     )
-
-    if (!isTRUE(quiet)) {
-        shown_type <- type %||% "mixed"
-        cli::cli_inform("Querying ENCODE search ({.field {shown_type}}, limit {.val {limit}}).")
+    if (!quiet) {
+        cli::cli_inform(
+            "Querying ENCODE search ({.field {type %||% 'mixed'}}, limit {.val {limit}})."
+        )
     }
 
-    response <- encode_perform_json("/search/", query = query, allow_search_404 = TRUE)
-    raw <- response$data
-    graph <- raw$`@graph` %||% list()
-    facets <- if (isTRUE(include_facets)) {
-        encode_facets(raw)
-    } else {
-        encode_facets(list())
-    }
+    response <- encode_perform_json(
+        "/search/",
+        query = query,
+        allow_search_404 = TRUE
+    )
+    graph <- response$data$`@graph` %||% list()
+    active_filters <- encode_active_filters(response$data, query)
+    request_history <- list(encode_request_record(response, query))
     results <- encode_flatten_search_results(graph, type = type)
-    enrichment_requests <- list()
-    if (identical(type, "File")) {
-        results <- encode_enrich_file_table_from_parent_experiments(results, metadata = metadata)
-        enrichment_requests <- attr(results, "request_history", exact = TRUE) %||% list()
-    }
-    filters <- encode_active_filters(raw, query)
-    request_history <- c(
-        list(encode_request_record(response, query)),
-        enrichment_requests
-    )
     results <- encode_attach_metadata(
         results,
         query_url = response$url,
         retrieved_at = response$retrieved_at,
-        filters = filters,
+        filters = active_filters,
         request_history = request_history
     )
-    results <- encode_class_search_results(results, type = type)
+    if (identical(type, "File")) {
+        class(results) <- c("encode_file_table", "data.frame")
+    }
 
-    result <- encode_new_search_result(
+    result <- list(
         results = results,
-        raw = raw,
-        total = encode_total(raw, graph),
-        filters = filters,
-        facets = facets,
-        columns = encode_columns(raw),
-        response = response,
-        frame = frame,
-        metadata = metadata,
-        limit = limit,
+        total = encode_total(response$data, graph),
+        filters = active_filters,
+        facets = encode_facets(response$data),
+        query_url = response$url,
+        encode_base_url = encode_base_url(),
+        request = response[c("status_code", "content_type", "retrieved_at")],
         request_history = request_history
     )
-    if (!isTRUE(quiet)) {
+    class(result) <- c("encode_search_result", "list")
+
+    if (!quiet) {
         cli::cli_inform(
             "ENCODE search returned {nrow(results)} of {result$total} matching record(s)."
         )
@@ -288,36 +98,32 @@ encode_search <- function(
     result
 }
 
-encode_new_search_result <- function(
-    results,
-    raw,
-    total,
-    filters,
-    facets,
-    columns,
-    response,
-    frame,
-    metadata,
-    limit,
-    request_history = list()
-) {
-    result <- list(
-        results = results,
-        raw = raw,
-        total = total,
-        filters = filters,
-        facets = facets,
-        columns = columns,
-        query_url = response$url,
-        encode_base_url = encode_base_url(),
-        frame = frame,
-        metadata = metadata,
-        limit = limit,
-        request = response[c("status_code", "content_type", "retrieved_at")],
-        request_history = request_history
+encode_validate_search_filters <- function(filters) {
+    reserved <- intersect(
+        sub("!=$", "!", names(filters)),
+        c("type", "status", "searchTerm", "limit", "format", "frame")
     )
-    class(result) <- c("encode_search_result", "list")
-    result
+    if (length(reserved) > 0L) {
+        cli::cli_abort(
+            "Pass reserved search field(s) through their named arguments, not {.arg filters}: {.field {paste(reserved, collapse = ', ')}}."
+        )
+    }
+    invisible(filters)
+}
+
+encode_search_query <- function(type, filters, search, status, limit) {
+    query <- list(format = "json", frame = "embedded")
+    if (!is.null(type)) {
+        query$type <- type
+    }
+    if (!is.null(status)) {
+        query$status <- status
+    }
+    if (!is.null(search)) {
+        query$searchTerm <- search
+    }
+    query$limit <- as.character(limit)
+    c(query, filters)
 }
 
 encode_request_record <- function(response, query, role = "search") {
@@ -329,750 +135,4 @@ encode_request_record <- function(response, query, role = "search") {
         retrieved_at = encode_manifest_timestamp(response$retrieved_at),
         query = encode_filter_table(query)
     )
-}
-
-encode_request_roles <- function(request_history, role) {
-    lapply(request_history, function(request) {
-        request$role <- role
-        request
-    })
-}
-
-encode_combine_filter_tables <- function(...) {
-    tables <- Filter(
-        function(x) is.data.frame(x) && nrow(x) > 0L,
-        list(...)
-    )
-    if (length(tables) == 0L) {
-        return(data.frame(field = character(), value = character()))
-    }
-    unique(do.call(rbind, tables))
-}
-
-# File-search routing
-
-encode_add_file_search_filters <- function(
-    type,
-    filters,
-    file_format = NULL,
-    output_type = NULL,
-    assembly = NULL
-) {
-    file_format <- encode_validate_values(file_format, "file_format")
-    output_type <- encode_validate_values(output_type, "output_type")
-    assembly <- encode_validate_values(assembly, "assembly")
-    requested <- list(
-        file_format = file_format,
-        output_type = output_type,
-        assembly = assembly
-    )
-    requested <- requested[!vapply(requested, is.null, logical(1L))]
-    if (length(requested) == 0L) {
-        return(filters)
-    }
-    if (!identical(type, "File")) {
-        cli::cli_abort(
-            "{.arg file_format}, {.arg output_type}, and {.arg assembly} can only be used when {.code type = \"File\"}."
-        )
-    }
-    duplicate <- intersect(names(requested), names(filters))
-    if (length(duplicate) > 0L) {
-        fields <- paste(duplicate, collapse = ", ")
-        cli::cli_abort("Do not provide {.field {fields}} in both named arguments and {.arg filters}.")
-    }
-    c(filters, requested)
-}
-
-encode_use_file_experiment_search <- function(
-    type,
-    organism = NULL,
-    assay = NULL,
-    assay_type = NULL,
-    biosample = NULL,
-    biosample_type = NULL,
-    organ = NULL,
-    cell = NULL,
-    system = NULL,
-    life_stage = NULL,
-    sex = NULL,
-    disease = NULL,
-    treatment = NULL,
-    cellular_component = NULL,
-    development = FALSE,
-    exclude_controls = FALSE,
-    target = NULL,
-    target_category = NULL
-) {
-    identical(type, "File") &&
-        (
-            !is.null(organism) ||
-                !is.null(assay) ||
-                !is.null(assay_type) ||
-                !is.null(biosample) ||
-                !is.null(biosample_type) ||
-                !is.null(organ) ||
-                !is.null(cell) ||
-                !is.null(system) ||
-                !is.null(life_stage) ||
-                !is.null(sex) ||
-                !is.null(disease) ||
-                !is.null(treatment) ||
-                !is.null(cellular_component) ||
-                isTRUE(development) ||
-                isTRUE(exclude_controls) ||
-                !is.null(target) ||
-                !is.null(target_category)
-        )
-}
-
-encode_search_files_via_experiments <- function(
-    filters,
-    search = NULL,
-    organism = NULL,
-    assay = NULL,
-    assay_type = NULL,
-    biosample = NULL,
-    biosample_type = NULL,
-    organ = NULL,
-    cell = NULL,
-    system = NULL,
-    life_stage = NULL,
-    sex = NULL,
-    disease = NULL,
-    treatment = NULL,
-    cellular_component = NULL,
-    development = FALSE,
-    exclude_controls = FALSE,
-    target = NULL,
-    target_category = NULL,
-    status = "released",
-    limit = 25,
-    frame = "embedded",
-    metadata = "full",
-    include_facets = TRUE,
-    quiet = FALSE
-) {
-    if (!isTRUE(quiet)) {
-        cli::cli_inform(
-            "Querying ENCODE experiments first to support file searches with biological filters."
-        )
-    }
-    # Limited File searches first retrieve at most one row beyond the parent
-    # safety threshold. `limit = "all"` is the explicit opt-in to full parent
-    # discovery.
-    parent_limit <- 25L
-    parent_query_limit <- if (identical(limit, "all")) {
-        "all"
-    } else {
-        parent_limit + 1L
-    }
-    experiment_result <- encode_search(
-        type = "Experiment",
-        filters = list(),
-        search = search,
-        organism = organism,
-        assay = assay,
-        assay_type = assay_type,
-        biosample = biosample,
-        biosample_type = biosample_type,
-        organ = organ,
-        cell = cell,
-        system = system,
-        life_stage = life_stage,
-        sex = sex,
-        disease = disease,
-        treatment = treatment,
-        cellular_component = cellular_component,
-        development = development,
-        exclude_controls = exclude_controls,
-        target = target,
-        target_category = target_category,
-        status = status,
-        limit = parent_query_limit,
-        metadata = metadata,
-        include_facets = FALSE,
-        quiet = TRUE
-    )
-    experiments <- encode_results(experiment_result)
-    if (!identical(limit, "all") && experiment_result$total > parent_limit) {
-        cli::cli_abort(c(
-            "Search matched {experiment_result$total} parent experiments.",
-            "x" = "Limited searches expand at most {parent_limit}.",
-            "i" = "Narrow filters or select Experiment accessions first.",
-            "i" = "Use {.code limit = \"all\"} only for a complete File search."
-        ))
-    }
-    experiment_paths <- encode_experiment_paths(experiments)
-    experiment_paths <- unique(experiment_paths[!is.na(experiment_paths) & nzchar(experiment_paths)])
-    if (length(experiment_paths) == 0L) {
-        active_filters <- encode_combine_filter_tables(
-            experiment_result$filters,
-            encode_filter_table(filters)
-        )
-        request_history <- encode_request_roles(
-            experiment_result$request_history,
-            "parent_experiments"
-        )
-        results <- encode_empty_results("File")
-        results <- encode_attach_metadata(
-            results,
-            query_url = encode_query_url(experiment_result),
-            retrieved_at = experiment_result$request$retrieved_at,
-            filters = active_filters,
-            request_history = request_history
-        )
-        class(results) <- c("encode_file_table", "data.frame")
-        response <- c(
-            list(url = encode_query_url(experiment_result)),
-            experiment_result$request
-        )
-        result <- encode_new_search_result(
-            results = results,
-            raw = list(`@graph` = list(), total = 0L),
-            total = 0L,
-            filters = active_filters,
-            facets = encode_facets(list()),
-            columns = data.frame(field = character(), title = character()),
-            response = response,
-            frame = frame,
-            metadata = metadata,
-            limit = limit,
-            request_history = request_history
-        )
-        return(result)
-    }
-
-    result <- encode_search_file_dataset_chunks(
-        experiment_paths = experiment_paths,
-        filters = filters,
-        status = status,
-        limit = limit,
-        frame = frame,
-        metadata = metadata,
-        include_facets = include_facets,
-        experiments = experiments
-    )
-    result$request_history <- c(
-        encode_request_roles(
-            experiment_result$request_history,
-            "parent_experiments"
-        ),
-        result$request_history
-    )
-    result$filters <- encode_combine_filter_tables(
-        experiment_result$filters,
-        result$filters
-    )
-    result$results <- encode_attach_metadata(
-        result$results,
-        query_url = result$query_url,
-        retrieved_at = result$request$retrieved_at,
-        filters = result$filters,
-        request_history = result$request_history
-    )
-
-    if (!isTRUE(quiet)) {
-        cli::cli_inform(
-            "ENCODE file search returned {nrow(result$results)} of {result$total} file record(s) from {length(experiment_paths)} matching experiment(s)."
-        )
-    }
-    result
-}
-
-encode_search_file_dataset_chunks <- function(
-    experiment_paths,
-    filters,
-    search = NULL,
-    status = "released",
-    limit = 25,
-    frame = "embedded",
-    metadata = "full",
-    include_facets = TRUE,
-    experiments = NULL
-) {
-    experiment_paths <- unique(experiment_paths[!is.na(experiment_paths) & nzchar(experiment_paths)])
-    chunk_size <- encode_file_search_chunk_size()
-    chunks <- split(experiment_paths, ceiling(seq_along(experiment_paths) / chunk_size))
-    graphs <- vector("list", length(chunks))
-    total <- 0L
-    responses <- vector("list", length(chunks))
-    queries <- vector("list", length(chunks))
-    for (i in seq_along(chunks)) {
-        file_filters <- c(list(dataset = chunks[[i]]), filters)
-        query <- encode_search_query(
-            type = "File",
-            filters = file_filters,
-            search = search,
-            status = status,
-            limit = limit,
-            frame = frame
-        )
-        response <- encode_perform_json("/search/", query = query, allow_search_404 = TRUE)
-        graph <- response$data$`@graph` %||% list()
-        graphs[[i]] <- graph
-        total <- total + encode_total(response$data, graph)
-        responses[[i]] <- response
-        queries[[i]] <- query
-    }
-
-    response <- responses[[1L]]
-    query <- queries[[1L]]
-    all_graph <- unlist(graphs, recursive = FALSE, use.names = FALSE)
-    all_graph <- if (identical(limit, "all")) {
-        all_graph
-    } else {
-        all_graph[seq_len(min(as.integer(limit), length(all_graph)))]
-    }
-    raw <- response$data
-    raw$`@graph` <- all_graph
-    raw$total <- total
-    results <- encode_flatten_search_results(all_graph, type = "File")
-    enrichment_requests <- list()
-    if (is.null(experiments)) {
-        experiments <- encode_fetch_experiment_metadata_for_files(experiment_paths, metadata = metadata)
-        enrichment_requests <- attr(experiments, "request_history", exact = TRUE) %||% list()
-    }
-    results <- encode_fill_file_experiment_metadata(results, experiments)
-    active_filters <- do.call(
-        encode_combine_filter_tables,
-        Map(
-            function(chunk_response, chunk_query) {
-                encode_active_filters(chunk_response$data, chunk_query)
-            },
-            responses,
-            queries
-        )
-    )
-    request_history <- c(
-        Map(
-            function(chunk_response, chunk_query) {
-                encode_request_record(chunk_response, chunk_query, role = "file_chunk")
-            },
-            responses,
-            queries
-        ),
-        enrichment_requests
-    )
-    results <- encode_attach_metadata(
-        results,
-        query_url = response$url,
-        retrieved_at = response$retrieved_at,
-        filters = active_filters,
-        request_history = request_history
-    )
-    results <- encode_class_search_results(results, type = "File")
-    facets <- if (isTRUE(include_facets)) {
-        encode_combine_chunk_facets(responses)
-    } else {
-        encode_facets(list())
-    }
-    encode_new_search_result(
-        results = results,
-        raw = raw,
-        total = total,
-        filters = active_filters,
-        facets = facets,
-        columns = encode_columns(response$data),
-        response = response,
-        frame = frame,
-        metadata = metadata,
-        limit = limit,
-        request_history = request_history
-    )
-}
-
-encode_combine_chunk_facets <- function(responses) {
-    facets <- lapply(responses, function(response) encode_facets(response$data))
-    facets <- Filter(function(x) nrow(x) > 0L, facets)
-    if (length(facets) == 0L) {
-        return(encode_facets(list()))
-    }
-    facets <- do.call(rbind, facets)
-    keys <- paste(facets$field, facets$term, facets$title, sep = "\r")
-    keep <- !duplicated(keys)
-    combined <- facets[keep, , drop = FALSE]
-    combined$count <- vapply(keys[keep], function(key) {
-        sum(facets$count[keys == key], na.rm = TRUE)
-    }, numeric(1L))
-    row.names(combined) <- NULL
-    combined
-}
-
-encode_file_search_chunk_size <- function() {
-    chunk_size <- encode_option("encodeUtils.file_search_chunk_size", 50L)
-    encode_validate_positive_whole_number(
-        chunk_size,
-        "encodeUtils.file_search_chunk_size"
-    )
-}
-
-encode_use_file_dataset_chunks <- function(type, filters) {
-    identical(type, "File") &&
-        "dataset" %in% names(filters) &&
-        length(filters$dataset) > encode_file_search_chunk_size()
-}
-
-encode_class_search_results <- function(results, type) {
-    if (identical(type, "File")) {
-        class(results) <- c("encode_file_table", "data.frame")
-    }
-    if (identical(type, "Experiment")) {
-        class(results) <- c("encode_experiment_table", "data.frame")
-    }
-    results
-}
-
-# Query assembly
-
-encode_search_query <- function(
-    type,
-    filters,
-    search,
-    status,
-    limit,
-    frame
-) {
-    query <- list(format = "json", frame = frame)
-
-    if (!is.null(type)) {
-        query$type <- type
-    }
-    if (!is.null(status)) {
-        query$status <- status
-    }
-    if (!is.null(search)) {
-        query$searchTerm <- search
-    }
-    query$limit <- as.character(limit)
-
-    c(query, filters)
-}
-
-# Common biological filter normalization
-
-encode_standard_search_filters <- function(
-    type,
-    organism = NULL,
-    assay = NULL,
-    assay_type = NULL,
-    biosample_type = NULL,
-    organ = NULL,
-    cell = NULL,
-    system = NULL,
-    life_stage = NULL,
-    sex = NULL,
-    disease = NULL,
-    treatment = NULL,
-    cellular_component = NULL,
-    development = FALSE,
-    exclude_controls = FALSE,
-    target = NULL,
-    target_category = NULL
-) {
-    filters <- list()
-    organism <- encode_standard_organism(organism)
-    assay <- encode_standard_assay(assay)
-    assay_type <- encode_standard_assay_type(assay_type)
-    biosample_type <- encode_standard_biosample_type(biosample_type)
-    organ <- encode_validate_values(organ, "organ")
-    cell <- encode_validate_values(cell, "cell")
-    system <- encode_validate_values(system, "system")
-    life_stage <- encode_standard_life_stage(life_stage, organism = organism)
-    sex <- encode_standard_sex(sex)
-    disease <- encode_validate_values(disease, "disease")
-    treatment <- encode_validate_values(treatment, "treatment")
-    cellular_component <- encode_validate_values(cellular_component, "cellular_component")
-    development <- encode_validate_flag(development, "development")
-    exclude_controls <- encode_validate_flag(exclude_controls, "exclude_controls")
-    target <- encode_validate_values(target, "target")
-    target_category <- encode_standard_target_category(target_category)
-
-    if (!is.null(organism)) {
-        filters[[encode_standard_field(type, "organism")]] <- organism
-    }
-    if (!is.null(assay)) {
-        filters[[encode_standard_assay_field(type, assay$field)]] <- assay$value
-    }
-    if (!is.null(assay_type)) {
-        filters[[encode_standard_field(type, "assay_type")]] <- assay_type
-    }
-    if (!is.null(biosample_type)) {
-        filters[[encode_standard_field(type, "biosample_type")]] <- biosample_type
-    }
-    if (!is.null(organ)) {
-        filters[[encode_standard_field(type, "organ")]] <- organ
-    }
-    if (!is.null(cell)) {
-        filters[[encode_standard_field(type, "cell")]] <- cell
-    }
-    if (!is.null(system)) {
-        filters[[encode_standard_field(type, "system")]] <- system
-    }
-    if (!is.null(life_stage)) {
-        filters[[encode_standard_field(type, "life_stage")]] <- life_stage
-    }
-    if (!is.null(sex)) {
-        filters[[encode_standard_field(type, "sex")]] <- sex
-    }
-    if (!is.null(disease)) {
-        filters[[encode_standard_field(type, "disease")]] <- disease
-    }
-    if (!is.null(treatment)) {
-        filters[[encode_standard_field(type, "treatment")]] <- treatment
-    }
-    if (!is.null(cellular_component)) {
-        filters[[encode_standard_field(type, "cellular_component")]] <- cellular_component
-    }
-    if (isTRUE(development)) {
-        filters[[encode_standard_field(type, "development")]] <- "OrganismDevelopmentSeries"
-    }
-    if (isTRUE(exclude_controls)) {
-        filters[[paste0(encode_standard_field(type, "control_type"), "!")]] <- "*"
-    }
-    if (!is.null(target)) {
-        filters[[encode_standard_field(type, "target")]] <- target
-    }
-    if (!is.null(target_category)) {
-        filters[[encode_standard_field(type, "target_category")]] <- target_category
-    }
-
-    filters
-}
-
-encode_standard_field <- function(type, field) {
-    experiment <- is.null(type) || identical(type, "Experiment")
-    file <- identical(type, "File")
-    dataset_prefix <- if (isTRUE(file)) "dataset." else ""
-    replicate_prefix <- if (isTRUE(file)) {
-        "dataset.replicates.library.biosample."
-    } else if (isTRUE(experiment)) {
-        "replicates.library.biosample."
-    } else {
-        ""
-    }
-    switch(field,
-        assay_type = paste0(dataset_prefix, "assay_slims"),
-        biosample_type = paste0(dataset_prefix, "biosample_ontology.classification"),
-        organ = paste0(dataset_prefix, "biosample_ontology.organ_slims"),
-        cell = paste0(dataset_prefix, "biosample_ontology.cell_slims"),
-        system = paste0(dataset_prefix, "biosample_ontology.system_slims"),
-        target_category = paste0(dataset_prefix, "target.investigated_as"),
-        target = paste0(dataset_prefix, "target.label"),
-        development = paste0(dataset_prefix, "related_series.@type"),
-        organism = if (isTRUE(file)) {
-            "dataset.replicates.library.biosample.organism.scientific_name"
-        } else if (isTRUE(experiment)) {
-            "replicates.library.biosample.organism.scientific_name"
-        } else {
-            "organism.scientific_name"
-        },
-        life_stage = paste0(replicate_prefix, "life_stage"),
-        sex = paste0(replicate_prefix, "sex"),
-        disease = paste0(replicate_prefix, "disease_term_name"),
-        treatment = paste0(replicate_prefix, "treatments.treatment_term_name"),
-        cellular_component = paste0(replicate_prefix, "subcellular_fraction_term_name"),
-        control_type = if (isTRUE(file)) "dataset.control_type" else "control_type",
-        field
-    )
-}
-
-encode_standard_assay_field <- function(type, field) {
-    if (identical(type, "File") && field %in% c("assay_title", "assay_term_name")) {
-        return(paste0("dataset.", field))
-    }
-    field
-}
-
-encode_standard_organism <- function(organism) {
-    organism <- encode_validate_values(organism, "organism")
-    if (is.null(organism)) {
-        return(NULL)
-    }
-    # Normalize common aliases and pass other ENCODE organism names through.
-    aliases <- c(
-        mouse = "Mus musculus",
-        mice = "Mus musculus",
-        "mus musculus" = "Mus musculus",
-        human = "Homo sapiens",
-        humans = "Homo sapiens",
-        "homo sapiens" = "Homo sapiens"
-    )
-    vapply(organism, function(value) {
-        aliases[[tolower(value)]] %||% value
-    }, character(1L), USE.NAMES = FALSE)
-}
-
-encode_standard_assay <- function(assay) {
-    assay <- encode_validate_values(assay, "assay")
-    if (is.null(assay)) {
-        return(NULL)
-    }
-    # Keep all assay aliases on one ENCODE field to avoid ambiguous OR semantics.
-    values <- character()
-    fields <- character()
-    for (value in assay) {
-        mapped <- encode_standard_one_assay(value)
-        fields <- c(fields, mapped$field)
-        values <- c(values, mapped$value)
-    }
-    fields <- unique(fields)
-    if (length(fields) > 1L) {
-        cli::cli_abort(
-            "{.arg assay} values must map to one ENCODE assay field. Use separate searches for mixed assay groups."
-        )
-    }
-    list(field = fields[[1L]], value = unique(values))
-}
-
-encode_standard_one_assay <- function(assay) {
-    key <- gsub("[_ -]+", " ", tolower(assay))
-    key <- trimws(key)
-    if (key %in% c("rna seq", "rnaseq", "bulk rna seq", "bulk rnaseq", "rna-seq")) {
-        return(list(
-            field = "assay_title",
-            value = c("total RNA-seq", "polyA plus RNA-seq", "polyA minus RNA-seq")
-        ))
-    }
-    if (key %in% c("total rna seq", "total rnaseq", "total rna-seq")) {
-        return(list(field = "assay_title", value = "total RNA-seq"))
-    }
-    if (key %in% c("polya rna seq", "polya plus rna seq", "polya plus rnaseq", "poly a plus rna seq")) {
-        return(list(field = "assay_title", value = "polyA plus RNA-seq"))
-    }
-    if (key %in% c("atac seq", "atacseq", "atac-seq")) {
-        return(list(field = "assay_title", value = "ATAC-seq"))
-    }
-    if (key %in% c("chip seq", "chipseq", "chip-seq")) {
-        return(list(field = "assay_term_name", value = "ChIP-seq"))
-    }
-    if (key %in% c("histone chip seq", "histone chipseq", "histone chip-seq")) {
-        return(list(field = "assay_title", value = "Histone ChIP-seq"))
-    }
-    if (key %in% c("tf chip seq", "tf chipseq", "tf chip-seq", "transcription factor chip seq")) {
-        return(list(field = "assay_title", value = "TF ChIP-seq"))
-    }
-    list(field = "assay_title", value = assay)
-}
-
-encode_standard_assay_type <- function(assay_type) {
-    assay_type <- encode_validate_values(assay_type, "assay_type")
-    if (is.null(assay_type)) {
-        return(NULL)
-    }
-    aliases <- c(
-        transcription = "Transcription",
-        "dna accessibility" = "DNA accessibility",
-        accessibility = "DNA accessibility",
-        "dna binding" = "DNA binding",
-        "single cell" = "Single cell",
-        "rna binding" = "RNA binding",
-        "dna methylation" = "DNA methylation",
-        methylation = "DNA methylation",
-        "3d chromatin structure" = "3D chromatin structure",
-        "chromatin structure" = "3D chromatin structure"
-    )
-    vapply(assay_type, function(value) {
-        aliases[[tolower(value)]] %||% value
-    }, character(1L), USE.NAMES = FALSE)
-}
-
-encode_standard_biosample_type <- function(biosample_type) {
-    biosample_type <- encode_validate_values(biosample_type, "biosample_type")
-    if (is.null(biosample_type)) {
-        return(NULL)
-    }
-    aliases <- c(
-        tissue = "tissue",
-        "cell line" = "cell line",
-        cellline = "cell line",
-        "primary cell" = "primary cell",
-        "primary cells" = "primary cell",
-        organoid = "organoid",
-        organoids = "organoid",
-        "whole organism" = "whole organisms",
-        "whole organisms" = "whole organisms"
-    )
-    vapply(biosample_type, function(value) {
-        aliases[[tolower(value)]] %||% value
-    }, character(1L), USE.NAMES = FALSE)
-}
-
-encode_standard_life_stage <- function(life_stage, organism = NULL) {
-    life_stage <- encode_validate_values(life_stage, "life_stage")
-    if (is.null(life_stage)) {
-        return(NULL)
-    }
-    is_mouse <- any(tolower(organism %||% character()) %in% "mus musculus")
-    vapply(life_stage, function(value) {
-        key <- gsub("[_ -]+", " ", tolower(value))
-        key <- trimws(key)
-        aliases <- c(
-            embryo = "embryonic",
-            embryonic = "embryonic",
-            postnatal = "postnatal",
-            adult = "adult",
-            newborn = "newborn"
-        )
-        if (key %in% c("fetal", "foetal")) {
-            return(if (isTRUE(is_mouse)) "embryonic" else "fetal")
-        }
-        aliases[[key]] %||% value
-    }, character(1L), USE.NAMES = FALSE)
-}
-
-encode_standard_sex <- function(sex) {
-    sex <- encode_validate_values(sex, "sex")
-    if (is.null(sex)) {
-        return(NULL)
-    }
-    aliases <- c(
-        female = "female",
-        male = "male",
-        mixed = "mixed",
-        "mixed sex" = "mixed",
-        unknown = "unknown"
-    )
-    vapply(sex, function(value) {
-        aliases[[tolower(value)]] %||% value
-    }, character(1L), USE.NAMES = FALSE)
-}
-
-encode_standard_target_category <- function(target_category) {
-    target_category <- encode_validate_values(target_category, "target_category")
-    if (is.null(target_category)) {
-        return(NULL)
-    }
-    aliases <- c(
-        histone = "histone",
-        tf = "transcription factor",
-        "transcription factor" = "transcription factor",
-        "rna binding protein" = "RNA binding protein",
-        rbp = "RNA binding protein",
-        cofactor = "cofactor",
-        cohesin = "cohesin",
-        "chromatin remodeler" = "chromatin remodeler"
-    )
-    vapply(target_category, function(value) {
-        aliases[[tolower(value)]] %||% value
-    }, character(1L), USE.NAMES = FALSE)
-}
-
-encode_merge_search_filters <- function(standard, filters) {
-    if (length(filters) == 0L) {
-        return(standard)
-    }
-    for (name in names(filters)) {
-        standard[[name]] <- filters[[name]]
-    }
-    standard
-}
-
-encode_search_terms <- function(search, biosample = NULL) {
-    biosample <- encode_validate_scalar(biosample, "biosample")
-    if (is.null(search) && is.null(biosample)) {
-        return(NULL)
-    }
-    terms <- c(search %||% character(), biosample %||% character())
-    terms <- unique(trimws(terms[nzchar(trimws(terms))]))
-    paste(terms, collapse = " ")
 }

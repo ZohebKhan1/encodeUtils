@@ -2,7 +2,7 @@
 % Please edit documentation in R/select-files.R
 \name{encode_file_presets}
 \alias{encode_file_presets}
-\title{List or inspect ENCODE file-selection presets}
+\title{List or inspect file-selection presets}
 \usage{
 encode_file_presets(preset = NULL)
 }
@@ -10,19 +10,12 @@ encode_file_presets(preset = NULL)
 \item{preset}{Preset name, or \code{NULL} to list all preset names.}
 }
 \value{
-A character vector of preset names when \code{preset = NULL}. For one
-preset, returns a list with \code{file_format} and \code{output_type_priority}, which
-are passed to \code{encode_select_files()} when the corresponding explicit
-arguments are not supplied.
+A character vector of preset names or one preset definition.
 }
 \description{
-File-selection presets provide common file-format and output-type
-preferences for \code{encode_select_files()}.
+List or inspect file-selection presets
 }
 \examples{
-# List all available presets.
 encode_file_presets()
-
-# Inspect the exact preferences in one preset.
 encode_file_presets("rnaseq_gene_quant")
 }

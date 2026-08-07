@@ -74,25 +74,6 @@ encode_facets <- function(x) {
     do.call(rbind, rows)
 }
 
-encode_columns <- function(raw) {
-    columns <- raw$columns
-    if (is.null(columns) || length(columns) == 0L) {
-        return(data.frame(
-            field = character(),
-            title = character(),
-            stringsAsFactors = FALSE
-        ))
-    }
-    if (is.list(columns) && !is.null(names(columns))) {
-        return(data.frame(
-            field = names(columns),
-            title = vapply(columns, function(x) encode_scalar(x$title %||% x), character(1L)),
-            stringsAsFactors = FALSE
-        ))
-    }
-    data.frame(field = character(), title = character(), stringsAsFactors = FALSE)
-}
-
 encode_flatten_search_results <- function(graph, type) {
     if (length(graph) == 0L) {
         return(encode_empty_results(type))

@@ -2,19 +2,14 @@
 % Please edit documentation in R/select-files.R
 \name{encode_select_files}
 \alias{encode_select_files}
-\title{Select ENCODE files to use or download}
+\title{Select ENCODE files}
 \usage{
 encode_select_files(
   files,
   preset = NULL,
-  file_format = NULL,
-  output_type = NULL,
-  assembly = NULL,
   file_accession = NULL,
-  status = "released",
   replicate_policy = c("all", "preferred_processed", "replicate_level", "pooled_only"),
   prefer_default = FALSE,
-  require_href = TRUE,
   quiet = FALSE
 )
 }
@@ -22,58 +17,37 @@ encode_select_files(
 \item{files}{File metadata from \code{encode_list_files()}, a File search result,
 a selected-file object, or ENCFF accession(s).}
 
-\item{preset}{Optional preset name. Use \code{encode_file_presets()} to list the
-canonical preset names.}
+\item{preset}{Optional preset name. Use \code{encode_file_presets()} to list or
+inspect presets.}
 
-\item{file_format}{Optional file format filter. If omitted and \code{preset} is set,
-the preset supplies a format preference.}
-
-\item{output_type}{Optional output type filter. If omitted and \code{preset} is set,
-the preset supplies an output-type priority.}
-
-\item{assembly}{Optional genome assembly filter.}
-
-\item{file_accession}{Optional ENCODE file accession(s), such as
-\code{"ENCFF260OJQ"}, to select explicitly before applying other filters.}
-
-\item{status}{Optional status filter. Defaults to \code{"released"}.}
+\item{file_accession}{Optional ENCFF accession(s) to retain.}
 
 \item{replicate_policy}{How to handle replicate-related outputs. \code{"all"}
-keeps all matching files; \code{"preferred_processed"} keeps the highest-priority
-output type per experiment when a preset priority is available;
-\code{"replicate_level"} keeps files with biological replicate labels;
-\code{"pooled_only"} keeps files whose output type indicates pooled or IDR-like
-processing.}
+keeps all matching files; \code{"preferred_processed"} keeps the first
+preset-ranked output type per experiment; \code{"replicate_level"} keeps
+single-replicate files; and \code{"pooled_only"} keeps pooled or IDR-like
+outputs.}
 
-\item{prefer_default}{Whether to prefer ENCODE records marked
-\code{preferred_default}. When no preferred-default rows are present, the filter
-is skipped and the other explicit criteria are used.}
-
-\item{require_href}{Whether selected rows must include an ENCODE download
-path or URL.}
+\item{prefer_default}{Whether to prefer records marked \code{preferred_default}
+within each experiment when such records are available.}
 
 \item{quiet}{If \code{FALSE}, print a concise selection message.}
 }
 \value{
-An \code{encode_selected_files} object with \code{files}, the selected
-\code{encode_file_table}; \code{excluded}, a table of non-selected rows and reasons;
-\code{criteria}, the applied filters and preset settings; \code{query_url}; and
-\code{retrieved_at}.
+An \code{encode_selected_files} list containing selected files, excluded
+files with reasons, and the applied criteria.
 }
 \description{
-Choose files from an \code{encode_list_files()} table using explicit filters or a
-preset. The result keeps the selected files for download or reading.
-}
-\details{
-Use \code{encode_file_presets()} to list available presets or inspect one preset.
+Apply a reusable file preset and optional replicate policy to a file table.
+Use \code{encode_list_files()} or ordinary data-frame subsetting for exact file
+format, output type, assembly, and status filters.
 }
 \examples{
 files <- data.frame(
     file_accession = c("ENCFFONE", "ENCFFTWO"),
+    experiment_accession = "ENCSRONE",
     file_format = c("tsv", "bed"),
     output_type = c("gene quantifications", "peaks"),
-    assembly = "mm10",
-    status = "released",
     href = c(
         "/files/ENCFFONE/@@download/a.tsv",
         "/files/ENCFFTWO/@@download/b.bed"
@@ -83,7 +57,6 @@ files <- data.frame(
 selected <- encode_select_files(
     files,
     preset = "rnaseq_gene_quant",
-    assembly = "mm10",
     quiet = TRUE
 )
 

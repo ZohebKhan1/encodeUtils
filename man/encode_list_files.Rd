@@ -11,50 +11,34 @@ encode_list_files(
   assembly = NULL,
   status = "released",
   limit = "all",
-  metadata = c("basic", "full"),
-  allow_many = FALSE,
   quiet = FALSE
 )
 }
 \arguments{
-\item{x}{Experiment accession(s), experiment path(s), a search result from
-\code{encode_search()}, or a data frame containing experiment identifiers.}
+\item{x}{Experiment accession(s), experiment path(s), a search result, or a
+data frame containing experiment identifiers.}
 
-\item{file_format}{Optional file format filter, such as \code{"fastq"}, \code{"bed"},
-\code{"bigWig"}, or \code{"tsv"}.}
+\item{file_format}{Optional file format, such as \code{"fastq"}, \code{"bed"}, or
+\code{"tsv"}.}
 
-\item{output_type}{Optional ENCODE output type filter, such as \code{"reads"} or
+\item{output_type}{Optional ENCODE output type, such as \code{"reads"} or
 \code{"gene quantifications"}.}
 
-\item{assembly}{Optional genome assembly filter, such as \code{"GRCh38"} or
-\code{"mm10"}.}
+\item{assembly}{Optional genome assembly, such as \code{"GRCh38"} or \code{"mm10"}.}
 
-\item{status}{Optional file status filter. Use \code{NULL} to omit.}
+\item{status}{Optional file status. Use \code{NULL} to omit.}
 
-\item{limit}{Number of file records to request, or \code{"all"}.}
-
-\item{metadata}{Amount of linked metadata to request. \code{"basic"} keeps
-responses smaller. \code{"full"} adds more display columns.}
-
-\item{allow_many}{Whether to allow many experiment datasets in one query.}
+\item{limit}{Number of file records to return, or \code{"all"}.}
 
 \item{quiet}{If \code{FALSE}, print a concise status message.}
 }
 \value{
-An \code{encode_file_table} data frame. Common columns include
-\code{file_accession}, \code{experiment_accession}, \code{dataset_accession},
-\code{file_format}, \code{output_type}, \code{assembly}, \code{file_size}, \code{md5sum}, \code{href},
-\code{cloud_url}, and parent experiment metadata when available. The function
-lists metadata only; it does not download file contents.
+An \code{encode_file_table} data frame with file metadata and request
+provenance.
 }
 \description{
-Return file metadata for one or more ENCODE experiments. The table includes
-file accessions, formats, output types, assemblies, sizes, checksums, and
-download links. It does not download file contents.
-}
-\details{
-The default \code{limit = "all"} requests the complete file list for the selected
-experiments.
+Return file metadata for one or more ENCODE experiments. File filters are
+sent to the Portal; the function does not download file contents.
 }
 \examples{
 files <- encode_list_files(

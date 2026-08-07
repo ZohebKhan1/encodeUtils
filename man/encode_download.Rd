@@ -6,15 +6,9 @@
 \usage{
 encode_download(
   x,
-  file_accession = NULL,
-  file_format = NULL,
-  output_type = NULL,
-  assembly = NULL,
-  status = "released",
-  limit = NULL,
   directory = NULL,
-  max_file_size = "250MB",
-  max_total_size = "500MB",
+  max_file_size = NULL,
+  max_total_size = NULL,
   allow_unknown_size = FALSE,
   overwrite = FALSE,
   dry_run = FALSE,
@@ -24,38 +18,19 @@ encode_download(
 )
 }
 \arguments{
-\item{x}{ENCFF accession(s), file metadata table, file search result,
-selected-file object, or ENCSR experiment accession(s). ENCSR input is
-first passed to \code{encode_list_files()}.}
-
-\item{file_accession}{Optional ENCODE file accession(s), such as
-\code{"ENCFF260OJQ"}, to download from \code{x}. Use this when you want specific
-files rather than the first \code{limit} rows.}
-
-\item{file_format}{Optional file-format filter used when \code{x} is an ENCSR
-experiment accession.}
-
-\item{output_type}{Optional output-type filter used when \code{x} is an ENCSR
-experiment accession.}
-
-\item{assembly}{Optional genome-assembly filter used when \code{x} is an ENCSR
-experiment accession.}
-
-\item{status}{Optional file-status filter used when \code{x} is an ENCSR
-experiment accession.}
-
-\item{limit}{Optional number of files to use from the top of \code{x}.}
+\item{x}{ENCFF accession(s), file metadata table, File search result, or
+selected-file object. Use \code{encode_list_files()} before downloading an
+experiment.}
 
 \item{directory}{Destination directory. If \code{NULL}, a package cache directory
 from \code{tools::R_user_dir("encodeUtils", "cache")} is used. Supply an
 explicit project directory for reusable data.}
 
-\item{max_file_size}{Maximum ENCODE-reported size accepted per file during
-planning, as bytes or a string like \code{"500MB"}. The observed size is
-checked after transfer when size verification is enabled.}
+\item{max_file_size}{Optional maximum ENCODE-reported size per file, as bytes
+or a string like \code{"500MB"}. The default \code{NULL} is uncapped.}
 
-\item{max_total_size}{Maximum total ENCODE-reported size accepted during
-planning, as bytes or a string.}
+\item{max_total_size}{Optional maximum total ENCODE-reported size. The
+default \code{NULL} is uncapped.}
 
 \item{allow_unknown_size}{Whether to allow real downloads for files whose
 ENCODE metadata do not include \code{file_size}. Dry-runs are always allowed and
@@ -84,10 +59,10 @@ Printing the result shows the transfer status and local destination; use
 \code{encode_results()} for the complete table.
 }
 \description{
-Download files from an ENCODE file table, selected-file object, file search,
-or file accession. Planned sizes are checked before transfer, existing files
-are not overwritten by default, files are written through a unique temporary
-\code{.part} path, and size/MD5 checks are used when ENCODE provides the metadata.
+Download exact files from an ENCODE file table, selected-file object, File
+search, or ENCFF accession. Existing files are not overwritten by default,
+transfers use a temporary \code{.part} path, and size and MD5 checks are applied
+when ENCODE provides the corresponding metadata.
 }
 \examples{
 plan <- encode_download(

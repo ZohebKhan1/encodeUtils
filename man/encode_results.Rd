@@ -8,13 +8,13 @@ encode_results(x)
 }
 \arguments{
 \item{x}{An object returned by \code{encode_search()}, \code{encode_list_files()},
-\code{encode_select_files()}, \code{encode_download()}, or \code{encode_read()}.}
+\code{encode_select_files()}, \code{encode_download()}, or \code{encode_read_all()}.}
 }
 \value{
 A data frame. For \code{encode_search()} and \code{encode_list_files()} output,
 this is the record or file table. For \code{encode_select_files()}, it is the
 selected file table. For \code{encode_download()}, it is the download-result
-table. For \code{encode_read()} collection output, it is the loaded-file
+table. For \code{encode_read_all()} output, it is the loaded-file
 metadata table.
 }
 \description{
@@ -31,9 +31,10 @@ files <- data.frame(
     href = "/files/ENCFFONE/@@download/a.tsv"
 )
 
-selected <- encode_select_files(files,
+selected <- encode_select_files(
+    files,
     preset = "rnaseq_gene_quant",
-    assembly = "mm10", quiet = TRUE
+    quiet = TRUE
 )
 
 encode_results(selected)
