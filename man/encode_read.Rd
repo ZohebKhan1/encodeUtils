@@ -12,7 +12,7 @@ encode_read(
   allow_large = FALSE,
   unsupported = c("return_path", "error"),
   as = c("auto", "data.frame", "GRanges", "path", "SummarizedExperiment"),
-  row_names = c("gene_symbol", "ensembl_id", "entrez_id", "none"),
+  row_names = c("gene_symbol", "gene_id", "ensembl_id", "entrez_id", "none"),
   values = "raw_counts",
   simplify_quant = TRUE,
   ...
@@ -20,57 +20,62 @@ encode_read(
 }
 \arguments{
 \item{path}{Local file path, downloaded-file table, or file table with a
-`local_path` column.}
+\code{local_path} column.}
 
 \item{format}{Optional file format override.}
 
-\item{max_size}{Maximum size to read into memory, as bytes or a string.}
+\item{max_size}{Maximum uncompressed size to read into memory, as bytes or a
+string. Compressed text inputs are scanned before import.}
 
-\item{region}{Optional genomic range object passed to `rtracklayer::import()`
-as `which` for indexed genomic formats.}
+\item{region}{Optional genomic range object passed to \code{rtracklayer::import()}
+as \code{which} for indexed genomic formats.}
 
 \item{allow_large}{Whether to allow full import of indexed formats such as
-bigWig or bigBed without `region`.}
+bigWig or bigBed without \code{region}.}
 
-\item{unsupported}{What to do for unsupported formats. Use `"return_path"`
-to return an `encode_local_file` path object, or `"error"` to fail.}
+\item{unsupported}{What to do for unsupported formats. Use \code{"return_path"}
+to return an \code{encode_local_file} path object, or \code{"error"} to fail.}
 
-\item{as}{Return type. `"auto"` uses Bioconductor classes for genomic
-formats, including `GRanges` for BED-like intervals. Use `"data.frame"`
+\item{as}{Return type. \code{"auto"} uses Bioconductor classes for genomic
+formats, including \code{GRanges} for BED-like intervals. Use \code{"data.frame"}
 to force tabular BED-like output,
-`"GRanges"` to require genomic ranges for BED-like formats, or `"path"` to
-return an `encode_local_file` path object. For a downloaded-file table,
-use `"SummarizedExperiment"` to return aligned expression matrices with
-feature and file metadata in a `SummarizedExperiment`.}
+\code{"GRanges"} to require genomic ranges for BED-like formats, or \code{"path"} to
+return an \code{encode_local_file} path object. For a downloaded-file table,
+use \code{"SummarizedExperiment"} to return aligned expression matrices with
+feature and file metadata in a \code{SummarizedExperiment}.}
 
-\item{row_names}{Column to use for row names in loaded expression tables.
-Use `"none"` to keep default integer row names.}
+\item{row_names}{Identifier column to prefer for expression-table row names.
+If that column is unavailable, the complete feature identifier used to
+assemble the matrix is retained. Use \code{"none"} to omit row names.}
 
 \item{values}{Expression values to combine across files. Defaults to
-`"raw_counts"`. Use values such as `"tpm"`, `"fpkm"`, or `"rpkm"` when
-those matrices are needed, or `"all"` to build every supported matrix.}
+\code{"raw_counts"}. Use values such as \code{"tpm"}, \code{"fpkm"}, or \code{"rpkm"} when
+those matrices are needed, or \code{"all"} to build every supported matrix.}
 
 \item{simplify_quant}{Whether ENCODE gene-quantification tables should be
-normalized to common identifier and expression columns. Use `FALSE` to
-preserve the raw columns from the downloaded file.}
+normalized to common identifier and expression columns already present in
+the file. This does not query or use external annotation databases. Use
+\code{FALSE} to preserve the raw columns from the downloaded file.}
 
 \item{...}{Additional arguments passed to table readers where applicable.}
 }
 \value{
 The return type depends on input shape and file format. A local path
-  returns the native object for that file:
-  text tables return data frames, JSON returns a list, FASTA returns a
-  `DNAStringSet` when `Biostrings` is installed, BED-like intervals return
-  `GRanges`, and
-  GFF/GTF, BigWig, and BigBed return `rtracklayer` imports when available
-  and readable. Native-reader failures follow the `unsupported` policy.
-  ENCODE peak files with extra nonstandard columns may fall back to a data
-  frame unless `as = "GRanges"` is requested. FASTQ and alignment formats
-  return `encode_local_file` path objects by default. Downloaded-file tables
-  return an `encode_loaded_files` object with `metadata`, `data`, `row_data`,
-  and `matrices` components. With `as = "SummarizedExperiment"`, a
-  downloaded-file table returns a `SummarizedExperiment` when compatible
-  matrices were assembled.
+returns the native object for that file:
+text tables return data frames, JSON returns a list, FASTA returns a
+\code{DNAStringSet} when \code{Biostrings} is installed, BED-like intervals return
+\code{GRanges}, and
+GFF/GTF, BigWig, and BigBed return \code{rtracklayer} imports when available
+and readable. Native-reader failures follow the \code{unsupported} policy.
+ENCODE peak files with extra nonstandard columns may fall back to a data
+frame in automatic mode; \code{as = "GRanges"} fails if conversion is not
+possible. FASTQ and alignment formats
+return \code{encode_local_file} path objects by default. Downloaded-file tables
+return an \code{encode_loaded_files} object with \code{metadata}, \code{data}, \code{row_data},
+and \code{matrices} components. With \code{as = "SummarizedExperiment"}, a
+downloaded-file table returns a \code{SummarizedExperiment} when compatible
+matrices were assembled. Its \code{metadata(se)$encodeUtils} entry retains the
+source query, request history, filters, and file-selection criteria.
 }
 \description{
 Read one or more files that are already on disk. Small tabular and JSON files
@@ -83,18 +88,16 @@ When downloaded gene-quantification TSV tables are read together, the
 returned object includes complete file metadata, individual file tables,
 aligned feature metadata, and numeric expression matrices. A local path
 returns the native object for that file. A downloaded-file table always
-returns an `encode_loaded_files` collection, including for a one-row table.
+returns an \code{encode_loaded_files} collection, including for a one-row table.
 Combined matrices are created only when every table has one complete, unique
-feature identifier in common; otherwise the original tables are retained
-without an inferred alignment.
+feature identifier, the same feature set, and compatible ENCODE organism,
+assembly, output-type, and genome-annotation metadata when those fields are
+available. Otherwise the original tables are retained without an inferred
+alignment.
 }
 \examples{
-example_dir <- system.file("example-data", package = "encodeUtils")
-files <- utils::read.csv(file.path(example_dir, "files.csv"))
-files$local_path <- file.path(example_dir, files$local_name)
-files$download_status <- "exists"
-loaded <- encode_read(files, values = c("raw_counts", "tpm"))
-loaded$matrices$raw_counts
-encode_read(files, values = c("raw_counts", "tpm"),
-            as = "SummarizedExperiment")
+path <- tempfile(fileext = ".tsv")
+writeLines(c("gene_id\texpected_count", "Gata4\t10", "Tbx5\t4"), path)
+
+encode_read(path)
 }

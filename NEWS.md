@@ -1,3 +1,34 @@
+# encodeUtils 0.99.11
+
+## Live workflow
+
+- Replace the synthetic primary tutorial with an evaluated live ENCODE
+  workflow pinned to released mouse-heart microRNA quantification records.
+  The two verified files total about 122 KB and are downloaded under explicit
+  per-file and total size limits.
+- Keep live search and file-listing help examples interactive while the
+  vignette exercises the complete network workflow during its build.
+- Show compact, evaluated output for every loaded-object component, distinguish
+  source counts from unavailable TPM values, and separate independent reference
+  example calls for readability.
+
+## Correctness and provenance
+
+- Apply File-search limits to files rather than parent experiments, remove the
+  non-equivalent direct fallback, and retain every parent and chunk request in
+  result tables and manifests.
+- Refuse matrix assembly across conflicting organism, assembly, output-type,
+  genome-annotation, or feature-set metadata; align `SummarizedExperiment`
+  sample metadata to the files that contributed assay columns, and retain the
+  source requests and file-selection criteria in its package-level metadata.
+- Remove environment-dependent automatic `org.*.eg.db` annotation. Table
+  simplification now uses only identifiers already present in the source file.
+- Enforce `max_size` against decompressed text size, use unique partial-download
+  paths, and compute observed MD5 values independently of portal metadata.
+- Allow `gene_id` to be selected explicitly for expression-table row names.
+- Apply preferred-default selection within each experiment, distinguish pooled
+  from replicate-level files, and retain every applicable exclusion reason.
+
 # encodeUtils 0.99.10
 
 ## Bioconductor readiness

@@ -121,6 +121,7 @@ encode_attribution_from_file_table <- function(
     max_enrich_datasets = 10,
     quiet = FALSE
 ) {
+    retrieval_date <- encode_attribution_retrieval_date(files)
     files <- as.data.frame(files, stringsAsFactors = FALSE)
     if (!"file_accession" %in% names(files) && "accession" %in% names(files)) {
         files$file_accession <- files$accession
@@ -169,7 +170,7 @@ encode_attribution_from_file_table <- function(
         experiment_url = experiment_url,
         file_url = files$url,
         download_url = files$download_url,
-        retrieval_date = as.character(Sys.Date()),
+        retrieval_date = retrieval_date,
         attribution_guidance_url = "https://www.encodeproject.org/help/citing-encode/",
         stringsAsFactors = FALSE
     )
@@ -292,6 +293,7 @@ encode_enrich_file_attribution <- function(files) {
 # Experiment attribution
 
 encode_attribution_from_experiment_table <- function(experiments) {
+    retrieval_date <- encode_attribution_retrieval_date(experiments)
     experiments <- as.data.frame(experiments, stringsAsFactors = FALSE)
     experiments <- encode_ensure_columns(experiments, c(
         "accession", "lab", "institution", "project", "assay_title",
@@ -317,13 +319,21 @@ encode_attribution_from_experiment_table <- function(experiments) {
         experiment_url = experiments$url,
         file_url = NA_character_,
         download_url = NA_character_,
-        retrieval_date = as.character(Sys.Date()),
+        retrieval_date = retrieval_date,
         attribution_guidance_url = "https://www.encodeproject.org/help/citing-encode/",
         stringsAsFactors = FALSE
     )
     out <- out[encode_attribution_columns()]
     class(out) <- c("encode_attribution_table", "data.frame")
     out
+}
+
+encode_attribution_retrieval_date <- function(x) {
+    retrieved_at <- attr(x, "retrieved_at", exact = TRUE)
+    if (is.null(retrieved_at) || length(retrieved_at) == 0L || all(is.na(retrieved_at))) {
+        return(as.character(Sys.Date()))
+    }
+    as.character(as.Date(retrieved_at, tz = "UTC"))
 }
 
 # Attribution table schema

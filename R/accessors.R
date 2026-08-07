@@ -14,10 +14,18 @@
 #' @export
 #'
 #' @examples
-#' example_dir <- system.file("example-data", package = "encodeUtils")
-#' files <- utils::read.csv(file.path(example_dir, "files.csv"))
+#' files <- data.frame(
+#'     file_accession = "ENCFFONE",
+#'     file_format = "tsv",
+#'     output_type = "gene quantifications",
+#'     assembly = "mm10",
+#'     status = "released",
+#'     href = "/files/ENCFFONE/@@@@download/a.tsv"
+#' )
+#'
 #' selected <- encode_select_files(files, preset = "rnaseq_gene_quant",
 #'                                 assembly = "mm10", quiet = TRUE)
+#'
 #' encode_results(selected)
 encode_results <- function(x) {
     if (inherits(x, "encode_search_result")) {
@@ -91,4 +99,27 @@ encode_filters <- function(x) {
         return(filters)
     }
     data.frame(field = character(), value = character())
+}
+
+encode_request_history <- function(x) {
+    if (inherits(x, "encode_loaded_files")) {
+        return(encode_request_history(x$metadata))
+    }
+    if (inherits(x, "encode_selected_files")) {
+        return(encode_request_history(x$files))
+    }
+    if (is.list(x) && !is.null(x$request_history)) {
+        return(x$request_history)
+    }
+    attr(x, "request_history", exact = TRUE) %||% list()
+}
+
+encode_selection_criteria <- function(x) {
+    if (inherits(x, "encode_loaded_files")) {
+        return(encode_selection_criteria(x$metadata))
+    }
+    if (inherits(x, "encode_selected_files")) {
+        return(x$criteria)
+    }
+    attr(x, "selection_criteria", exact = TRUE)
 }

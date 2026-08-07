@@ -27,8 +27,47 @@ test_that("experiment searches flatten fixture metadata and preserve request con
     expect_true(all(c("results", "raw", "filters", "request") %in% names(result)))
     expect_named(result, c(
         "results", "raw", "total", "filters", "facets", "columns",
-        "query_url", "encode_base_url", "frame", "metadata", "limit", "request"
+        "query_url", "encode_base_url", "frame", "metadata", "limit", "request",
+        "request_history"
     ))
+    expect_length(result$request_history, 1L)
+    expect_equal(result$request_history[[1L]]$role, "search")
+})
+
+test_that("biological File limits apply after complete parent discovery", {
+    local_encode_test_options()
+    withr::local_options(encodeUtils.file_search_chunk_size = 1L)
+    observed_urls <- character()
+
+    result <- httr2::with_mocked_responses(
+        function(req) {
+            observed_urls <<- c(observed_urls, req$url)
+            if (grepl("type=Experiment", req$url, fixed = TRUE)) {
+                return(fixture_json_response("search-embedded-experiments.json"))
+            }
+            fixture_json_response("file-search-mixed.json")
+        },
+        encode_search(
+            type = "File",
+            organism = "human",
+            organ = "heart",
+            file_format = "fastq",
+            limit = 2,
+            quiet = TRUE
+        )
+    )
+
+    expect_equal(nrow(encode_results(result)), 2L)
+    expect_equal(result$total, 6L)
+    expect_length(result$request_history, 3L)
+    expect_equal(
+        vapply(result$request_history, `[[`, character(1L), "role"),
+        c("parent_experiments", "file_chunk", "file_chunk")
+    )
+    expect_true(grepl("limit=all", observed_urls[[1L]], fixed = TRUE))
+    expect_equal(sum(grepl("type=File", observed_urls, fixed = TRUE)), 2L)
+    expect_true(any(result$filters$field == "biosample_ontology.organ_slims"))
+    expect_true(any(result$filters$field == "file_format"))
 })
 
 test_that("search arguments reject ambiguous values", {

@@ -36,97 +36,98 @@ encode_search(
 )
 }
 \arguments{
-\item{type}{ENCODE object type to search, such as `"Experiment"` or `"File"`.
-Use `"Experiment"` to find datasets and `"File"` to find individual files.
-Use `NULL` only for mixed free-text searches.}
+\item{type}{ENCODE object type to search, such as \code{"Experiment"} or \code{"File"}.
+Use \code{"Experiment"} to find datasets and \code{"File"} to find individual files.
+Use \code{NULL} only for mixed free-text searches.}
 
 \item{filters}{Named list of ENCODE search filters. ENCODE field names,
-dot notation, and negated filters such as `"control_type!="` are accepted.}
+dot notation, and negated filters such as \code{"control_type!="} are accepted.}
 
 \item{search}{Optional free-text search term.}
 
-\item{organism}{Optional organism filter. Common values such as `"mouse"`,
-`"human"`, `"Mus musculus"`, and `"Homo sapiens"` are accepted.}
+\item{organism}{Optional organism filter. Common values such as \code{"mouse"},
+\code{"human"}, \code{"Mus musculus"}, and \code{"Homo sapiens"} are accepted.}
 
-\item{assay}{Optional assay filter. Common values such as `"rna-seq"`,
-`"atac-seq"`, `"chip-seq"`, `"histone chip-seq"`, and `"tf chip-seq"`
+\item{assay}{Optional assay filter. Common values such as \code{"rna-seq"},
+\code{"atac-seq"}, \code{"chip-seq"}, \code{"histone chip-seq"}, and \code{"tf chip-seq"}
 are expanded to ENCODE assay names.}
 
-\item{assay_type}{Optional broad assay category, such as `"Transcription"`,
-`"DNA accessibility"`, or `"DNA binding"`.}
+\item{assay_type}{Optional broad assay category, such as \code{"Transcription"},
+\code{"DNA accessibility"}, or \code{"DNA binding"}.}
 
 \item{biosample}{Optional biosample or tissue term. This is added to the
-free-text query so broader terms such as `"brain"` can find forebrain,
+free-text query so broader terms such as \code{"brain"} can find forebrain,
 midbrain, hindbrain, cortex, and related ENCODE biosample terms.}
 
-\item{biosample_type}{Optional biosample class, such as `"tissue"`,
-`"cell line"`, `"primary cell"`, or `"organoid"`.}
+\item{biosample_type}{Optional biosample class, such as \code{"tissue"},
+\code{"cell line"}, \code{"primary cell"}, or \code{"organoid"}.}
 
-\item{organ}{Optional organ facet, such as `"brain"`, `"heart"`, or
-`"liver"`.}
+\item{organ}{Optional organ facet, such as \code{"brain"}, \code{"heart"}, or
+\code{"liver"}.}
 
-\item{cell}{Optional cell facet, such as `"T cell"`, `"neural cell"`, or
-`"stem cell"`.}
+\item{cell}{Optional cell facet, such as \code{"T cell"}, \code{"neural cell"}, or
+\code{"stem cell"}.}
 
-\item{system}{Optional anatomical system facet, such as `"immune system"` or
-`"central nervous system"`.}
+\item{system}{Optional anatomical system facet, such as \code{"immune system"} or
+\code{"central nervous system"}.}
 
-\item{life_stage}{Optional life-stage filter, such as `"embryonic"`,
-`"postnatal"`, `"adult"`, or `"fetal"`. `"fetal"` is treated as
-`"embryonic"` for ENCODE mouse development searches.}
+\item{life_stage}{Optional life-stage filter, such as \code{"embryonic"},
+\code{"postnatal"}, \code{"adult"}, or \code{"fetal"}. \code{"fetal"} is treated as
+\code{"embryonic"} for ENCODE mouse development searches.}
 
-\item{sex}{Optional sex filter, such as `"female"`, `"male"`, or `"mixed"`.}
+\item{sex}{Optional sex filter, such as \code{"female"}, \code{"male"}, or \code{"mixed"}.}
 
 \item{disease}{Optional disease term.}
 
 \item{treatment}{Optional biosample-treatment term.}
 
 \item{cellular_component}{Optional subcellular fraction term, such as
-`"nucleus"` or `"cytosol"`.}
+\code{"nucleus"} or \code{"cytosol"}.}
 
-\item{development}{If `TRUE`, restrict experiments to organism-development
+\item{development}{If \code{TRUE}, restrict experiments to organism-development
 series records.}
 
-\item{exclude_controls}{If `TRUE`, remove ENCODE control experiments from
+\item{exclude_controls}{If \code{TRUE}, remove ENCODE control experiments from
 the search result.}
 
-\item{target}{Optional ChIP-seq target label, such as `"TBX5"` or
-`"H3K27ac"`.}
+\item{target}{Optional ChIP-seq target label, such as \code{"TBX5"} or
+\code{"H3K27ac"}.}
 
-\item{target_category}{Optional target category, such as `"histone"` or
-`"transcription factor"`.}
+\item{target_category}{Optional target category, such as \code{"histone"} or
+\code{"transcription factor"}.}
 
-\item{file_format}{Optional file-format filter used when `type = "File"`,
-such as `"fastq"`, `"bed"`, `"bigWig"`, or `"tsv"`.}
+\item{file_format}{Optional file-format filter used when \code{type = "File"},
+such as \code{"fastq"}, \code{"bed"}, \code{"bigWig"}, or \code{"tsv"}.}
 
-\item{output_type}{Optional file-output filter used when `type = "File"`,
-such as `"reads"`, `"gene quantifications"`, or `"IDR ranked peaks"`.}
+\item{output_type}{Optional file-output filter used when \code{type = "File"},
+such as \code{"reads"}, \code{"gene quantifications"}, or \code{"IDR ranked peaks"}.}
 
-\item{assembly}{Optional genome-assembly filter used when `type = "File"`,
-such as `"GRCh38"` or `"mm10"`.}
+\item{assembly}{Optional genome-assembly filter used when \code{type = "File"},
+such as \code{"GRCh38"} or \code{"mm10"}.}
 
 \item{status}{Optional ENCODE status filter. The default keeps released
-records only. Use `NULL` to omit the status filter.}
+records only. Use \code{NULL} to omit the status filter.}
 
-\item{limit}{Number of records to return, or the explicit string `"all"`.}
+\item{limit}{Number of records to return, or the explicit string \code{"all"}.}
 
-\item{metadata}{Amount of linked metadata to request. `"full"` gives richer
-lab, organism, biosample, and target columns. `"basic"` requests fewer
+\item{metadata}{Amount of linked metadata to request. \code{"full"} gives richer
+lab, organism, biosample, and target columns. \code{"basic"} requests fewer
 fields.}
 
 \item{include_facets}{Whether to keep ENCODE facet counts in the result
 object for verbose printing.}
 
-\item{quiet}{If `FALSE`, print a concise query status message.}
+\item{quiet}{If \code{FALSE}, print a concise query status message.}
 }
 \value{
-An `encode_search_result` object. The object contains `results`, the
-  flattened result table; `raw`, the parsed ENCODE response including
-  `@graph`; `total`, the total number of matching records reported by
-  ENCODE; `filters`, the active filter table; `facets`, ENCODE facet counts
-  when requested; `columns`, response column metadata; `query_url`;
-  `metadata`; `frame`; and request metadata. Use `encode_results()` to
-  extract `results`.
+An \code{encode_search_result} object. The object contains \code{results}, the
+flattened result table; \code{raw}, the parsed ENCODE response including
+\verb{@graph}; \code{total}, the total number of matching records reported by
+ENCODE; \code{filters}, the active filter table; \code{facets}, ENCODE facet counts
+when requested; \code{columns}, response column metadata; \code{query_url};
+\code{metadata}; \code{frame}; the primary request metadata; and \code{request_history},
+which records every ENCODE request used to construct the result. Use
+\code{encode_results()} to extract \code{results}.
 }
 \description{
 Find ENCODE experiments, files, or other records. The search returns matching
@@ -134,8 +135,8 @@ metadata rows and the total number of matches. It does not download data
 files.
 }
 \details{
-The result prints as a compact table. Use `encode_results()` to extract the
-table. Use `print(x, verbose = TRUE)` to show the query URL, active filters,
+The result prints as a compact table. Use \code{encode_results()} to extract the
+table. Use \code{print(x, verbose = TRUE)} to show the query URL, active filters,
 and ENCODE facets.
 
 File searches with biological filters such as organism, biosample, organ,
@@ -144,6 +145,7 @@ query files attached to those experiments. File-format filters are applied
 to the attached File records.
 }
 \examples{
+\dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
 experiments <- encode_search(
     organism = "mouse",
     assay = "rna-seq",
@@ -151,5 +153,7 @@ experiments <- encode_search(
     limit = 1,
     quiet = TRUE
 )
+
 encode_results(experiments)
+\dontshow{\}) # examplesIf}
 }

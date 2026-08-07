@@ -65,7 +65,11 @@ test_that("table input always returns a stable loaded-file collection", {
     )
 
     one <- encode_read(files[1L, ], values = c("raw_counts", "tpm"))
-    loaded <- encode_read(files, values = c("raw_counts", "TPM"))
+    loaded <- encode_read(
+        files,
+        values = c("raw_counts", "TPM"),
+        row_names = "gene_id"
+    )
 
     expect_s3_class(one, "encode_loaded_files")
     expect_s3_class(loaded, "encode_loaded_files")
@@ -75,6 +79,7 @@ test_that("table input always returns a stable loaded-file collection", {
     expect_true(all(vapply(loaded$matrices, is.matrix, logical(1L))))
     expect_true(all(vapply(loaded$matrices, is.numeric, logical(1L))))
     expect_equal(colnames(loaded$matrices$raw_counts), files$file_accession)
+    expect_equal(row.names(loaded$matrices$raw_counts), c("Gata4", "Tbx5"))
     expect_equal(unname(loaded$matrices$raw_counts["Gata4", ]), c(10, 20))
     expect_equal(row.names(loaded$row_data), row.names(loaded$matrices$raw_counts))
     expect_equal(encode_results(loaded), loaded$metadata)
@@ -92,6 +97,29 @@ test_that("aligned tables can be returned as a SummarizedExperiment", {
         download_status = "downloaded",
         stringsAsFactors = FALSE
     )
+    retrieved_at <- as.POSIXct("2026-08-06 12:00:00", tz = "UTC")
+    filters <- data.frame(
+        field = "dataset",
+        value = "ENCSRSE001",
+        stringsAsFactors = FALSE
+    )
+    requests <- list(list(
+        role = "file_search",
+        url = "https://www.encodeproject.org/search/?type=File",
+        retrieved_at = retrieved_at
+    ))
+    criteria <- list(
+        file_accession = files$file_accession,
+        status = "released"
+    )
+    files <- encode_attach_metadata(
+        files,
+        query_url = requests[[1L]]$url,
+        retrieved_at = retrieved_at,
+        filters = filters,
+        request_history = requests,
+        selection_criteria = criteria
+    )
 
     se <- encode_read(
         files,
@@ -105,6 +133,12 @@ test_that("aligned tables can be returned as a SummarizedExperiment", {
     expect_equal(rownames(se), c("Gata4", "Tbx5"))
     expect_equal(SummarizedExperiment::colData(se)$file_accession, files$file_accession)
     expect_equal(unname(SummarizedExperiment::assay(se, "raw_counts")["Gata4", ]), c(10, 12))
+    provenance <- S4Vectors::metadata(se)$encodeUtils
+    expect_equal(provenance$query_url, requests[[1L]]$url)
+    expect_equal(provenance$retrieved_at, retrieved_at)
+    expect_equal(provenance$filters, filters)
+    expect_equal(provenance$requests, requests)
+    expect_equal(provenance$selection_criteria, criteria)
 
     duplicate <- files
     writeLines(c("gene_id\texpected_count", "Gata4\t10", "Gata4\t20"), duplicate$local_path[[2L]])
@@ -112,6 +146,91 @@ test_that("aligned tables can be returned as a SummarizedExperiment", {
         encode_read(duplicate, as = "SummarizedExperiment"),
         "No compatible expression matrices"
     )
+})
+
+test_that("SummarizedExperiment metadata follows only assay-producing files", {
+    directory <- withr::local_tempdir()
+    table_path <- file.path(directory, "counts.tsv")
+    json_path <- file.path(directory, "metadata.json")
+    writeLines(c("gene_id\texpected_count", "Gata4\t10", "Tbx5\t20"), table_path)
+    writeLines('{"source":"ENCODE"}', json_path)
+    files <- data.frame(
+        file_accession = c("ENCFFTABLE1", "ENCFFJSON01"),
+        file_format = c("tsv", "json"),
+        local_path = c(table_path, json_path),
+        download_status = "downloaded",
+        stringsAsFactors = FALSE
+    )
+
+    se <- encode_read(files, as = "SummarizedExperiment")
+
+    expect_s4_class(se, "SummarizedExperiment")
+    expect_equal(dim(se), c(2L, 1L))
+    expect_equal(colnames(se), "ENCFFTABLE1")
+    expect_equal(SummarizedExperiment::colData(se)$file_accession, "ENCFFTABLE1")
+})
+
+test_that("matrix assembly refuses incompatible metadata and feature sets", {
+    directory <- withr::local_tempdir()
+    paths <- file.path(directory, c("a.tsv", "b.tsv"))
+    writeLines(c("gene_id\texpected_count", "Gata4\t10", "Tbx5\t20"), paths[[1L]])
+    writeLines(c("gene_id\texpected_count", "Gata4\t12", "Myh6\t25"), paths[[2L]])
+    files <- data.frame(
+        file_accession = c("ENCFFCOMP01", "ENCFFCOMP02"),
+        organism = c("Mus musculus", "Homo sapiens"),
+        assembly = c("mm10", "GRCh38"),
+        output_type = "gene quantifications",
+        file_format = "tsv",
+        local_path = paths,
+        download_status = "downloaded",
+        stringsAsFactors = FALSE
+    )
+
+    loaded <- encode_read(files)
+    expect_length(loaded$matrices, 0L)
+    expect_match(attr(loaded$matrices, "reason"), "organism.*assembly")
+    expect_error(
+        encode_read(files, as = "SummarizedExperiment"),
+        "incompatible metadata"
+    )
+
+    files$organism <- "Mus musculus"
+    files$assembly <- "mm10"
+    loaded <- encode_read(files)
+    expect_length(loaded$matrices, 0L)
+    expect_match(attr(loaded$matrices, "reason"), "different feature sets")
+})
+
+test_that("compressed text size is checked after decompression", {
+    path <- withr::local_tempfile(fileext = ".tsv.gz")
+    connection <- gzfile(path, open = "wt")
+    writeLines(c("gene_id\texpected_count", rep("Gata4\t10", 5000L)), connection)
+    close(connection)
+
+    expect_lt(as.numeric(file.info(path)$size), 2000)
+    expect_error(
+        encode_read(path, max_size = "2KB", unsupported = "error"),
+        "after decompression"
+    )
+})
+
+test_that("explicit GRanges requests fail instead of returning a table", {
+    path <- withr::local_tempfile(fileext = ".bed")
+    writeLines("chr1\tnot-a-start\t10", path)
+
+    expect_error(
+        encode_read(path, as = "GRanges", unsupported = "return_path"),
+        "Failed to convert BED-like file to GRanges"
+    )
+})
+
+test_that("quantification value names are normalized case-insensitively", {
+    path <- withr::local_tempfile(fileext = ".tsv")
+    writeLines(c("gene_id\ttPm", "Gata4\t2.5"), path)
+
+    table <- encode_read(path)
+    expect_true("TPM" %in% names(table))
+    expect_equal(table$TPM, 2.5)
 })
 
 test_that("simplify_quant false preserves raw table columns", {
@@ -227,7 +346,6 @@ test_that("loaded print output is compact", {
 
     expect_true(any(grepl("ENCODE loaded files", output, fixed = TRUE)))
     expect_true(any(grepl("feature rows", output, fixed = TRUE)))
-    expect_false(any(grepl("by_experiment", output, fixed = TRUE)))
 })
 
 test_that("read controls reject ambiguous values", {

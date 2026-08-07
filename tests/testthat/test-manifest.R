@@ -58,6 +58,10 @@ test_that("selection and download carry the provenance of their input", {
     attr(files, "query_url") <- "https://www.encodeproject.org/search/?type=File"
     attr(files, "retrieved_at") <- retrieved_at
     attr(files, "filters") <- data.frame(field = "file_format", value = "bed")
+    attr(files, "request_history") <- list(list(
+        role = "file_chunk",
+        url = attr(files, "query_url")
+    ))
 
     selected <- encode_select_files(files, quiet = TRUE)
     planned <- encode_download(
@@ -81,6 +85,8 @@ test_that("selection and download carry the provenance of their input", {
     expect_equal(attr(planned, "retrieved_at", exact = TRUE), retrieved_at)
     expect_equal(manifest$retrieval$retrieved_at, "2024-01-02T03:04:05Z")
     expect_equal(manifest$filters$field, "file_format")
+    expect_equal(manifest$requests[[1L]]$role, "file_chunk")
+    expect_equal(manifest$selection_criteria, selected$criteria)
 })
 
 test_that("search-result manifests keep the recorded request provenance", {
@@ -185,6 +191,14 @@ test_that("selected local files complete the download-read-manifest workflow", {
     expect_true(downloaded$md5_verified)
     expect_equal(loaded$matrices$raw_counts["Gata4", "ENCFFLOCAL01"], 10)
     expect_equal(manifest$files$file_accession, "ENCFFLOCAL01")
+    expect_equal(manifest$matrices$name, "raw_counts")
+    observed_dimensions <- manifest$matrices[, c("rows", "columns")]
+    row.names(observed_dimensions) <- NULL
+    expect_equal(observed_dimensions, data.frame(
+        rows = 2L,
+        columns = 1L
+    ))
+    expect_equal(manifest$selection_criteria, selected$criteria)
 })
 
 test_that("manifests support loaded collections and reject unsupported objects", {

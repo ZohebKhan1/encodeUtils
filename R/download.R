@@ -2,8 +2,8 @@
 #'
 #' Download files from an ENCODE file table, selected-file object, file search,
 #' or file accession. Planned sizes are checked before transfer, existing files
-#' are not overwritten by default, files are written through a temporary `.part`
-#' path, and size/MD5 checks are used when ENCODE provides the metadata.
+#' are not overwritten by default, files are written through a unique temporary
+#' `.part` path, and size/MD5 checks are used when ENCODE provides the metadata.
 #'
 #' @param x ENCFF accession(s), file metadata table, file search result,
 #'   selected-file object, or ENCSR experiment accession(s). ENCSR input is
@@ -47,11 +47,14 @@
 #'   `encode_results()` for the complete table.
 #' @export
 #'
-#' @examples
-#' example_dir <- system.file("example-data", package = "encodeUtils")
-#' files <- utils::read.csv(file.path(example_dir, "files.csv"))
-#' plan <- encode_download(files, directory = tempdir(), dry_run = TRUE,
-#'                         quiet = TRUE)
+#' @examplesIf interactive()
+#' plan <- encode_download(
+#'     "ENCFF859GWB",
+#'     directory = tempdir(),
+#'     dry_run = TRUE,
+#'     quiet = TRUE
+#' )
+#'
 #' encode_results(plan)
 encode_download <- function(
     x,
@@ -96,6 +99,7 @@ encode_download <- function(
         file_accession = file_accession,
         file_format = file_format,
         output_type = output_type,
+        assembly = assembly,
         limit = limit
     )
     files <- encode_download_file_table(
@@ -110,6 +114,8 @@ encode_download <- function(
     query_url <- encode_query_url(files)
     retrieved_at <- attr(files, "retrieved_at", exact = TRUE)
     filters <- encode_filters(files)
+    request_history <- encode_request_history(files)
+    selection_criteria <- encode_selection_criteria(files)
     base_url <- attr(files, "encode_base_url", exact = TRUE) %||% encode_base_url()
     if (nrow(files) == 0L) {
         encode_abort_no_matching_download_files(
@@ -162,7 +168,9 @@ encode_download <- function(
             query_url = query_url,
             retrieved_at = retrieved_at,
             filters = filters,
-            base_url = base_url
+            base_url = base_url,
+            request_history = request_history,
+            selection_criteria = selection_criteria
         )
         return(files)
     }
@@ -203,7 +211,9 @@ encode_download <- function(
         query_url = query_url,
         retrieved_at = retrieved_at,
         filters = filters,
-        base_url = base_url
+        base_url = base_url,
+        request_history = request_history,
+        selection_criteria = selection_criteria
     )
     failed <- result$download_status %in% "failed"
     if (any(failed)) {
@@ -251,6 +261,7 @@ encode_check_experiment_download_scope <- function(
     file_accession,
     file_format,
     output_type,
+    assembly,
     limit
 ) {
     if (isTRUE(dry_run) || !encode_is_direct_experiment_download_input(x)) {
@@ -259,6 +270,7 @@ encode_check_experiment_download_scope <- function(
     narrowed <- !is.null(file_accession) ||
         !is.null(file_format) ||
         !is.null(output_type) ||
+        !is.null(assembly) ||
         !is.null(limit)
     if (narrowed) {
         return(invisible(NULL))
@@ -266,7 +278,7 @@ encode_check_experiment_download_scope <- function(
     cli::cli_abort(c(
         "Refusing to download all files for an ENCODE experiment accession without narrowing the request.",
         "i" = "Run {.code encode_download(x, dry_run = TRUE)} to inspect the full plan.",
-        "i" = "For real downloads, provide {.arg file_format}, {.arg output_type}, {.arg file_accession}, or {.arg limit}."
+        "i" = "For real downloads, provide {.arg file_format}, {.arg output_type}, {.arg assembly}, {.arg file_accession}, or {.arg limit}."
     ))
 }
 
@@ -472,11 +484,13 @@ encode_download_one <- function(file, overwrite, verify, quiet, index = NULL, to
         }
         cli::cli_inform("Downloading{progress} {.val {accession}}.")
     }
-    tmp_path <- paste0(path, ".part")
-    # Write to a .part file so interrupted transfers cannot appear complete.
-    if (file.exists(tmp_path)) {
-        unlink(tmp_path)
-    }
+    tmp_path <- tempfile(
+        pattern = paste0(".", basename(path), "-"),
+        tmpdir = dirname(path),
+        fileext = ".part"
+    )
+    # Keep partial transfers process-local and on the destination filesystem so
+    # the final rename remains atomic.
     on.exit(
         {
             if (file.exists(tmp_path)) {
@@ -488,7 +502,7 @@ encode_download_one <- function(file, overwrite, verify, quiet, index = NULL, to
     response <- encode_perform_file(file$download_url[[1L]], tmp_path)
     file$downloaded_at <- response$retrieved_at
     file$downloaded_size <- as.numeric(file.info(tmp_path)$size)
-    file$observed_md5 <- encode_observed_md5(tmp_path, file$md5sum[[1L]])
+    file$observed_md5 <- encode_observed_md5(tmp_path)
     file$size_verified <- if ("size" %in% verify) {
         encode_verify_size(tmp_path, file$file_size[[1L]])
     } else {
@@ -559,7 +573,7 @@ encode_verify_existing_file <- function(file, verify) {
     list(
         download_status = if (is.na(failure_reason)) "exists" else "failed",
         downloaded_size = as.numeric(file.info(file$local_path[[1L]])$size),
-        observed_md5 = encode_observed_md5(file$local_path[[1L]], file$md5sum[[1L]]),
+        observed_md5 = encode_observed_md5(file$local_path[[1L]]),
         size_verified = size_verified,
         md5_verified = md5_verified,
         failure_reason = failure_reason
@@ -567,10 +581,6 @@ encode_verify_existing_file <- function(file, verify) {
 }
 
 encode_failed_download_row <- function(file, reason) {
-    tmp_path <- paste0(file$local_path[[1L]], ".part")
-    if (file.exists(tmp_path)) {
-        unlink(tmp_path)
-    }
     file$download_status <- "failed"
     file$failure_reason <- reason
     file
@@ -595,8 +605,8 @@ encode_verify_md5 <- function(path, expected_md5) {
     identical(tolower(observed), tolower(expected_md5))
 }
 
-encode_observed_md5 <- function(path, expected_md5 = NA_character_) {
-    if (is.na(expected_md5) || !nzchar(expected_md5) || !file.exists(path)) {
+encode_observed_md5 <- function(path) {
+    if (!file.exists(path)) {
         return(NA_character_)
     }
     unname(tools::md5sum(path))

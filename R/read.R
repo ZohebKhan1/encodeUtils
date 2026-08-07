@@ -11,13 +11,16 @@
 #' returns the native object for that file. A downloaded-file table always
 #' returns an `encode_loaded_files` collection, including for a one-row table.
 #' Combined matrices are created only when every table has one complete, unique
-#' feature identifier in common; otherwise the original tables are retained
-#' without an inferred alignment.
+#' feature identifier, the same feature set, and compatible ENCODE organism,
+#' assembly, output-type, and genome-annotation metadata when those fields are
+#' available. Otherwise the original tables are retained without an inferred
+#' alignment.
 #'
 #' @param path Local file path, downloaded-file table, or file table with a
 #'   `local_path` column.
 #' @param format Optional file format override.
-#' @param max_size Maximum size to read into memory, as bytes or a string.
+#' @param max_size Maximum uncompressed size to read into memory, as bytes or a
+#'   string. Compressed text inputs are scanned before import.
 #' @param region Optional genomic range object passed to `rtracklayer::import()`
 #'   as `which` for indexed genomic formats.
 #' @param allow_large Whether to allow full import of indexed formats such as
@@ -31,14 +34,16 @@
 #'   return an `encode_local_file` path object. For a downloaded-file table,
 #'   use `"SummarizedExperiment"` to return aligned expression matrices with
 #'   feature and file metadata in a `SummarizedExperiment`.
-#' @param row_names Column to use for row names in loaded expression tables.
-#'   Use `"none"` to keep default integer row names.
+#' @param row_names Identifier column to prefer for expression-table row names.
+#'   If that column is unavailable, the complete feature identifier used to
+#'   assemble the matrix is retained. Use `"none"` to omit row names.
 #' @param values Expression values to combine across files. Defaults to
 #'   `"raw_counts"`. Use values such as `"tpm"`, `"fpkm"`, or `"rpkm"` when
 #'   those matrices are needed, or `"all"` to build every supported matrix.
 #' @param simplify_quant Whether ENCODE gene-quantification tables should be
-#'   normalized to common identifier and expression columns. Use `FALSE` to
-#'   preserve the raw columns from the downloaded file.
+#'   normalized to common identifier and expression columns already present in
+#'   the file. This does not query or use external annotation databases. Use
+#'   `FALSE` to preserve the raw columns from the downloaded file.
 #' @param ... Additional arguments passed to table readers where applicable.
 #'
 #' @return The return type depends on input shape and file format. A local path
@@ -49,23 +54,21 @@
 #'   GFF/GTF, BigWig, and BigBed return `rtracklayer` imports when available
 #'   and readable. Native-reader failures follow the `unsupported` policy.
 #'   ENCODE peak files with extra nonstandard columns may fall back to a data
-#'   frame unless `as = "GRanges"` is requested. FASTQ and alignment formats
+#'   frame in automatic mode; `as = "GRanges"` fails if conversion is not
+#'   possible. FASTQ and alignment formats
 #'   return `encode_local_file` path objects by default. Downloaded-file tables
 #'   return an `encode_loaded_files` object with `metadata`, `data`, `row_data`,
 #'   and `matrices` components. With `as = "SummarizedExperiment"`, a
 #'   downloaded-file table returns a `SummarizedExperiment` when compatible
-#'   matrices were assembled.
+#'   matrices were assembled. Its `metadata(se)$encodeUtils` entry retains the
+#'   source query, request history, filters, and file-selection criteria.
 #' @export
 #'
 #' @examples
-#' example_dir <- system.file("example-data", package = "encodeUtils")
-#' files <- utils::read.csv(file.path(example_dir, "files.csv"))
-#' files$local_path <- file.path(example_dir, files$local_name)
-#' files$download_status <- "exists"
-#' loaded <- encode_read(files, values = c("raw_counts", "tpm"))
-#' loaded$matrices$raw_counts
-#' encode_read(files, values = c("raw_counts", "tpm"),
-#'             as = "SummarizedExperiment")
+#' path <- tempfile(fileext = ".tsv")
+#' writeLines(c("gene_id\texpected_count", "Gata4\t10", "Tbx5\t4"), path)
+#'
+#' encode_read(path)
 encode_read <- function(
     path,
     format = NULL,
@@ -74,7 +77,7 @@ encode_read <- function(
     allow_large = FALSE,
     unsupported = c("return_path", "error"),
     as = c("auto", "data.frame", "GRanges", "path", "SummarizedExperiment"),
-    row_names = c("gene_symbol", "ensembl_id", "entrez_id", "none"),
+    row_names = c("gene_symbol", "gene_id", "ensembl_id", "entrez_id", "none"),
     values = "raw_counts",
     simplify_quant = TRUE,
     ...
@@ -124,18 +127,30 @@ encode_read <- function(
             unsupported = "return_path"
         ))
     }
+    format <- format %||% encode_get_extension(path)
+    format <- tolower(format)
     max_size <- encode_parse_size(max_size, arg = "max_size")
-    file_size <- as.numeric(file.info(path)$size)
-    if (!is.na(file_size) && file_size > max_size) {
+    region_bounded <- !is.null(region) && format %in% c(
+        "bw", "bigwig", "bb", "bigbed"
+    )
+    exceeds_max_size <- !region_bounded && encode_input_exceeds_max_size(
+        path,
+        max_size
+    )
+    if (isTRUE(exceeds_max_size)) {
+        compressed <- grepl("[.](gz|bgz)$", path, ignore.case = TRUE)
+        reason <- if (compressed) {
+            "file exceeds max_size after decompression"
+        } else {
+            "file exceeds max_size"
+        }
         return(encode_unsupported_local_file(
             path = path,
-            reason = "file exceeds max_size",
+            reason = reason,
             unsupported = unsupported
         ))
     }
 
-    format <- format %||% encode_get_extension(path)
-    format <- tolower(format)
     if (format %in% c("tsv", "txt")) {
         return(encode_set_row_names(
             encode_read_tsv(path, simplify_quant = simplify_quant, ...),
@@ -260,6 +275,26 @@ encode_read_lines <- function(path, n) {
     readLines(connection, n = n, warn = FALSE)
 }
 
+encode_input_exceeds_max_size <- function(path, max_size) {
+    if (!grepl("[.](gz|bgz)$", path, ignore.case = TRUE)) {
+        file_size <- as.numeric(file.info(path)$size)
+        return(!is.na(file_size) && file_size > max_size)
+    }
+    connection <- gzfile(path, open = "rb")
+    on.exit(close(connection), add = TRUE)
+    total <- 0
+    repeat {
+        chunk <- readBin(connection, what = "raw", n = 1024L * 1024L)
+        total <- total + length(chunk)
+        if (total > max_size) {
+            return(TRUE)
+        }
+        if (length(chunk) == 0L) {
+            return(FALSE)
+        }
+    }
+}
+
 encode_read_gff <- function(path, format, unsupported, region = NULL, ...) {
     first_lines <- encode_read_lines(path, n = 50L)
     has_ucsc_directive <- any(encode_is_ucsc_directive(first_lines))
@@ -363,6 +398,7 @@ encode_simplify_quant_table <- function(table) {
     if (!is.data.frame(table) || !"gene_id" %in% names(table)) {
         return(table)
     }
+    table <- encode_standardize_quant_column_names(table)
     if (!any(c("expected_count", "counts", "count", "TPM", "FPKM", "RPKM") %in% names(table))) {
         return(table)
     }
@@ -382,6 +418,27 @@ encode_simplify_quant_table <- function(table) {
         "raw_counts", "TPM", "FPKM", "RPKM"
     ), names(table))
     table[, columns, drop = FALSE]
+}
+
+encode_standardize_quant_column_names <- function(table) {
+    canonical <- c(
+        expected_count = "expected_count",
+        counts = "counts",
+        count = "count",
+        raw_counts = "raw_counts",
+        tpm = "TPM",
+        fpkm = "FPKM",
+        rpkm = "RPKM"
+    )
+    lower <- tolower(names(table))
+    for (key in names(canonical)) {
+        matches <- which(lower == key)
+        target <- canonical[[key]]
+        if (length(matches) == 1L && !target %in% names(table)) {
+            names(table)[matches] <- target
+        }
+    }
+    table
 }
 
 encode_normalize_quant_identifiers <- function(table) {
@@ -412,7 +469,12 @@ encode_read_bed <- function(path, format = "bed", as = "auto", unsupported = "re
         return(encode_read_bed_table(path, format = format))
     }
     if (as %in% c("auto", "GRanges")) {
-        return(encode_read_bed_granges(path, format = format, unsupported = unsupported))
+        granges_unsupported <- if (identical(as, "GRanges")) "error" else unsupported
+        return(encode_read_bed_granges(
+            path,
+            format = format,
+            unsupported = granges_unsupported
+        ))
     }
     encode_read_bed_table(path, format = format)
 }

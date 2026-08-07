@@ -18,34 +18,34 @@ encode_list_files(
 }
 \arguments{
 \item{x}{Experiment accession(s), experiment path(s), a search result from
-`encode_search()`, or a data frame containing experiment identifiers.}
+\code{encode_search()}, or a data frame containing experiment identifiers.}
 
-\item{file_format}{Optional file format filter, such as `"fastq"`, `"bed"`,
-`"bigWig"`, or `"tsv"`.}
+\item{file_format}{Optional file format filter, such as \code{"fastq"}, \code{"bed"},
+\code{"bigWig"}, or \code{"tsv"}.}
 
-\item{output_type}{Optional ENCODE output type filter, such as `"reads"` or
-`"gene quantifications"`.}
+\item{output_type}{Optional ENCODE output type filter, such as \code{"reads"} or
+\code{"gene quantifications"}.}
 
-\item{assembly}{Optional genome assembly filter, such as `"GRCh38"` or
-`"mm10"`.}
+\item{assembly}{Optional genome assembly filter, such as \code{"GRCh38"} or
+\code{"mm10"}.}
 
-\item{status}{Optional file status filter. Use `NULL` to omit.}
+\item{status}{Optional file status filter. Use \code{NULL} to omit.}
 
-\item{limit}{Number of file records to request, or `"all"`.}
+\item{limit}{Number of file records to request, or \code{"all"}.}
 
-\item{metadata}{Amount of linked metadata to request. `"basic"` keeps
-responses smaller. `"full"` adds more display columns.}
+\item{metadata}{Amount of linked metadata to request. \code{"basic"} keeps
+responses smaller. \code{"full"} adds more display columns.}
 
 \item{allow_many}{Whether to allow many experiment datasets in one query.}
 
-\item{quiet}{If `FALSE`, print a concise status message.}
+\item{quiet}{If \code{FALSE}, print a concise status message.}
 }
 \value{
-An `encode_file_table` data frame. Common columns include
-  `file_accession`, `experiment_accession`, `dataset_accession`,
-  `file_format`, `output_type`, `assembly`, `file_size`, `md5sum`, `href`,
-  `cloud_url`, and parent experiment metadata when available. The function
-  lists metadata only; it does not download file contents.
+An \code{encode_file_table} data frame. Common columns include
+\code{file_accession}, \code{experiment_accession}, \code{dataset_accession},
+\code{file_format}, \code{output_type}, \code{assembly}, \code{file_size}, \code{md5sum}, \code{href},
+\code{cloud_url}, and parent experiment metadata when available. The function
+lists metadata only; it does not download file contents.
 }
 \description{
 Return file metadata for one or more ENCODE experiments. The table includes
@@ -53,15 +53,18 @@ file accessions, formats, output types, assemblies, sizes, checksums, and
 download links. It does not download file contents.
 }
 \details{
-The default `limit = "all"` requests the complete file list for the selected
+The default \code{limit = "all"} requests the complete file list for the selected
 experiments.
 }
 \examples{
+\dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
 files <- encode_list_files(
     "ENCSR389GJZ",
     file_format = "tsv",
     limit = 1,
     quiet = TRUE
 )
+
 encode_results(files)
+\dontshow{\}) # examplesIf}
 }

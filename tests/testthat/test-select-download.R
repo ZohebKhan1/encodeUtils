@@ -30,7 +30,7 @@ test_that("selection presets are canonical and selection records exclusions", {
     expect_true(any(grepl("- excluded:", output, fixed = TRUE)))
 })
 
-test_that("public messaging parameters use quiet consistently", {
+test_that("public messaging functions use quiet consistently", {
     messaging_functions <- c(
         "encode_search", "encode_list_files", "encode_select_files",
         "encode_download"
@@ -40,7 +40,6 @@ test_that("public messaging parameters use quiet consistently", {
     })
 
     expect_true(all(vapply(parameters, function(x) "quiet" %in% x, logical(1L))))
-    expect_false(any(vapply(parameters, function(x) "explain" %in% x, logical(1L))))
 })
 
 test_that("download planning is bounded and uses explicit limit naming", {
@@ -62,10 +61,6 @@ test_that("download planning is bounded and uses explicit limit naming", {
         "download_status", "downloaded_at", "downloaded_size", "observed_md5",
         "size_verified", "md5_verified", "failure_reason"
     ) %in% names(planned)))
-    expect_false(any(c(
-        "md5sum_expected", "md5sum_observed", "size_ok", "md5_ok"
-    ) %in% names(planned)))
-
     output <- capture_print(planned)
     expect_true(any(grepl("ENCODE download", output, fixed = TRUE)))
     expect_true(any(grepl("planned", output, fixed = TRUE)))
@@ -186,4 +181,95 @@ test_that("selection and download flags require logical values", {
     expect_error(encode_download(files[1L, ], overwrite = NA, quiet = TRUE), "overwrite")
     expect_error(encode_download(files[1L, ], directory = character(), quiet = TRUE), "directory")
     expect_error(encode_download(files[1L, ], max_file_size = "large", quiet = TRUE), "max_file_size")
+})
+
+test_that("preferred defaults are applied within experiments", {
+    files <- data.frame(
+        file_accession = c("ENCFFPREF01", "ENCFFPREF02", "ENCFFFALL01"),
+        experiment_accession = c("ENCSRPREF01", "ENCSRPREF01", "ENCSRPREF02"),
+        file_format = "tsv",
+        output_type = "gene quantifications",
+        assembly = "mm10",
+        status = "released",
+        href = paste0("/files/", c("ENCFFPREF01", "ENCFFPREF02", "ENCFFFALL01"), "/@@download/file.tsv"),
+        preferred_default = c(TRUE, FALSE, FALSE),
+        stringsAsFactors = FALSE
+    )
+
+    selected <- encode_select_files(files, prefer_default = TRUE, quiet = TRUE)
+
+    expect_equal(
+        selected$files$file_accession,
+        c("ENCFFPREF01", "ENCFFFALL01")
+    )
+})
+
+test_that("replicate-level selection excludes pooled replicate labels", {
+    files <- data.frame(
+        file_accession = c("ENCFFREP001", "ENCFFPOOL01"),
+        experiment_accession = "ENCSRREP001",
+        file_format = "tsv",
+        output_type = "gene quantifications",
+        assembly = "mm10",
+        status = "released",
+        href = paste0("/files/", c("ENCFFREP001", "ENCFFPOOL01"), "/@@download/file.tsv"),
+        biological_replicates = c("1", "1, 2"),
+        stringsAsFactors = FALSE
+    )
+
+    selected <- encode_select_files(
+        files,
+        replicate_policy = "replicate_level",
+        quiet = TRUE
+    )
+
+    expect_equal(selected$files$file_accession, "ENCFFREP001")
+    expect_match(selected$excluded$reason, "not replicate-level")
+})
+
+test_that("selection records all applicable exclusions and tolerates unknown status", {
+    files <- data.frame(
+        file_accession = "ENCFFUNKNOWN",
+        file_format = "bed",
+        output_type = "peaks",
+        assembly = "hg19",
+        href = NA_character_,
+        stringsAsFactors = FALSE
+    )
+
+    selected <- encode_select_files(
+        files,
+        file_format = "tsv",
+        assembly = "mm10",
+        quiet = TRUE
+    )
+
+    expect_false(selected$criteria$status_filter_applied)
+    expect_match(selected$excluded$reason, "wrong file format")
+    expect_match(selected$excluded$reason, "wrong assembly")
+    expect_match(selected$excluded$reason, "missing download URL")
+    expect_false(grepl("wrong status", selected$excluded$reason))
+})
+
+test_that("observed MD5 is recorded without portal checksum metadata", {
+    directory <- withr::local_tempdir()
+    files <- data.frame(
+        file_accession = "ENCFFNOMD501",
+        href = "/files/ENCFFNOMD501/@@download/file.txt",
+        file_size = 3,
+        md5sum = NA_character_,
+        stringsAsFactors = FALSE
+    )
+    testthat::local_mocked_bindings(
+        encode_perform_file = function(url, path, timeout = NULL) {
+            writeBin(charToRaw("new"), path)
+            list(retrieved_at = Sys.time())
+        },
+        .package = "encodeUtils"
+    )
+
+    result <- encode_download(files, directory = directory, quiet = TRUE)
+
+    expect_equal(result$observed_md5, unname(tools::md5sum(result$local_path)))
+    expect_true(is.na(result$md5_verified))
 })

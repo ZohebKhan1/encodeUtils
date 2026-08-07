@@ -29,13 +29,14 @@
 #'   lists metadata only; it does not download file contents.
 #' @export
 #'
-#' @examples
+#' @examplesIf interactive()
 #' files <- encode_list_files(
 #'     "ENCSR389GJZ",
 #'     file_format = "tsv",
 #'     limit = 1,
 #'     quiet = TRUE
 #' )
+#'
 #' encode_results(files)
 encode_list_files <- function(
     x,
@@ -97,7 +98,8 @@ encode_list_files <- function(
         files,
         query_url = search_result$query_url,
         retrieved_at = search_result$request$retrieved_at,
-        filters = search_result$filters
+        filters = search_result$filters,
+        request_history = search_result$request_history
     )
     class(files) <- c("encode_file_table", "data.frame")
     attr(files, "total") <- search_result$total
@@ -274,10 +276,10 @@ encode_experiment_paths <- function(x) {
     }
     if (is.data.frame(x)) {
         if ("dataset" %in% names(x)) {
-            return(as.character(x$dataset))
+            return(vapply(as.character(x$dataset), encode_as_experiment_path, character(1L)))
         }
         if ("id" %in% names(x)) {
-            return(as.character(x$id))
+            return(vapply(as.character(x$id), encode_as_experiment_path, character(1L)))
         }
         if ("experiment_accession" %in% names(x)) {
             return(paste0("/experiments/", x$experiment_accession, "/"))

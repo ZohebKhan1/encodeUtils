@@ -2,7 +2,7 @@
 
 [![R-CMD-check](https://github.com/ZohebKhan1/encodeUtils/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/ZohebKhan1/encodeUtils/actions/workflows/R-CMD-check.yaml)
 [![pkgdown](https://github.com/ZohebKhan1/encodeUtils/actions/workflows/pkgdown.yaml/badge.svg)](https://github.com/ZohebKhan1/encodeUtils/actions/workflows/pkgdown.yaml)
-[![coverage 62.7%](https://img.shields.io/badge/coverage-62.7%25-yellow)](https://github.com/ZohebKhan1/encodeUtils/actions/workflows/test-coverage.yaml)
+[![test coverage](https://github.com/ZohebKhan1/encodeUtils/actions/workflows/test-coverage.yaml/badge.svg)](https://github.com/ZohebKhan1/encodeUtils/actions/workflows/test-coverage.yaml)
 [![R >= 4.6.0](https://img.shields.io/badge/R-%E2%89%A5%204.6.0-276DC3?logo=r)](https://www.r-project.org/)
 
 `encodeUtils` searches the ENCODE Portal, converts nested metadata into
@@ -14,14 +14,17 @@ The package is not affiliated with or endorsed by the ENCODE Project.
 
 ## Installation
 
-Install the current development version from GitHub:
+Install the released package through Bioconductor:
 
 ```r
-if (!requireNamespace("pak", quietly = TRUE)) {
-    install.packages("pak")
+if (!requireNamespace("BiocManager", quietly = TRUE)) {
+    install.packages("BiocManager")
 }
-pak::pak("ZohebKhan1/encodeUtils")
+BiocManager::install("encodeUtils")
 ```
+
+The development version is available with
+`pak::pak("ZohebKhan1/encodeUtils")`.
 
 ## End-to-end retrieval
 
@@ -43,23 +46,29 @@ the same sequence.
 ```r
 library(encodeUtils)
 
-# Find one candidate. `limit = 1` keeps the example small; inspect it before use.
-experiments <- encode_search(
+# Discover current candidates. Search ordering can change as ENCODE evolves.
+discovery <- encode_search(
     organism = "mouse",
-    assay = "rna-seq",
+    assay = "microRNA-seq",
     organ = "heart",
-    limit = 1
+    limit = 5
 )
-experiment_table <- encode_results(experiments)
-chosen_experiment <- experiment_table$accession[[1L]]
+encode_results(discovery)
 
-# List metadata first; this does not download file contents.
-files <- encode_list_files(chosen_experiment)
+# Pin downstream work to one released experiment and two small files.
+files <- encode_list_files(
+    "ENCSR523CTA",
+    file_format = "tsv",
+    output_type = "microRNA quantifications",
+    assembly = "mm10"
+)
 selected <- encode_select_files(
     files,
-    preset = "rnaseq_gene_quant",
+    file_accession = c("ENCFF859GWB", "ENCFF838WBE"),
+    file_format = "tsv",
+    output_type = "microRNA quantifications",
     assembly = "mm10",
-    replicate_policy = "preferred_processed"
+    replicate_policy = "replicate_level"
 )
 encode_results(selected)
 selected$excluded
@@ -68,13 +77,20 @@ selected$excluded
 plan <- encode_download(
     selected,
     directory = "encode-data",
+    max_file_size = "100KB",
+    max_total_size = "200KB",
     dry_run = TRUE
 )
 encode_results(plan)
 
 # After reviewing the selected files and plan:
-downloaded <- encode_download(selected, directory = "encode-data")
-loaded <- encode_read(downloaded, values = c("raw_counts", "tpm"))
+downloaded <- encode_download(
+    selected,
+    directory = "encode-data",
+    max_file_size = "100KB",
+    max_total_size = "200KB"
+)
+loaded <- encode_read(downloaded, values = "raw_counts")
 manifest <- encode_manifest(loaded, path = "encode-manifest.json")
 ```
 
@@ -82,14 +98,15 @@ manifest <- encode_manifest(loaded, path = "encode-manifest.json")
 the loaded collection, `metadata` contains the input file table, `data`
 contains one native object per file, `row_data` describes matrix features, and
 `matrices` contains the requested numeric matrices. Matrices are created only
-when every participating table has a complete, unique feature identifier;
-otherwise the original tables remain in `loaded$data` without inferred
-row-order alignment.
+when participating tables have compatible ENCODE metadata and the same
+complete, unique feature set; otherwise the original tables remain in
+`loaded$data` without inferred alignment.
 
 When compatible matrices are available, use
 `encode_read(downloaded, as = "SummarizedExperiment")` to pass the expression
 assays, feature metadata, and file metadata to Bioconductor methods in one
-standard container.
+standard container. The `metadata(se)$encodeUtils` entry retains the source
+query, request history, filters, and file-selection criteria.
 
 ## Other entry points and formats
 

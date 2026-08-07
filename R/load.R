@@ -1,7 +1,5 @@
 # Loaded-file collection
 
-encode_gene_annotation_cache <- new.env(parent = emptyenv())
-
 encode_load_downloaded_files <- function(
     files,
     max_size = "100MB",
@@ -10,7 +8,7 @@ encode_load_downloaded_files <- function(
     allow_large = FALSE,
     unsupported = c("return_path", "error"),
     as = c("auto", "data.frame", "GRanges", "path"),
-    row_names = c("gene_symbol", "ensembl_id", "entrez_id", "none"),
+    row_names = c("gene_symbol", "gene_id", "ensembl_id", "entrez_id", "none"),
     matrix_values = "raw_counts",
     simplify_quant = TRUE,
     quiet = FALSE
@@ -19,7 +17,22 @@ encode_load_downloaded_files <- function(
     as <- match.arg(as)
     row_names <- match.arg(row_names)
     matrix_values <- encode_normalize_matrix_values(matrix_values)
+    query_url <- encode_query_url(files)
+    retrieved_at <- attr(files, "retrieved_at", exact = TRUE)
+    filters <- encode_filters(files)
+    request_history <- encode_request_history(files)
+    selection_criteria <- encode_selection_criteria(files)
+    base_url <- attr(files, "encode_base_url", exact = TRUE) %||% encode_base_url()
     files <- as.data.frame(files, stringsAsFactors = FALSE)
+    files <- encode_attach_metadata(
+        files,
+        query_url = query_url,
+        retrieved_at = retrieved_at,
+        filters = filters,
+        base_url = base_url,
+        request_history = request_history,
+        selection_criteria = selection_criteria
+    )
     if (!"local_path" %in% names(files)) {
         cli::cli_abort("Downloaded file metadata must include {.field local_path}.")
     }
@@ -60,9 +73,6 @@ encode_load_downloaded_files <- function(
     if (!isTRUE(quiet)) {
         cli::cli_inform("Preparing loaded ENCODE tables.")
     }
-    if (isTRUE(simplify_quant)) {
-        data <- encode_annotate_loaded_data(data, files)
-    }
     data <- encode_set_row_names(data, row_names)
     class(data) <- c("encode_data_list", "list")
 
@@ -89,24 +99,42 @@ encode_load_downloaded_files <- function(
 encode_loaded_summarized_experiment <- function(loaded) {
     assays <- lapply(loaded$matrices, identity)
     if (length(assays) == 0L) {
+        reason <- attr(loaded$matrices, "reason", exact = TRUE)
         cli::cli_abort(
-            "No compatible expression matrices were assembled, so a SummarizedExperiment cannot be created."
+            c(
+                "No compatible expression matrices were assembled, so a SummarizedExperiment cannot be created.",
+                "x" = reason %||% "The loaded files did not provide compatible tabular expression data."
+            )
         )
     }
     samples <- colnames(assays[[1L]])
     features <- rownames(assays[[1L]])
+    sample_index <- match(samples, encode_loaded_file_names(loaded$metadata))
+    if (anyNA(sample_index)) {
+        cli::cli_abort(
+            "Assay columns could not be matched to their ENCODE file metadata."
+        )
+    }
     col_data <- S4Vectors::DataFrame(
-        as.data.frame(loaded$metadata, stringsAsFactors = FALSE),
+        as.data.frame(loaded$metadata[sample_index, , drop = FALSE], stringsAsFactors = FALSE),
         row.names = samples
     )
     row_data <- S4Vectors::DataFrame(
         as.data.frame(loaded$row_data, stringsAsFactors = FALSE),
         row.names = features
     )
+    provenance <- list(
+        query_url = encode_query_url(loaded),
+        retrieved_at = attr(loaded$metadata, "retrieved_at", exact = TRUE),
+        filters = encode_filters(loaded),
+        requests = encode_request_history(loaded),
+        selection_criteria = encode_selection_criteria(loaded)
+    )
     SummarizedExperiment::SummarizedExperiment(
         assays = assays,
         rowData = row_data,
-        colData = col_data
+        colData = col_data,
+        metadata = list(encodeUtils = provenance)
     )
 }
 
@@ -184,256 +212,6 @@ encode_row_read_format <- function(row, format) {
     NULL
 }
 
-# Optional gene annotation
-
-encode_annotate_loaded_data <- function(data, files) {
-    if (length(data) == 0L) {
-        return(data)
-    }
-    gene_ids <- lapply(data, function(x) {
-        if (!is.data.frame(x)) {
-            return(NULL)
-        }
-        encode_gene_identifier_input(x)
-    })
-    packages <- vapply(seq_along(data), function(i) {
-        if (is.null(gene_ids[[i]])) {
-            return(NA_character_)
-        }
-        encode_gene_annotation_package(files[i, , drop = FALSE])
-    }, character(1L))
-
-    # Keep the original table when an optional organism annotation is unavailable.
-    for (package in unique(stats::na.omit(packages))) {
-        indexes <- which(packages == package)
-        requested <- unique(unlist(gene_ids[indexes], use.names = FALSE))
-        requested <- requested[!is.na(requested) & nzchar(requested)]
-        if (length(requested) == 0L) {
-            next
-        }
-        annotation <- encode_gene_annotation_for_package(requested, package)
-        if (is.null(annotation)) {
-            next
-        }
-        row.names(annotation) <- annotation$input_id
-        for (i in indexes) {
-            data[[i]] <- encode_add_gene_annotation(
-                data[[i]],
-                annotation[gene_ids[[i]], c("gene_symbol", "ensembl_id", "entrez_id"), drop = FALSE]
-            )
-        }
-    }
-    data
-}
-
-encode_gene_identifier_input <- function(data) {
-    if ("gene_id" %in% names(data)) {
-        return(as.character(data$gene_id))
-    }
-    if ("ensembl_id" %in% names(data) || "entrez_id" %in% names(data)) {
-        ensembl <- if ("ensembl_id" %in% names(data)) as.character(data$ensembl_id) else rep(NA_character_, nrow(data))
-        entrez <- if ("entrez_id" %in% names(data)) as.character(data$entrez_id) else rep(NA_character_, nrow(data))
-        id <- ifelse(!is.na(ensembl) & nzchar(ensembl), ensembl, entrez)
-        if (all(is.na(id) | !nzchar(id))) {
-            return(NULL)
-        }
-        return(id)
-    }
-    NULL
-}
-
-encode_add_gene_annotation <- function(data, annotation) {
-    data <- as.data.frame(data, stringsAsFactors = FALSE)
-    data$gene_symbol <- encode_coalesce_annotation_column(annotation$gene_symbol, data$gene_symbol)
-    data$ensembl_id <- encode_coalesce_annotation_column(annotation$ensembl_id, data$ensembl_id)
-    data$entrez_id <- encode_coalesce_annotation_column(annotation$entrez_id, data$entrez_id)
-    identifiers <- c("gene_symbol", "ensembl_id", "entrez_id")
-    other_names <- names(data)[!names(data) %in% identifiers]
-    data[, c(identifiers, other_names), drop = FALSE]
-}
-
-encode_coalesce_annotation_column <- function(primary, fallback = NULL) {
-    if (is.null(fallback)) {
-        return(primary)
-    }
-    fallback <- as.character(fallback)
-    missing <- is.na(primary) | !nzchar(primary)
-    primary[missing] <- fallback[missing]
-    primary
-}
-
-encode_gene_annotation_for_package <- function(gene_id, package) {
-    gene_id <- as.character(gene_id)
-    database <- encode_gene_annotation_database(package)
-    if (is.null(database)) {
-        return(NULL)
-    }
-    is_ensembl <- grepl("^ENS[A-Z]*G[0-9]+([.][0-9]+)?$", gene_id)
-    is_entrez <- grepl("^[0-9]+$", gene_id)
-    ensembl_keys <- sub("[.][0-9]+$", "", gene_id)
-    annotation <- data.frame(
-        input_id = gene_id,
-        gene_symbol = rep(NA_character_, length(gene_id)),
-        ensembl_id = ifelse(is_ensembl, gene_id, NA_character_),
-        entrez_id = ifelse(is_entrez, gene_id, NA_character_),
-        stringsAsFactors = FALSE
-    )
-    ensembl_lookup <- encode_gene_annotation_lookup(
-        package = package,
-        keytype = "ENSEMBL",
-        keys = ensembl_keys[is_ensembl],
-        columns = c("SYMBOL", "ENTREZID")
-    )
-    if (!is.null(ensembl_lookup)) {
-        annotation$gene_symbol[is_ensembl] <- encode_lookup_gene_column(
-            ensembl_lookup,
-            keytype = "ENSEMBL",
-            keys = ensembl_keys[is_ensembl],
-            column = "SYMBOL"
-        )
-        annotation$entrez_id[is_ensembl] <- encode_lookup_gene_column(
-            ensembl_lookup,
-            keytype = "ENSEMBL",
-            keys = ensembl_keys[is_ensembl],
-            column = "ENTREZID"
-        )
-    }
-
-    entrez_lookup <- encode_gene_annotation_lookup(
-        package = package,
-        keytype = "ENTREZID",
-        keys = gene_id[is_entrez],
-        columns = c("SYMBOL", "ENSEMBL")
-    )
-    if (!is.null(entrez_lookup)) {
-        entrez_use <- is.na(annotation$gene_symbol) & is_entrez
-        annotation$gene_symbol[entrez_use] <- encode_lookup_gene_column(
-            entrez_lookup,
-            keytype = "ENTREZID",
-            keys = gene_id[entrez_use],
-            column = "SYMBOL"
-        )
-        ensembl_use <- is.na(annotation$ensembl_id) & is_entrez
-        annotation$ensembl_id[ensembl_use] <- encode_lookup_gene_column(
-            entrez_lookup,
-            keytype = "ENTREZID",
-            keys = gene_id[ensembl_use],
-            column = "ENSEMBL"
-        )
-    }
-    unknown_gene <- !is_ensembl & !is_entrez
-    annotation$gene_symbol[unknown_gene & is.na(annotation$gene_symbol)] <- gene_id[unknown_gene & is.na(annotation$gene_symbol)]
-    if (all(is.na(annotation$gene_symbol)) && all(is.na(annotation$ensembl_id)) && all(is.na(annotation$entrez_id))) {
-        return(NULL)
-    }
-    annotation
-}
-
-# Cache AnnotationDbi lookups and suppress incidental package output.
-encode_gene_annotation_lookup <- function(package, keytype, keys, columns) {
-    keys <- unique(keys[!is.na(keys) & nzchar(keys)])
-    if (length(keys) == 0L) {
-        return(NULL)
-    }
-    cache_key <- paste(package, keytype, paste(columns, collapse = ","), sep = "\r")
-    cached <- get0(cache_key, envir = encode_gene_annotation_cache, inherits = FALSE)
-    if (is.null(cached)) {
-        cached <- data.frame(stringsAsFactors = FALSE)
-    }
-    cached_keys <- if (keytype %in% names(cached)) {
-        cached[[keytype]]
-    } else {
-        character()
-    }
-    requested <- setdiff(keys, cached_keys)
-    if (length(requested) > 0L) {
-        database <- encode_gene_annotation_database(package)
-        if (is.null(database)) {
-            return(NULL)
-        }
-        selected <- tryCatch(
-            withCallingHandlers(
-                AnnotationDbi::select(
-                    database,
-                    keys = requested,
-                    keytype = keytype,
-                    columns = columns
-                ),
-                warning = function(cnd) {
-                    invokeRestart("muffleWarning")
-                },
-                message = function(cnd) {
-                    invokeRestart("muffleMessage")
-                }
-            ),
-            error = function(cnd) {
-                NULL
-            }
-        )
-        if (!is.null(selected) && nrow(selected) > 0L) {
-            selected <- as.data.frame(selected, stringsAsFactors = FALSE)
-            selected <- selected[!is.na(selected[[keytype]]) & nzchar(selected[[keytype]]), , drop = FALSE]
-            selected <- selected[!duplicated(selected[[keytype]]), , drop = FALSE]
-            cached <- rbind(cached, selected)
-            cached <- cached[!duplicated(cached[[keytype]]), , drop = FALSE]
-            assign(cache_key, cached, envir = encode_gene_annotation_cache)
-        }
-    }
-    if (nrow(cached) == 0L || !keytype %in% names(cached)) {
-        return(NULL)
-    }
-    cached[match(keys, cached[[keytype]]), , drop = FALSE]
-}
-
-encode_lookup_gene_column <- function(lookup, keytype, keys, column) {
-    out <- rep(NA_character_, length(keys))
-    if (is.null(lookup) || !column %in% names(lookup)) {
-        return(out)
-    }
-    index <- match(keys, lookup[[keytype]])
-    found <- !is.na(index)
-    out[found] <- as.character(lookup[[column]][index[found]])
-    out
-}
-
-encode_gene_annotation_database <- function(package) {
-    if (!requireNamespace(package, quietly = TRUE)) {
-        return(NULL)
-    }
-    namespace <- asNamespace(package)
-    switch(package,
-        "org.Mm.eg.db" = get("org.Mm.eg.db", envir = namespace),
-        "org.Hs.eg.db" = get("org.Hs.eg.db", envir = namespace),
-        NULL
-    )
-}
-
-encode_gene_annotation_package <- function(file) {
-    organism <- if ("organism" %in% names(file)) {
-        tolower(as.character(file$organism[[1L]]))
-    } else {
-        NA_character_
-    }
-    assembly <- if ("assembly" %in% names(file)) {
-        tolower(as.character(file$assembly[[1L]]))
-    } else {
-        NA_character_
-    }
-    if (!is.na(organism) && grepl("mus musculus|mouse", organism)) {
-        return("org.Mm.eg.db")
-    }
-    if (!is.na(organism) && grepl("homo sapiens|human", organism)) {
-        return("org.Hs.eg.db")
-    }
-    if (!is.na(assembly) && grepl("^mm", assembly)) {
-        return("org.Mm.eg.db")
-    }
-    if (!is.na(assembly) && grepl("^hg|^grch", assembly)) {
-        return("org.Hs.eg.db")
-    }
-    NA_character_
-}
-
 # Expression-matrix assembly
 
 encode_tabular_matrices <- function(data, files, values = "raw_counts") {
@@ -450,9 +228,19 @@ encode_tabular_matrices <- function(data, files, values = "raw_counts") {
     if (any(vapply(data, encode_is_interval_table, logical(1L)))) {
         return(encode_empty_matrix_list())
     }
+    conflicts <- encode_matrix_metadata_conflicts(files)
+    if (length(conflicts) > 0L) {
+        return(encode_empty_matrix_list(paste0(
+            "Files have incompatible metadata: ",
+            paste(conflicts, collapse = ", "),
+            "."
+        )))
+    }
     feature <- encode_common_feature_column(data)
     if (is.na(feature)) {
-        return(encode_empty_matrix_list())
+        return(encode_empty_matrix_list(
+            "Tables do not share one complete, unique feature identifier."
+        ))
     }
     numeric_columns <- Reduce(
         intersect,
@@ -466,6 +254,11 @@ encode_tabular_matrices <- function(data, files, values = "raw_counts") {
         return(encode_empty_matrix_list())
     }
     features <- encode_matrix_features(data, feature)
+    if (is.null(features)) {
+        return(encode_empty_matrix_list(
+            "Tables contain different feature sets and were not combined."
+        ))
+    }
     matrices <- vector("list", length(selected))
     names(matrices) <- selected
     for (i in seq_along(selected)) {
@@ -482,12 +275,25 @@ encode_tabular_matrices <- function(data, files, values = "raw_counts") {
     matrices
 }
 
-encode_empty_matrix_list <- function() {
+encode_empty_matrix_list <- function(reason = NULL) {
     structure(
         list(),
         row_data = data.frame(),
+        reason = reason,
         class = c("encode_matrix_list", "list")
     )
+}
+
+encode_matrix_metadata_conflicts <- function(files) {
+    fields <- intersect(
+        c("organism", "assembly", "output_type", "genome_annotation"),
+        names(files)
+    )
+    fields[vapply(fields, function(field) {
+        values <- tolower(trimws(as.character(files[[field]])))
+        values <- unique(values[!is.na(values) & nzchar(values)])
+        length(values) > 1L
+    }, logical(1L))]
 }
 
 encode_normalize_matrix_values <- function(values) {
@@ -544,11 +350,14 @@ encode_common_feature_column <- function(data) {
 }
 
 encode_matrix_features <- function(data, feature) {
-    features <- unique(unlist(
-        lapply(data, function(x) as.character(x[[feature]])),
-        use.names = FALSE
-    ))
-    features[!is.na(features) & nzchar(features)]
+    features <- as.character(data[[1L]][[feature]])
+    compatible <- vapply(data[-1L], function(x) {
+        setequal(features, as.character(x[[feature]]))
+    }, logical(1L))
+    if (!all(compatible)) {
+        return(NULL)
+    }
+    features
 }
 
 encode_merge_numeric_column <- function(data, files, feature, value, features) {
@@ -612,11 +421,14 @@ encode_feature_annotation <- function(data, feature) {
     if (length(annotations) == 0L) {
         return(NULL)
     }
-    annotation <- do.call(
-        rbind,
-        lapply(data, function(x) x[, c(feature, annotations), drop = FALSE])
-    )
-    annotation <- annotation[stats::complete.cases(annotation[, feature, drop = FALSE]), , drop = FALSE]
-    annotation <- annotation[!duplicated(annotation[[feature]]), , drop = FALSE]
-    annotation
+    features <- as.character(data[[1L]][[feature]])
+    reference <- data[[1L]][, c(feature, annotations), drop = FALSE]
+    consistent <- vapply(annotations, function(annotation) {
+        reference_values <- as.character(reference[[annotation]])
+        all(vapply(data[-1L], function(x) {
+            index <- match(features, as.character(x[[feature]]))
+            identical(reference_values, as.character(x[[annotation]][index]))
+        }, logical(1L)))
+    }, logical(1L))
+    reference[, c(feature, annotations[consistent]), drop = FALSE]
 }

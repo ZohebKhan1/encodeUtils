@@ -10,11 +10,10 @@ encode_total <- function(raw, graph) {
 }
 
 encode_active_filters <- function(raw, query) {
-    filters <- raw$filters
-    if (is.null(filters)) {
-        filters <- query
-    }
-    encode_filter_table(filters)
+    response_filters <- encode_filter_table(raw$filters %||% list())
+    query_filters <- query[!names(query) %in% c("format", "frame", "limit")]
+    query_filters <- encode_filter_table(query_filters)
+    unique(rbind(response_filters, query_filters))
 }
 
 #' Extract ENCODE facets from a result object

@@ -37,17 +37,25 @@
 #' @export
 #'
 #' @examples
-#' encode_file_presets()
-#' encode_file_presets("chipseq_peaks")
+#' files <- data.frame(
+#'     file_accession = c("ENCFFONE", "ENCFFTWO"),
+#'     file_format = c("tsv", "bed"),
+#'     output_type = c("gene quantifications", "peaks"),
+#'     assembly = "mm10",
+#'     status = "released",
+#'     href = c(
+#'         "/files/ENCFFONE/@@@@download/a.tsv",
+#'         "/files/ENCFFTWO/@@@@download/b.bed"
+#'     )
+#' )
 #'
-#' example_dir <- system.file("example-data", package = "encodeUtils")
-#' files <- utils::read.csv(file.path(example_dir, "files.csv"))
 #' selected <- encode_select_files(
 #'     files,
 #'     preset = "rnaseq_gene_quant",
 #'     assembly = "mm10",
 #'     quiet = TRUE
 #' )
+#'
 #' encode_results(selected)
 encode_select_files <- function(
     files,
@@ -72,7 +80,12 @@ encode_select_files <- function(
     require_href <- encode_validate_flag(require_href, "require_href")
     quiet <- encode_validate_flag(quiet, "quiet")
     files <- encode_file_table_from_input(files, status = status)
+    query_url <- encode_query_url(files)
+    retrieved_at <- attr(files, "retrieved_at", exact = TRUE)
+    filters <- encode_filters(files)
+    request_history <- encode_request_history(files)
     files <- as.data.frame(files, stringsAsFactors = FALSE)
+    status_available <- "status" %in% names(files)
     if (!"file_accession" %in% names(files) && "accession" %in% names(files)) {
         files$file_accession <- files$accession
     }
@@ -100,6 +113,7 @@ encode_select_files <- function(
         assembly = assembly,
         file_accession = file_accession,
         status = status,
+        status_filter_applied = !is.null(status) && status_available,
         replicate_policy = replicate_policy,
         prefer_default = prefer_default,
         preferred_default_available = FALSE,
@@ -108,13 +122,21 @@ encode_select_files <- function(
     )
 
     if (nrow(files) == 0L) {
+        files <- encode_attach_metadata(
+            files,
+            query_url = query_url,
+            retrieved_at = retrieved_at,
+            filters = filters,
+            request_history = request_history,
+            selection_criteria = criteria
+        )
         class(files) <- c("encode_file_table", "data.frame")
         result <- list(
             files = files,
             excluded = encode_exclusion_table(files, list()),
             criteria = criteria,
-            query_url = encode_query_url(files),
-            retrieved_at = attr(files, "retrieved_at", exact = TRUE)
+            query_url = query_url,
+            retrieved_at = retrieved_at
         )
         class(result) <- c("encode_selected_files", "list")
         return(result)
@@ -140,7 +162,7 @@ encode_select_files <- function(
         state,
         keep = encode_match_values(files$status, status),
         reason = "wrong status",
-        active = !is.null(status)
+        active = !is.null(status) && status_available
     )
     state <- encode_apply_selection_filter(
         state,
@@ -170,10 +192,9 @@ encode_select_files <- function(
     use_preferred_default <- isTRUE(prefer_default) && preferred_default_available
     criteria$preferred_default_available <- preferred_default_available
     criteria$preferred_default_used <- use_preferred_default
-    state <- encode_apply_selection_filter(
+    state <- encode_apply_preferred_default(
         state,
-        keep = files$preferred_default %in% TRUE,
-        reason = "not preferred_default",
+        files = files,
         active = use_preferred_default
     )
     state <- encode_apply_replicate_policy(
@@ -191,9 +212,11 @@ encode_select_files <- function(
     }
     selected <- encode_attach_metadata(
         selected,
-        query_url = encode_query_url(files),
-        retrieved_at = attr(files, "retrieved_at", exact = TRUE),
-        filters = attr(files, "filters", exact = TRUE)
+        query_url = query_url,
+        retrieved_at = retrieved_at,
+        filters = filters,
+        request_history = request_history,
+        selection_criteria = criteria
     )
     class(selected) <- c("encode_file_table", "data.frame")
 
@@ -202,8 +225,8 @@ encode_select_files <- function(
         files = selected,
         excluded = excluded,
         criteria = criteria,
-        query_url = encode_query_url(files),
-        retrieved_at = attr(files, "retrieved_at", exact = TRUE)
+        query_url = query_url,
+        retrieved_at = retrieved_at
     )
     class(result) <- c("encode_selected_files", "list")
 
@@ -232,8 +255,11 @@ encode_select_files <- function(
 #' @export
 #'
 #' @examples
+#' # List all available presets.
 #' encode_file_presets()
-#' encode_file_presets("chipseq_peaks")
+#'
+#' # Inspect the exact preferences in one preset.
+#' encode_file_presets("rnaseq_gene_quant")
 encode_file_presets <- function(preset = NULL) {
     encode_file_preset(preset)
 }
@@ -333,12 +359,34 @@ encode_apply_selection_filter <- function(state, keep, reason, active) {
         return(state)
     }
     keep[is.na(keep)] <- FALSE
-    newly_excluded <- state$keep & !keep
-    for (index in which(newly_excluded)) {
+    for (index in which(!keep)) {
         state$reasons[[index]] <- c(state$reasons[[index]], reason)
     }
     state$keep <- state$keep & keep
     state
+}
+
+encode_apply_preferred_default <- function(state, files, active) {
+    if (!isTRUE(active)) {
+        return(state)
+    }
+    groups <- as.character(files$experiment_accession)
+    missing <- is.na(groups) | !nzchar(groups)
+    groups[missing] <- as.character(files$file_accession[missing])
+    keep <- rep(TRUE, nrow(files))
+    for (group in unique(groups[state$keep])) {
+        index <- which(state$keep & groups == group)
+        preferred <- files$preferred_default[index] %in% TRUE
+        if (any(preferred)) {
+            keep[index[!preferred]] <- FALSE
+        }
+    }
+    encode_apply_selection_filter(
+        state,
+        keep = keep,
+        reason = "not preferred_default",
+        active = TRUE
+    )
 }
 
 encode_apply_replicate_policy <- function(state, files, policy, output_priority) {
@@ -346,9 +394,17 @@ encode_apply_replicate_policy <- function(state, files, policy, output_priority)
         return(state)
     }
     if (identical(policy, "replicate_level")) {
+        replicate <- !is.na(files$biological_replicates) &
+            nzchar(trimws(files$biological_replicates)) &
+            !grepl("[,;|]", files$biological_replicates) &
+            !grepl(
+                "pooled|idr|pseudoreplicated|optimal|conservative",
+                files$output_type,
+                ignore.case = TRUE
+            )
         return(encode_apply_selection_filter(
             state,
-            keep = !is.na(files$biological_replicates) & nzchar(files$biological_replicates),
+            keep = replicate,
             reason = "not replicate-level",
             active = TRUE
         ))
@@ -372,7 +428,7 @@ encode_keep_best_output_type <- function(state, files, output_priority) {
     ranks <- match(tolower(files$output_type), tolower(output_priority))
     groups <- files$experiment_accession
     groups[is.na(groups) | !nzchar(groups)] <- files$file_accession[is.na(groups) | !nzchar(groups)]
-    keep <- state$keep
+    keep <- rep(TRUE, nrow(files))
     for (group in unique(groups[state$keep])) {
         index <- which(state$keep & groups == group)
         ranked <- ranks[index]

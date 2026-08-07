@@ -26,71 +26,76 @@ encode_download(
 \arguments{
 \item{x}{ENCFF accession(s), file metadata table, file search result,
 selected-file object, or ENCSR experiment accession(s). ENCSR input is
-first passed to `encode_list_files()`.}
+first passed to \code{encode_list_files()}.}
 
 \item{file_accession}{Optional ENCODE file accession(s), such as
-`"ENCFF260OJQ"`, to download from `x`. Use this when you want specific
-files rather than the first `limit` rows.}
+\code{"ENCFF260OJQ"}, to download from \code{x}. Use this when you want specific
+files rather than the first \code{limit} rows.}
 
-\item{file_format}{Optional file-format filter used when `x` is an ENCSR
+\item{file_format}{Optional file-format filter used when \code{x} is an ENCSR
 experiment accession.}
 
-\item{output_type}{Optional output-type filter used when `x` is an ENCSR
+\item{output_type}{Optional output-type filter used when \code{x} is an ENCSR
 experiment accession.}
 
-\item{assembly}{Optional genome-assembly filter used when `x` is an ENCSR
+\item{assembly}{Optional genome-assembly filter used when \code{x} is an ENCSR
 experiment accession.}
 
-\item{status}{Optional file-status filter used when `x` is an ENCSR
+\item{status}{Optional file-status filter used when \code{x} is an ENCSR
 experiment accession.}
 
-\item{limit}{Optional number of files to use from the top of `x`.}
+\item{limit}{Optional number of files to use from the top of \code{x}.}
 
-\item{directory}{Destination directory. If `NULL`, a package cache directory
-from `tools::R_user_dir("encodeUtils", "cache")` is used. Supply an
+\item{directory}{Destination directory. If \code{NULL}, a package cache directory
+from \code{tools::R_user_dir("encodeUtils", "cache")} is used. Supply an
 explicit project directory for reusable data.}
 
 \item{max_file_size}{Maximum allowed size per file, as bytes or a string like
-`"500MB"`.}
+\code{"500MB"}.}
 
 \item{max_total_size}{Maximum allowed total size, as bytes or a string.}
 
 \item{allow_unknown_size}{Whether to allow real downloads for files whose
-ENCODE metadata do not include `file_size`. Dry-runs are always allowed and
+ENCODE metadata do not include \code{file_size}. Dry-runs are always allowed and
 report the unknown-size count.}
 
 \item{overwrite}{Whether existing destination files may be replaced.}
 
-\item{dry_run}{If `TRUE`, return the planned download table without
+\item{dry_run}{If \code{TRUE}, return the planned download table without
 downloading.}
 
 \item{prefer_cloud}{Whether to prefer ENCODE cloud URLs when available.}
 
-\item{verify}{Verification checks to perform. Supported values are `"md5"`
-and `"size"`. Use `NULL` to record downloads without size or MD5
+\item{verify}{Verification checks to perform. Supported values are \code{"md5"}
+and \code{"size"}. Use \code{NULL} to record downloads without size or MD5
 verification.}
 
-\item{quiet}{If `FALSE`, print concise progress messages.}
+\item{quiet}{If \code{FALSE}, print concise progress messages.}
 }
 \value{
-An `encode_download_result` data frame. Dry runs return planned rows
-  with destination `local_path`, known-size totals, unknown-size counts, and
-  `download_status = "planned"`. Transfers return one row per file with
-  `download_status`, `downloaded_at`, `downloaded_size`, the expected
-  `md5sum`, `observed_md5`, verification flags, and `failure_reason`.
-  Printing the result shows the transfer status and local destination; use
-  `encode_results()` for the complete table.
+An \code{encode_download_result} data frame. Dry runs return planned rows
+with destination \code{local_path}, known-size totals, unknown-size counts, and
+\code{download_status = "planned"}. Transfers return one row per file with
+\code{download_status}, \code{downloaded_at}, \code{downloaded_size}, the expected
+\code{md5sum}, \code{observed_md5}, verification flags, and \code{failure_reason}.
+Printing the result shows the transfer status and local destination; use
+\code{encode_results()} for the complete table.
 }
 \description{
 Download files from an ENCODE file table, selected-file object, file search,
 or file accession. Planned sizes are checked before transfer, existing files
-are not overwritten by default, files are written through a temporary `.part`
-path, and size/MD5 checks are used when ENCODE provides the metadata.
+are not overwritten by default, files are written through a unique temporary
+\code{.part} path, and size/MD5 checks are used when ENCODE provides the metadata.
 }
 \examples{
-example_dir <- system.file("example-data", package = "encodeUtils")
-files <- utils::read.csv(file.path(example_dir, "files.csv"))
-plan <- encode_download(files, directory = tempdir(), dry_run = TRUE,
-                        quiet = TRUE)
+\dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
+plan <- encode_download(
+    "ENCFF859GWB",
+    directory = tempdir(),
+    dry_run = TRUE,
+    quiet = TRUE
+)
+
 encode_results(plan)
+\dontshow{\}) # examplesIf}
 }

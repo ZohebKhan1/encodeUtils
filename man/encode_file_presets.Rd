@@ -7,19 +7,22 @@
 encode_file_presets(preset = NULL)
 }
 \arguments{
-\item{preset}{Preset name, or `NULL` to list all preset names.}
+\item{preset}{Preset name, or \code{NULL} to list all preset names.}
 }
 \value{
-A character vector of preset names when `preset = NULL`. For one
-  preset, returns a list with `file_format` and `output_type_priority`, which
-  are passed to `encode_select_files()` when the corresponding explicit
-  arguments are not supplied.
+A character vector of preset names when \code{preset = NULL}. For one
+preset, returns a list with \code{file_format} and \code{output_type_priority}, which
+are passed to \code{encode_select_files()} when the corresponding explicit
+arguments are not supplied.
 }
 \description{
 File-selection presets provide common file-format and output-type
-preferences for `encode_select_files()`.
+preferences for \code{encode_select_files()}.
 }
 \examples{
+# List all available presets.
 encode_file_presets()
-encode_file_presets("chipseq_peaks")
+
+# Inspect the exact preferences in one preset.
+encode_file_presets("rnaseq_gene_quant")
 }

@@ -19,65 +19,73 @@ encode_select_files(
 )
 }
 \arguments{
-\item{files}{File metadata from `encode_list_files()`, a File search result,
+\item{files}{File metadata from \code{encode_list_files()}, a File search result,
 a selected-file object, or ENCFF accession(s).}
 
-\item{preset}{Optional preset name. Use `encode_file_presets()` to list the
+\item{preset}{Optional preset name. Use \code{encode_file_presets()} to list the
 canonical preset names.}
 
-\item{file_format}{Optional file format filter. If omitted and `preset` is set,
+\item{file_format}{Optional file format filter. If omitted and \code{preset} is set,
 the preset supplies a format preference.}
 
-\item{output_type}{Optional output type filter. If omitted and `preset` is set,
+\item{output_type}{Optional output type filter. If omitted and \code{preset} is set,
 the preset supplies an output-type priority.}
 
 \item{assembly}{Optional genome assembly filter.}
 
 \item{file_accession}{Optional ENCODE file accession(s), such as
-`"ENCFF260OJQ"`, to select explicitly before applying other filters.}
+\code{"ENCFF260OJQ"}, to select explicitly before applying other filters.}
 
-\item{status}{Optional status filter. Defaults to `"released"`.}
+\item{status}{Optional status filter. Defaults to \code{"released"}.}
 
-\item{replicate_policy}{How to handle replicate-related outputs. `"all"`
-keeps all matching files; `"preferred_processed"` keeps the highest-priority
+\item{replicate_policy}{How to handle replicate-related outputs. \code{"all"}
+keeps all matching files; \code{"preferred_processed"} keeps the highest-priority
 output type per experiment when a preset priority is available;
-`"replicate_level"` keeps files with biological replicate labels;
-`"pooled_only"` keeps files whose output type indicates pooled or IDR-like
+\code{"replicate_level"} keeps files with biological replicate labels;
+\code{"pooled_only"} keeps files whose output type indicates pooled or IDR-like
 processing.}
 
 \item{prefer_default}{Whether to prefer ENCODE records marked
-`preferred_default`. When no preferred-default rows are present, the filter
+\code{preferred_default}. When no preferred-default rows are present, the filter
 is skipped and the other explicit criteria are used.}
 
 \item{require_href}{Whether selected rows must include an ENCODE download
 path or URL.}
 
-\item{quiet}{If `FALSE`, print a concise selection message.}
+\item{quiet}{If \code{FALSE}, print a concise selection message.}
 }
 \value{
-An `encode_selected_files` object with `files`, the selected
-  `encode_file_table`; `excluded`, a table of non-selected rows and reasons;
-  `criteria`, the applied filters and preset settings; `query_url`; and
-  `retrieved_at`.
+An \code{encode_selected_files} object with \code{files}, the selected
+\code{encode_file_table}; \code{excluded}, a table of non-selected rows and reasons;
+\code{criteria}, the applied filters and preset settings; \code{query_url}; and
+\code{retrieved_at}.
 }
 \description{
-Choose files from an `encode_list_files()` table using explicit filters or a
+Choose files from an \code{encode_list_files()} table using explicit filters or a
 preset. The result keeps the selected files for download or reading.
 }
 \details{
-Use `encode_file_presets()` to list available presets or inspect one preset.
+Use \code{encode_file_presets()} to list available presets or inspect one preset.
 }
 \examples{
-encode_file_presets()
-encode_file_presets("chipseq_peaks")
+files <- data.frame(
+    file_accession = c("ENCFFONE", "ENCFFTWO"),
+    file_format = c("tsv", "bed"),
+    output_type = c("gene quantifications", "peaks"),
+    assembly = "mm10",
+    status = "released",
+    href = c(
+        "/files/ENCFFONE/@@download/a.tsv",
+        "/files/ENCFFTWO/@@download/b.bed"
+    )
+)
 
-example_dir <- system.file("example-data", package = "encodeUtils")
-files <- utils::read.csv(file.path(example_dir, "files.csv"))
 selected <- encode_select_files(
     files,
     preset = "rnaseq_gene_quant",
     assembly = "mm10",
     quiet = TRUE
 )
+
 encode_results(selected)
 }

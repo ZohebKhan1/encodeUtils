@@ -20,20 +20,25 @@
 #' @param pretty Whether to pretty-print JSON when `path` is supplied.
 #'
 #' @return An `encode_manifest` list. Components include `package`,
-#'   `retrieval`, `filters`, and `object_type`. Depending on input, the manifest
-#'   also includes `experiments`, `records`, `selected_files`, `excluded_files`,
-#'   `downloaded_files`, `files`, or `accessions`. When requested and
-#'   available, it includes ENCODE `attribution` and captured R `session`
-#'   information. If `path` is supplied, the same manifest is written as JSON
-#'   and the path is stored as an attribute.
+#'   `retrieval`, `filters`, and `object_type`. Available request history and
+#'   file-selection criteria are stored in `requests` and
+#'   `selection_criteria`. Depending on input, the manifest also includes
+#'   experiments, records, selected or excluded files, downloaded or loaded
+#'   files, loaded-object classes, matrix dimensions, or accessions. When
+#'   requested and available, it includes ENCODE `attribution` and captured R
+#'   `session` information. If `path` is supplied, the same manifest is written
+#'   as JSON and the path is stored as an attribute.
 #' @export
 #'
 #' @examples
-#' example_dir <- system.file("example-data", package = "encodeUtils")
-#' files <- utils::read.csv(file.path(example_dir, "files.csv"))
-#' files$local_path <- file.path(example_dir, files$local_name)
+#' files <- data.frame(
+#'     file_accession = "ENCFFLOCAL1",
+#'     local_path = tempfile(fileext = ".tsv")
+#' )
+#'
 #' manifest <- encode_manifest(files, include_attribution = FALSE,
 #'                             include_session = FALSE)
+#'
 #' names(manifest)
 encode_manifest <- function(
     x,
@@ -72,6 +77,14 @@ encode_manifest <- function(
         filters = encode_filters(x),
         object_type = class(x)[[1L]]
     )
+    request_history <- encode_request_history(x)
+    if (length(request_history) > 0L) {
+        manifest$requests <- request_history
+    }
+    selection_criteria <- encode_selection_criteria(x)
+    if (!is.null(selection_criteria)) {
+        manifest$selection_criteria <- selection_criteria
+    }
 
     if (inherits(x, "encode_search_result")) {
         if (inherits(x$results, "encode_file_table")) {
@@ -96,6 +109,14 @@ encode_manifest <- function(
             }, character(1L)),
             stringsAsFactors = FALSE
         )
+        if (length(x$matrices) > 0L) {
+            manifest$matrices <- data.frame(
+                name = names(x$matrices),
+                rows = vapply(x$matrices, nrow, integer(1L)),
+                columns = vapply(x$matrices, ncol, integer(1L)),
+                stringsAsFactors = FALSE
+            )
+        }
     } else if (inherits(x, "encode_file_table") || is.data.frame(x)) {
         manifest$files <- as.data.frame(x, stringsAsFactors = FALSE)
     } else if (is.character(x)) {

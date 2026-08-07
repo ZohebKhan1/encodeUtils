@@ -7,24 +7,32 @@
 encode_results(x)
 }
 \arguments{
-\item{x}{An object returned by `encode_search()`, `encode_list_files()`,
-`encode_select_files()`, `encode_download()`, or `encode_read()`.}
+\item{x}{An object returned by \code{encode_search()}, \code{encode_list_files()},
+\code{encode_select_files()}, \code{encode_download()}, or \code{encode_read()}.}
 }
 \value{
-A data frame. For `encode_search()` and `encode_list_files()` output,
-  this is the record or file table. For `encode_select_files()`, it is the
-  selected file table. For `encode_download()`, it is the download-result
-  table. For `encode_read()` collection output, it is the loaded-file
-  metadata table.
+A data frame. For \code{encode_search()} and \code{encode_list_files()} output,
+this is the record or file table. For \code{encode_select_files()}, it is the
+selected file table. For \code{encode_download()}, it is the download-result
+table. For \code{encode_read()} collection output, it is the loaded-file
+metadata table.
 }
 \description{
-`encode_results()` returns the main table from an encodeUtils object. Use it
+\code{encode_results()} returns the main table from an encodeUtils object. Use it
 before filtering, joining, writing a CSV, or passing rows to another function.
 }
 \examples{
-example_dir <- system.file("example-data", package = "encodeUtils")
-files <- utils::read.csv(file.path(example_dir, "files.csv"))
+files <- data.frame(
+    file_accession = "ENCFFONE",
+    file_format = "tsv",
+    output_type = "gene quantifications",
+    assembly = "mm10",
+    status = "released",
+    href = "/files/ENCFFONE/@@download/a.tsv"
+)
+
 selected <- encode_select_files(files, preset = "rnaseq_gene_quant",
                                 assembly = "mm10", quiet = TRUE)
+
 encode_results(selected)
 }

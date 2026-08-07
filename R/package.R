@@ -8,8 +8,9 @@
 #' Use it to search RNA-seq, ChIP-seq, and ATAC-seq experiments, list files from
 #' ENCODE accessions, select common outputs, preview downloads before transfer,
 #' load supported local files into native R objects, and write reproducibility
-#' manifests for downstream R and Bioconductor workflows. Network examples and
-#' tests are opt-in so routine package checks remain deterministic.
+#' manifests for downstream R and Bioconductor workflows. The introductory
+#' vignette runs one deliberately small live retrieval; live help examples and
+#' smoke tests are interactive or opt-in.
 #'
 #' This package is not affiliated with or endorsed by the ENCODE Project.
 #'

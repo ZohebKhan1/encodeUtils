@@ -33,7 +33,9 @@ encode_attach_metadata <- function(
     query_url = NULL,
     retrieved_at = NULL,
     filters = NULL,
-    base_url = encode_base_url()
+    base_url = encode_base_url(),
+    request_history = NULL,
+    selection_criteria = NULL
 ) {
     if (!is.null(query_url)) {
         attr(x, "query_url") <- query_url
@@ -43,6 +45,12 @@ encode_attach_metadata <- function(
     }
     if (!is.null(filters)) {
         attr(x, "filters") <- filters
+    }
+    if (!is.null(request_history)) {
+        attr(x, "request_history") <- request_history
+    }
+    if (!is.null(selection_criteria)) {
+        attr(x, "selection_criteria") <- selection_criteria
     }
     attr(x, "encode_base_url") <- base_url
     attr(x, "package_version") <- encode_package_version()
