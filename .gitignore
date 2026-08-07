@@ -5,6 +5,10 @@
 .Renviron
 .Rprofile
 .DS_Store
+.dockerignore
+Dockerfile
+pyproject.toml
+uv.lock
 *.Rproj
 *.tar.gz
 *.Rcheck/
@@ -17,6 +21,7 @@ renv/sandbox/
 renv/local/
 renv/python/
 .quarto/
+_quarto.yml
 _book/
 Meta/
 doc/

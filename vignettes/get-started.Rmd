@@ -18,6 +18,26 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 options(width = 80)
 ```
 
+# Introduction
+
+The ENCODE Portal is a public database of experiments, biosamples, files, and
+associated metadata produced by the ENCODE Project.
+
+`encodeUtils` searches ENCODE metadata, selects and verifies ENCODE-related
+datasets and files, reads supported file formats, and records retrieved ENCODE
+metadata to improve reproducibility and citation of relevant ENCODE datasets.
+
+The Portal exposes its records through an HTTP-based REST API that returns JSON,
+which enables an R package to query accessions and metadata programmatically and
+convert nested responses into R and Bioconductor objects.
+
+# Warning
+
+Use of the programmatic API is limited to 10 GET requests/sec from any single
+user, group, company or lab.
+
+Abuse of this will result in denial of access by IP block
+
 # Workflow
 
 This vignette retrieves two released microRNA count tables from ENCODE
@@ -28,11 +48,13 @@ query is live; the download uses pinned accessions.
 # Installation
 
 ```{r installation, eval=FALSE}
-if (!requireNamespace("BiocManager", quietly = TRUE)) {
-    install.packages("BiocManager")
-}
-
 BiocManager::install("encodeUtils")
+```
+
+Install the development version with:
+
+```{r development-installation, eval=FALSE}
+pak::pak("ZohebKhan1/encodeUtils")
 ```
 
 # Find experiments

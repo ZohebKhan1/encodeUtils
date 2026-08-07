@@ -5,14 +5,29 @@
 [![test coverage](https://github.com/ZohebKhan1/encodeUtils/actions/workflows/test-coverage.yaml/badge.svg)](https://github.com/ZohebKhan1/encodeUtils/actions/workflows/test-coverage.yaml)
 [![R >= 4.6.0](https://img.shields.io/badge/R-%E2%89%A5%204.6.0-276DC3?logo=r)](https://www.r-project.org/)
 
-`encodeUtils` searches ENCODE metadata, selects and verifies files, reads
-supported formats, and records retrieval provenance.
+The ENCODE Portal is a public database of experiments, biosamples, files, and
+associated metadata produced by the ENCODE Project.
 
-The package is not affiliated with or endorsed by the ENCODE Project.
+`encodeUtils` searches ENCODE metadata, selects and verifies ENCODE-related
+datasets and files, reads supported file formats, and records retrieved ENCODE
+metadata to improve reproducibility and citation of relevant ENCODE datasets.
+
+The Portal exposes its records through an HTTP-based REST API that returns JSON,
+which enables an R package to query accessions and metadata programmatically and
+convert nested responses into R and Bioconductor objects.
+
+The package is not affiliatedd with or endorsed by the ENCODE Project.
+
+## Warning
+
+Use of the programmatic API is limited to 10 GET requests/sec from any single
+user, group, company or lab.
+
+Abuse of this will result in denial of access by IP block
 
 ## Documentation
 
-See the [getting-started vignette](https://zohebkhan1.github.io/encodeUtils/articles/get-started.html) and [function reference](https://zohebkhan1.github.io/encodeUtils/reference/).
+See the [getting-started vignette](https://zohebkhan1.github.io/encodeUtils/articles/get-started.html) and [function reference](https://zohebkhan1.github.io/encodeUtils/reference/)
 
 ## Functions
 
@@ -30,15 +45,14 @@ See the [getting-started vignette](https://zohebkhan1.github.io/encodeUtils/arti
 ## Installation
 
 ```r
-if (!requireNamespace("BiocManager", quietly = TRUE)) {
-    install.packages("BiocManager")
-}
-
 BiocManager::install("encodeUtils")
 ```
 
-Install the development version with
-`pak::pak("ZohebKhan1/encodeUtils")`.
+Install the development version with:
+
+```r
+pak::pak("ZohebKhan1/encodeUtils")
+```
 
 ## Example workflow
 
@@ -239,8 +253,7 @@ data.frame(
 
 BED, narrowPeak, and broadPeak files return `GenomicRanges::GRanges`. GFF,
 GTF, BigWig, and BigBed files use `rtracklayer` when installed; FASTA files use
-`Biostrings`. FASTQ and alignment files remain path objects for dedicated
-sequence-processing packages.
+`Biostrings`.
 
 Before transfer, `encode_download()` checks ENCODE-reported sizes and refuses
 unknown-size files unless explicitly allowed. After transfer, it verifies the
