@@ -237,16 +237,16 @@ count_data <- encode_read(
     row_names = "gene_id"
 )
 
-count_data
+print(count_data)
 ```
 
 `count_data` contains the source tables, file and feature metadata, and the
 aligned raw-count matrix.
 
-Inspect the first six rows of the count matrix.
+Inspect the first five rows of the count matrix.
 
 ```{r inspect-counts}
-count_data$matrices$raw_counts[seq_len(6L), , drop = FALSE]
+print(head(count_data$matrices$raw_counts, 5L))
 ```
 
 # Write a manifest
@@ -262,11 +262,14 @@ manifest_path <- file.path(tempdir(), "encodeUtils-live-manifest.json")
 
 manifest <- encode_manifest(count_data, path = manifest_path)
 
-data.frame(
-    manifest = basename(attr(manifest, "path")),
-    files = nrow(manifest$files),
-    requests = length(manifest$requests),
-    matrices = nrow(manifest$matrices)
+print(
+    data.frame(
+        manifest = basename(attr(manifest, "path")),
+        files = nrow(manifest$files),
+        requests = length(manifest$requests),
+        matrices = nrow(manifest$matrices)
+    ),
+    row.names = FALSE
 )
 ```
 
@@ -295,7 +298,7 @@ se <- encode_read(
     as = "SummarizedExperiment"
 )
 
-se
+print(se)
 ```
 
 The column metadata links each matrix column to its ENCODE file and biological

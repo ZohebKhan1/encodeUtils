@@ -267,12 +267,38 @@ count_data <- encode_read(
     row_names = "gene_id"
 )
 
-count_data
-count_data$matrices$raw_counts[seq_len(6L), , drop = FALSE]
+print(count_data)
+```
+
+```text
+#> ENCODE loaded files
+#> - files: 2
+#> - file objects: 2
+#> - feature rows: 2202
+#> - matrices: 1
+#> Metadata:
+#>         file  experiment        assay     organism assembly file_size   status
+#>  ENCFF859GWB ENCSR523CTA microRNA-seq Mus musculus     mm10  59.54 KB released
+#>  ENCFF838WBE ENCSR523CTA microRNA-seq Mus musculus     mm10  59.57 KB released
 ```
 
 `count_data` contains the source tables, file and feature metadata, and the
 aligned raw-count matrix.
+
+Show the first five rows of the raw-count matrix.
+
+```r
+print(head(count_data$matrices$raw_counts, 5L))
+```
+
+```text
+#>                      ENCFF859GWB ENCFF838WBE
+#> ENSMUSG00000093015.1           0           0
+#> ENSMUSG00000093970.1           0           0
+#> ENSMUSG00000076135.1           0           0
+#> ENSMUSG00000098555.1           0           0
+#> ENSMUSG00000099183.1          12          21
+```
 
 ### 7. Write a manifest
 
@@ -284,12 +310,20 @@ is not part of this manifest.
 ```r
 manifest <- encode_manifest(count_data, path = "encode-manifest.json")
 
-data.frame(
-    manifest = basename(attr(manifest, "path")),
-    files = nrow(manifest$files),
-    requests = length(manifest$requests),
-    matrices = nrow(manifest$matrices)
+print(
+    data.frame(
+        manifest = basename(attr(manifest, "path")),
+        files = nrow(manifest$files),
+        requests = length(manifest$requests),
+        matrices = nrow(manifest$matrices)
+    ),
+    row.names = FALSE
 )
+```
+
+```text
+#>             manifest files requests matrices
+#> encode-manifest.json     2        1        1
 ```
 
 ### Optional: create a SummarizedExperiment
@@ -306,7 +340,20 @@ se <- encode_read(
     as = "SummarizedExperiment"
 )
 
-se
+print(se)
+```
+
+```text
+#> class: SummarizedExperiment
+#> dim: 2202 2
+#> metadata(1): encodeUtils
+#> assays(1): raw_counts
+#> rownames(2202): ENSMUSG00000093015.1 ENSMUSG00000093970.1 ...
+#>   ENSMUSG00000098868.1 ENSMUSG00000099228.1
+#> rowData names(1): gene_id
+#> colnames(2): ENCFF859GWB ENCFF838WBE
+#> colData names(58): file_accession accession ... md5_verified
+#>   failure_reason
 ```
 
 ## Other inputs and formats
