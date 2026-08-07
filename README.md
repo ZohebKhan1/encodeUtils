@@ -30,6 +30,9 @@ The following rate-limit disclaimer is reproduced directly from the
 >
 > Abuse of this will result in denial of access by IP block
 
+See the [ENCODE data-use policy](https://www.encodeproject.org/help/citing-encode/)
+for use and citation guidance.
+
 ## Documentation
 
 See the [getting-started vignette](https://zohebkhan1.github.io/encodeUtils/articles/get-started.html) and [function reference](https://zohebkhan1.github.io/encodeUtils/reference/).
