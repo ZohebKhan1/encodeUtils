@@ -25,8 +25,12 @@ local_encode_test_options <- function() {
 
 fixture_file_table <- function() {
     data.frame(
-        file_accession = c("ENCFF000AAA", "ENCFF000AAB", "ENCFF000AAC", "ENCFF000AAD"),
-        experiment_accession = c("ENCSR000AAA", "ENCSR000AAA", "ENCSR000AAB", "ENCSR000AAC"),
+        file_accession = c(
+            "ENCFF000AAA", "ENCFF000AAB", "ENCFF000AAC", "ENCFF000AAD"
+        ),
+        experiment_accession = c(
+            "ENCSR000AAA", "ENCSR000AAA", "ENCSR000AAB", "ENCSR000AAC"
+        ),
         file_format = c("bed", "bed", "fastq", "bigWig"),
         output_type = c(
             "optimal IDR thresholded peaks",
@@ -44,7 +48,9 @@ fixture_file_table <- function() {
         ),
         file_size = c(100, 200, 300, 400),
         md5sum = NA_character_,
-        biological_replicates = c(NA_character_, NA_character_, "1", NA_character_),
+        biological_replicates = c(
+            NA_character_, NA_character_, "1", NA_character_
+        ),
         preferred_default = c(TRUE, FALSE, NA, TRUE),
         stringsAsFactors = FALSE
     )

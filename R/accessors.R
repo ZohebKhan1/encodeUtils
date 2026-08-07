@@ -23,8 +23,10 @@
 #'     href = "/files/ENCFFONE/@@@@download/a.tsv"
 #' )
 #'
-#' selected <- encode_select_files(files, preset = "rnaseq_gene_quant",
-#'                                 assembly = "mm10", quiet = TRUE)
+#' selected <- encode_select_files(files,
+#'     preset = "rnaseq_gene_quant",
+#'     assembly = "mm10", quiet = TRUE
+#' )
 #'
 #' encode_results(selected)
 encode_results <- function(x) {
