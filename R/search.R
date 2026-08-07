@@ -11,7 +11,9 @@
 #' File searches with biological filters such as organism, biosample, organ,
 #' target, or assay first search matching ENCODE Experiment records and then
 #' query files attached to those experiments. File-format filters are applied
-#' to the attached File records.
+#' to the attached File records. Limited File searches refuse to expand more
+#' than 25 parent experiments. Narrow the biological filters or use
+#' `limit = "all"` only when a complete File search is intended.
 #'
 #' @param type ENCODE object type to search, such as `"Experiment"` or `"File"`.
 #'   Use `"Experiment"` to find datasets and `"File"` to find individual files.
@@ -62,6 +64,8 @@
 #' @param status Optional ENCODE status filter. The default keeps released
 #'   records only. Use `NULL` to omit the status filter.
 #' @param limit Number of records to return, or the explicit string `"all"`.
+#'   For biological File searches, `"all"` also explicitly permits expansion
+#'   across more than 25 matching parent experiments.
 #' @param metadata Amount of linked metadata to request. `"full"` gives richer
 #'   lab, organism, biosample, and target columns. `"basic"` requests fewer
 #'   fields.
@@ -79,7 +83,7 @@
 #'   `encode_results()` to extract `results`.
 #' @export
 #'
-#' @examplesIf interactive()
+#' @examples
 #' experiments <- encode_search(
 #'     organism = "mouse",
 #'     assay = "rna-seq",
@@ -447,8 +451,15 @@ encode_search_files_via_experiments <- function(
             "Querying ENCODE experiments first to support file searches with biological filters."
         )
     }
-    # Resolve every matching experiment. The user-facing limit applies to File
-    # records, not to this parent discovery step.
+    # Limited File searches first retrieve at most one row beyond the parent
+    # safety threshold. `limit = "all"` is the explicit opt-in to full parent
+    # discovery.
+    parent_limit <- 25L
+    parent_query_limit <- if (identical(limit, "all")) {
+        "all"
+    } else {
+        parent_limit + 1L
+    }
     experiment_result <- encode_search(
         type = "Experiment",
         filters = list(),
@@ -471,12 +482,20 @@ encode_search_files_via_experiments <- function(
         target = target,
         target_category = target_category,
         status = status,
-        limit = "all",
+        limit = parent_query_limit,
         metadata = metadata,
         include_facets = FALSE,
         quiet = TRUE
     )
     experiments <- encode_results(experiment_result)
+    if (!identical(limit, "all") && experiment_result$total > parent_limit) {
+        cli::cli_abort(c(
+            "Search matched {experiment_result$total} parent experiments.",
+            "x" = "Limited searches expand at most {parent_limit}.",
+            "i" = "Narrow filters or select Experiment accessions first.",
+            "i" = "Use {.code limit = \"all\"} only for a complete File search."
+        ))
+    }
     experiment_paths <- encode_experiment_paths(experiments)
     experiment_paths <- unique(experiment_paths[!is.na(experiment_paths) & nzchar(experiment_paths)])
     if (length(experiment_paths) == 0L) {

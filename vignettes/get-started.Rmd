@@ -23,7 +23,7 @@ library(encodeUtils)
 
 # Introduction
 
-`encodeUtils` turns a biological question into a bounded, inspectable ENCODE
+`encodeUtils` turns a biological question into an inspectable ENCODE
 retrieval. The workflow searches the live ENCODE Portal, applies explicit file
 criteria, verifies downloaded files, reads compatible quantification tables,
 and records the requests and local artifacts in a manifest. It does not decide
@@ -35,7 +35,15 @@ standard `GRanges` and `SummarizedExperiment` objects while retaining the
 retrieval provenance needed for downstream analyses. It complements format
 import through `rtracklayer` and `Biostrings` and general resource catalogs such
 as `AnnotationHub`; its narrower role is ENCODE discovery, explicit file
-selection, bounded verified transfer, and manifest creation.
+selection, size planning, verified transfer, and manifest creation.
+
+The closest ENCODE-specific Bioconductor resources are `ENCODExplorerData` and
+its former companion software package, `ENCODExplorer`, which was removed in
+Bioconductor 3.15. `ENCODExplorerData` provides ENCODE metadata snapshots
+through `AnnotationHub` and helpers for regenerating those tables. In contrast,
+`encodeUtils` queries the current Portal for each retrieval and carries explicit
+file choices through size planning, verification, standard Bioconductor
+containers, and a provenance manifest.
 
 This vignette executes the complete workflow against the public ENCODE service.
 The discovery search is deliberately dynamic because portal contents and search
@@ -48,7 +56,7 @@ mouse-heart microRNA count tables of approximately 61 KB each.
 | Discover | Which ENCODE experiments are currently relevant? | `discovery` |
 | List | Which files belong to the pinned experiment? | `files` |
 | Select | Which exact released files meet the stated criteria? | `selected` |
-| Download | Were the bounded transfers verified? | `downloaded` |
+| Download | Were planned and observed sizes verified? | `downloaded` |
 | Read | What tables, feature metadata, and matrix were loaded? | `loaded` |
 | Convert | Are rows and columns aligned in a Bioconductor container? | `se` |
 | Record | Which requests and files produced the result? | `manifest` |
@@ -156,12 +164,13 @@ selected$criteria[c(
 )]
 ```
 
-# Plan and perform a bounded download
+# Plan and perform a verified download
 
 The dry run confirms the filenames and ENCODE-reported sizes before any bytes
 are transferred. Both the per-file and total budgets are intentionally close to
 the expected transfer, so a substantial upstream file change fails instead of
-silently increasing build resources.
+silently increasing build resources. These are planning limits based on Portal
+metadata; the observed size and MD5 are checked after transfer.
 
 ```{r plan-download}
 download_directory <- file.path(tempdir(), "encodeUtils-live-vignette")
@@ -378,6 +387,9 @@ ran.
     Communications*. 2025;16:9592.
 - [ENCODE REST API](https://www.encodeproject.org/help/rest-api/)
 - [ENCODE citation guidance](https://www.encodeproject.org/help/citing-encode/)
+- [ENCODExplorerData](https://bioconductor.org/packages/ENCODExplorerData/)
+- [Bioconductor removed
+    packages](https://bioconductor.org/about/removed-packages/)
 - [encodeUtils package website](https://zohebkhan1.github.io/encodeUtils/)
 
 # Session information

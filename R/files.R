@@ -29,10 +29,12 @@
 #'   lists metadata only; it does not download file contents.
 #' @export
 #'
-#' @examplesIf interactive()
+#' @examples
 #' files <- encode_list_files(
-#'     "ENCSR389GJZ",
+#'     "ENCSR523CTA",
 #'     file_format = "tsv",
+#'     output_type = "microRNA quantifications",
+#'     assembly = "mm10",
 #'     limit = 1,
 #'     quiet = TRUE
 #' )

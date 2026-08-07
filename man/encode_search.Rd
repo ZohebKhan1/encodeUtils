@@ -108,7 +108,9 @@ such as \code{"GRCh38"} or \code{"mm10"}.}
 \item{status}{Optional ENCODE status filter. The default keeps released
 records only. Use \code{NULL} to omit the status filter.}
 
-\item{limit}{Number of records to return, or the explicit string \code{"all"}.}
+\item{limit}{Number of records to return, or the explicit string \code{"all"}.
+For biological File searches, \code{"all"} also explicitly permits expansion
+across more than 25 matching parent experiments.}
 
 \item{metadata}{Amount of linked metadata to request. \code{"full"} gives richer
 lab, organism, biosample, and target columns. \code{"basic"} requests fewer
@@ -142,10 +144,11 @@ and ENCODE facets.
 File searches with biological filters such as organism, biosample, organ,
 target, or assay first search matching ENCODE Experiment records and then
 query files attached to those experiments. File-format filters are applied
-to the attached File records.
+to the attached File records. Limited File searches refuse to expand more
+than 25 parent experiments. Narrow the biological filters or use
+\code{limit = "all"} only when a complete File search is intended.
 }
 \examples{
-\dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
 experiments <- encode_search(
     organism = "mouse",
     assay = "rna-seq",
@@ -155,5 +158,4 @@ experiments <- encode_search(
 )
 
 encode_results(experiments)
-\dontshow{\}) # examplesIf}
 }

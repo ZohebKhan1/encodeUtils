@@ -123,11 +123,20 @@ objects for dedicated sequence-processing packages. Use
 `encode_read(path, as = "data.frame")` when a BED-like table is preferable to
 genomic ranges.
 
-`encode_download()` limits individual and total transfer size, refuses
-unknown-size transfers unless explicitly allowed, verifies available size and
-MD5 metadata, and installs replacement files only after verification. With
-`directory = NULL`, files are stored in the package cache returned by
-`tools::R_user_dir("encodeUtils", "cache")`.
+`encode_download()` checks ENCODE-reported individual and total sizes before
+transfer, refuses unknown-size transfers unless explicitly allowed, verifies
+the observed size and MD5 after transfer, and installs replacement files only
+after verification. With `directory = NULL`, files are stored in the package
+cache returned by `tools::R_user_dir("encodeUtils", "cache")`.
+
+## Related Bioconductor resources
+
+`ENCODExplorerData` provides ENCODE metadata snapshots through
+`AnnotationHub` and helpers for regenerating those tables. Its former companion
+software package, `ENCODExplorer`, was removed from Bioconductor in release
+3.15. `encodeUtils` instead queries the current Portal for each retrieval and
+carries explicit file choices through size planning, verified download,
+Bioconductor containers, and a provenance manifest.
 
 ## Documentation
 

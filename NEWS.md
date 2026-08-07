@@ -1,3 +1,17 @@
+# encodeUtils 0.99.12
+
+## Submission readiness
+
+- Refuse limited biological File searches that would expand across more than
+  25 parent experiments. The existing `limit = "all"` value is the explicit
+  opt-in for complete expansion, so no new public argument is required.
+- Run the small live search, file-listing, and download-plan help examples
+  during ordinary example checks.
+- Compare the package directly with `ENCODExplorerData` and the former
+  `ENCODExplorer` software package.
+- Describe download budgets as checks on ENCODE-reported planning sizes,
+  followed by observed size and MD5 verification after transfer.
+
 # encodeUtils 0.99.11
 
 ## Live workflow

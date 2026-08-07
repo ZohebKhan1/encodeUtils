@@ -1,7 +1,7 @@
 Package: encodeUtils
 Type: Package
 Title: Query and Retrieve ENCODE Portal Metadata and Files
-Version: 0.99.11
+Version: 0.99.12
 Authors@R: person(
     given = "Zoheb",
     family = "Khan",
@@ -11,7 +11,7 @@ Authors@R: person(
     )
 Description: Queries the ENCODE Portal REST API and converts nested metadata
     into traceable experiment and file tables. Provides accession-aware search,
-    file selection, bounded download, and supported local-file reading
+    file selection, download planning and verification, and local-file reading
     workflows. Records request, file, and attribution metadata for reproducible
     downstream R and Bioconductor analyses.
 License: Artistic-2.0

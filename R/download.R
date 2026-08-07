@@ -23,9 +23,11 @@
 #' @param directory Destination directory. If `NULL`, a package cache directory
 #'   from `tools::R_user_dir("encodeUtils", "cache")` is used. Supply an
 #'   explicit project directory for reusable data.
-#' @param max_file_size Maximum allowed size per file, as bytes or a string like
-#'   `"500MB"`.
-#' @param max_total_size Maximum allowed total size, as bytes or a string.
+#' @param max_file_size Maximum ENCODE-reported size accepted per file during
+#'   planning, as bytes or a string like `"500MB"`. The observed size is
+#'   checked after transfer when size verification is enabled.
+#' @param max_total_size Maximum total ENCODE-reported size accepted during
+#'   planning, as bytes or a string.
 #' @param allow_unknown_size Whether to allow real downloads for files whose
 #'   ENCODE metadata do not include `file_size`. Dry-runs are always allowed and
 #'   report the unknown-size count.
@@ -47,7 +49,7 @@
 #'   `encode_results()` for the complete table.
 #' @export
 #'
-#' @examplesIf interactive()
+#' @examples
 #' plan <- encode_download(
 #'     "ENCFF859GWB",
 #'     directory = tempdir(),
@@ -176,7 +178,7 @@ encode_download <- function(
     }
 
     if (unknown_size > 0L && !isTRUE(allow_unknown_size)) {
-        # Refuse unknown-size transfers by default because their total cannot be bounded.
+        # Refuse unknown-size transfers because they cannot be size-planned.
         cli::cli_abort(c(
             "Refusing to download {unknown_size} ENCODE file(s) with unknown file size.",
             "i" = "Run {.fun encode_download} with {.code dry_run = TRUE} to inspect the plan.",

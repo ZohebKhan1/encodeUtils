@@ -50,10 +50,12 @@ experiment accession.}
 from \code{tools::R_user_dir("encodeUtils", "cache")} is used. Supply an
 explicit project directory for reusable data.}
 
-\item{max_file_size}{Maximum allowed size per file, as bytes or a string like
-\code{"500MB"}.}
+\item{max_file_size}{Maximum ENCODE-reported size accepted per file during
+planning, as bytes or a string like \code{"500MB"}. The observed size is
+checked after transfer when size verification is enabled.}
 
-\item{max_total_size}{Maximum allowed total size, as bytes or a string.}
+\item{max_total_size}{Maximum total ENCODE-reported size accepted during
+planning, as bytes or a string.}
 
 \item{allow_unknown_size}{Whether to allow real downloads for files whose
 ENCODE metadata do not include \code{file_size}. Dry-runs are always allowed and
@@ -88,7 +90,6 @@ are not overwritten by default, files are written through a unique temporary
 \code{.part} path, and size/MD5 checks are used when ENCODE provides the metadata.
 }
 \examples{
-\dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
 plan <- encode_download(
     "ENCFF859GWB",
     directory = tempdir(),
@@ -97,5 +98,4 @@ plan <- encode_download(
 )
 
 encode_results(plan)
-\dontshow{\}) # examplesIf}
 }

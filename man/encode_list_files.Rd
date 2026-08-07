@@ -57,14 +57,14 @@ The default \code{limit = "all"} requests the complete file list for the selecte
 experiments.
 }
 \examples{
-\dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
 files <- encode_list_files(
-    "ENCSR389GJZ",
+    "ENCSR523CTA",
     file_format = "tsv",
+    output_type = "microRNA quantifications",
+    assembly = "mm10",
     limit = 1,
     quiet = TRUE
 )
 
 encode_results(files)
-\dontshow{\}) # examplesIf}
 }

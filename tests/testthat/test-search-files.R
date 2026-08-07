@@ -34,7 +34,7 @@ test_that("experiment searches flatten fixture metadata and preserve request con
     expect_equal(result$request_history[[1L]]$role, "search")
 })
 
-test_that("biological File limits apply after complete parent discovery", {
+test_that("limited biological File searches expand small parent sets", {
     local_encode_test_options()
     withr::local_options(encodeUtils.file_search_chunk_size = 1L)
     observed_urls <- character()
@@ -43,7 +43,17 @@ test_that("biological File limits apply after complete parent discovery", {
         function(req) {
             observed_urls <<- c(observed_urls, req$url)
             if (grepl("type=Experiment", req$url, fixed = TRUE)) {
-                return(fixture_json_response("search-embedded-experiments.json"))
+                body <- sub(
+                    '"total": 128',
+                    '"total": 2',
+                    fixture_text("search-embedded-experiments.json"),
+                    fixed = TRUE
+                )
+                return(httr2::response(
+                    200L,
+                    headers = "Content-Type: application/json",
+                    body = charToRaw(body)
+                ))
             }
             fixture_json_response("file-search-mixed.json")
         },
@@ -64,10 +74,35 @@ test_that("biological File limits apply after complete parent discovery", {
         vapply(result$request_history, `[[`, character(1L), "role"),
         c("parent_experiments", "file_chunk", "file_chunk")
     )
-    expect_true(grepl("limit=all", observed_urls[[1L]], fixed = TRUE))
+    expect_true(grepl("limit=26", observed_urls[[1L]], fixed = TRUE))
     expect_equal(sum(grepl("type=File", observed_urls, fixed = TRUE)), 2L)
     expect_true(any(result$filters$field == "biosample_ontology.organ_slims"))
     expect_true(any(result$filters$field == "file_format"))
+})
+
+test_that("limited biological File searches refuse broad parent expansion", {
+    local_encode_test_options()
+    observed_urls <- character()
+
+    expect_error(
+        httr2::with_mocked_responses(
+            function(req) {
+                observed_urls <<- c(observed_urls, req$url)
+                fixture_json_response("search-embedded-experiments.json")
+            },
+            encode_search(
+                type = "File",
+                organism = "human",
+                limit = 1,
+                quiet = TRUE
+            )
+        ),
+        "matched 128 parent experiments"
+    )
+
+    expect_length(observed_urls, 1L)
+    expect_true(grepl("type=Experiment", observed_urls[[1L]], fixed = TRUE))
+    expect_true(grepl("limit=26", observed_urls[[1L]], fixed = TRUE))
 })
 
 test_that("search arguments reject ambiguous values", {
