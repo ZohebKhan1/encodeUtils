@@ -121,31 +121,23 @@ files <- encode_list_files(
     experiment_table$accession[[1L]]
 )
 
-file_table <- encode_results(files)
+file_table <- as.data.frame(encode_results(files))
 
-file_inventory <- unique(data.frame(
-    format = file_table$file_format,
-    output = file_table$output_type,
-    assembly = file_table$assembly
-))
-file_inventory <- file_inventory[order(
-    file_inventory$format,
-    file_inventory$output
-), , drop = FALSE]
-row.names(file_inventory) <- NULL
+file_inventory <- unique(file_table[c("file_format", "output_type", "assembly")])
 
-file_inventory
+print(file_inventory, row.names = FALSE)
 ```
 
-| format | output | assembly |
-|---|---|---|
-| bam | alignments | mm10 |
-| bigWig | minus strand signal of all reads | mm10 |
-| bigWig | minus strand signal of unique reads | mm10 |
-| bigWig | plus strand signal of all reads | mm10 |
-| bigWig | plus strand signal of unique reads | mm10 |
-| fastq | reads | NA |
-| tsv | microRNA quantifications | mm10 |
+```text
+#>  file_format                         output_type assembly
+#>       bigWig    minus strand signal of all reads     mm10
+#>        fastq                               reads     <NA>
+#>          tsv            microRNA quantifications     mm10
+#>          bam                          alignments     mm10
+#>       bigWig  plus strand signal of unique reads     mm10
+#>       bigWig     plus strand signal of all reads     mm10
+#>       bigWig minus strand signal of unique reads     mm10
+```
 
 ### 3. Select replicate-level files
 
@@ -173,16 +165,17 @@ selected_display <- data.frame(
     size = selected_table$file_size_pretty
 )
 
-selected_display
+print(selected_display, row.names = FALSE)
 ```
 
 The selection narrows the inventory to the two TSV files shown below. The
 remaining steps use these two accessions.
 
-| accession | replicate | size |
-|---|---:|---:|
-| ENCFF859GWB | 1 | 59.54 KB |
-| ENCFF838WBE | 2 | 59.57 KB |
+```text
+#>    accession replicate     size
+#>  ENCFF859GWB         1 59.54 KB
+#>  ENCFF838WBE         2 59.57 KB
+```
 
 ### 4. Preview the download
 
@@ -213,13 +206,14 @@ plan_display <- data.frame(
     file = basename(plan_table$local_path)
 )
 
-plan_display
+print(plan_display, row.names = FALSE)
 ```
 
-| accession | status | size | file |
-|---|---|---:|---|
-| ENCFF859GWB | planned | 59.54 KB | ENCFF859GWB.tsv |
-| ENCFF838WBE | planned | 59.57 KB | ENCFF838WBE.tsv |
+```text
+#>    accession  status     size            file
+#>  ENCFF859GWB planned 59.54 KB ENCFF859GWB.tsv
+#>  ENCFF838WBE planned 59.57 KB ENCFF838WBE.tsv
+```
 
 Confirm the file accessions, destination paths, and expected total size before
 continuing.
@@ -247,13 +241,14 @@ download_display <- data.frame(
     md5_verified = download_table$md5_verified
 )
 
-download_display
+print(download_display, row.names = FALSE)
 ```
 
-| accession | status | size_verified | md5_verified |
-|---|---|---|---|
-| ENCFF859GWB | downloaded | TRUE | TRUE |
-| ENCFF838WBE | downloaded | TRUE | TRUE |
+```text
+#>    accession     status size_verified md5_verified
+#>  ENCFF859GWB downloaded          TRUE         TRUE
+#>  ENCFF838WBE downloaded          TRUE         TRUE
+```
 
 Both verification columns should be `TRUE`, confirming that the downloaded
 files match the sizes and checksums reported by ENCODE.

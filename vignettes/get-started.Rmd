@@ -100,20 +100,11 @@ files <- encode_list_files(
     experiment_table$accession[[1L]]
 )
 
-file_table <- encode_results(files)
+file_table <- as.data.frame(encode_results(files))
 
-file_inventory <- unique(data.frame(
-    format = file_table$file_format,
-    output = file_table$output_type,
-    assembly = file_table$assembly
-))
-file_inventory <- file_inventory[order(
-    file_inventory$format,
-    file_inventory$output
-), , drop = FALSE]
-row.names(file_inventory) <- NULL
+file_inventory <- unique(file_table[c("file_format", "output_type", "assembly")])
 
-knitr::kable(file_inventory)
+print(file_inventory, row.names = FALSE)
 ```
 
 # Select replicate-level files
@@ -142,7 +133,7 @@ selected_display <- data.frame(
     size = selected_table$file_size_pretty
 )
 
-knitr::kable(selected_display)
+print(selected_display, row.names = FALSE)
 ```
 
 The selection narrows the inventory from `r nrow(file_table)` files to
@@ -188,7 +179,7 @@ plan_display <- data.frame(
     file = basename(plan_table$local_path)
 )
 
-knitr::kable(plan_display)
+print(plan_display, row.names = FALSE)
 ```
 
 Confirm the file accessions, destination paths, and expected total size before
@@ -228,7 +219,7 @@ download_display <- data.frame(
     md5_verified = download_table$md5_verified
 )
 
-knitr::kable(download_display)
+print(download_display, row.names = FALSE)
 ```
 
 # Read the count tables
