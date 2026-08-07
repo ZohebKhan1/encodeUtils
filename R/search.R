@@ -248,16 +248,22 @@ encode_search <- function(
         encode_facets(list())
     }
     results <- encode_flatten_search_results(graph, type = type)
+    enrichment_requests <- list()
     if (identical(type, "File")) {
         results <- encode_enrich_file_table_from_parent_experiments(results, metadata = metadata)
+        enrichment_requests <- attr(results, "request_history", exact = TRUE) %||% list()
     }
     filters <- encode_active_filters(raw, query)
+    request_history <- c(
+        list(encode_request_record(response, query)),
+        enrichment_requests
+    )
     results <- encode_attach_metadata(
         results,
         query_url = response$url,
         retrieved_at = response$retrieved_at,
         filters = filters,
-        request_history = list(encode_request_record(response, query))
+        request_history = request_history
     )
     results <- encode_class_search_results(results, type = type)
 
@@ -272,7 +278,7 @@ encode_search <- function(
         frame = frame,
         metadata = metadata,
         limit = limit,
-        request_history = list(encode_request_record(response, query))
+        request_history = request_history
     )
     if (!isTRUE(quiet)) {
         cli::cli_inform(
@@ -621,8 +627,10 @@ encode_search_file_dataset_chunks <- function(
     raw$`@graph` <- all_graph
     raw$total <- total
     results <- encode_flatten_search_results(all_graph, type = "File")
+    enrichment_requests <- list()
     if (is.null(experiments)) {
         experiments <- encode_fetch_experiment_metadata_for_files(experiment_paths, metadata = metadata)
+        enrichment_requests <- attr(experiments, "request_history", exact = TRUE) %||% list()
     }
     results <- encode_fill_file_experiment_metadata(results, experiments)
     active_filters <- do.call(
@@ -635,12 +643,15 @@ encode_search_file_dataset_chunks <- function(
             queries
         )
     )
-    request_history <- Map(
-        function(chunk_response, chunk_query) {
-            encode_request_record(chunk_response, chunk_query, role = "file_chunk")
-        },
-        responses,
-        queries
+    request_history <- c(
+        Map(
+            function(chunk_response, chunk_query) {
+                encode_request_record(chunk_response, chunk_query, role = "file_chunk")
+            },
+            responses,
+            queries
+        ),
+        enrichment_requests
     )
     results <- encode_attach_metadata(
         results,

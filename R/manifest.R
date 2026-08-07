@@ -13,7 +13,8 @@
 #'   `institution`, and `project` describe the record that produced each file.
 #'   For processed ENCODE files that is the processing pipeline rather than the
 #'   originating laboratory; use the parent experiment table when citing data
-#'   producers.
+#'   producers. Attribution `retrieval_date` is `NA` when the input has no
+#'   recorded retrieval timestamp; manifest `created_at` remains separate.
 #' @param include_session Whether to include `utils::sessionInfo()`.
 #' @param path Optional destination JSON path. If supplied, the manifest is also
 #'   written to disk.

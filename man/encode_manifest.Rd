@@ -23,7 +23,8 @@ ENCSR or ENCFF input first retrieves the required ENCODE metadata. \code{lab},
 \code{institution}, and \code{project} describe the record that produced each file.
 For processed ENCODE files that is the processing pipeline rather than the
 originating laboratory; use the parent experiment table when citing data
-producers.}
+producers. Attribution \code{retrieval_date} is \code{NA} when the input has no
+recorded retrieval timestamp; manifest \code{created_at} remains separate.}
 
 \item{include_session}{Whether to include \code{utils::sessionInfo()}.}
 

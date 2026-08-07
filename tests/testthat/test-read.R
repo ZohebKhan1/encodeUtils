@@ -331,6 +331,26 @@ test_that("headerless and featureCounts tables expose raw counts consistently", 
     expect_named(encode_read(feature_counts), c("gene_id", "raw_counts"))
 })
 
+test_that("featureCounts simplification rejects ambiguous sample columns", {
+    path <- withr::local_tempfile(fileext = ".tsv")
+    writeLines(c(
+        "Geneid\tChr\tStart\tEnd\tStrand\tLength\tsample_a.bam\tsample_b.bam",
+        "ENSMUSG00000000001\t1\t1\t100\t+\t100\t12\t15"
+    ), path)
+
+    expect_error(
+        encode_read(path),
+        "exactly one sample-count column"
+    )
+    expect_named(
+        encode_read(path, simplify_quant = FALSE),
+        c(
+            "Geneid", "Chr", "Start", "End", "Strand", "Length",
+            "sample_a.bam", "sample_b.bam"
+        )
+    )
+})
+
 test_that("loaded print output is compact", {
     path <- withr::local_tempfile(fileext = ".tsv")
     writeLines(c("gene_id\texpected_count", "Gata4\t10"), path)

@@ -42,8 +42,10 @@
 #'   those matrices are needed, or `"all"` to build every supported matrix.
 #' @param simplify_quant Whether ENCODE gene-quantification tables should be
 #'   normalized to common identifier and expression columns already present in
-#'   the file. This does not query or use external annotation databases. Use
-#'   `FALSE` to preserve the raw columns from the downloaded file.
+#'   the file. Automatic featureCounts simplification requires exactly one
+#'   sample-count column; use `FALSE` to preserve every column in a multi-sample
+#'   featureCounts table. This does not query or use external annotation
+#'   databases.
 #' @param ... Additional arguments passed to table readers where applicable.
 #'
 #' @return The return type depends on input shape and file format. A local path
@@ -259,8 +261,17 @@ encode_read_featurecounts <- function(path, simplify_quant = TRUE) {
     if (!isTRUE(simplify_quant)) {
         return(table)
     }
+    annotation_columns <- c("Geneid", "Chr", "Start", "End", "Strand", "Length")
+    count_columns <- setdiff(names(table), annotation_columns)
+    if (length(count_columns) != 1L) {
+        cli::cli_abort(c(
+            "Cannot simplify a featureCounts table with {length(count_columns)} sample-count columns.",
+            "i" = "Automatic simplification requires exactly one sample-count column.",
+            "i" = "Use {.code simplify_quant = FALSE} to preserve the complete table."
+        ))
+    }
     names(table)[names(table) == "Geneid"] <- "gene_id"
-    count_column <- utils::tail(names(table), 1L)
+    count_column <- count_columns[[1L]]
     names(table)[names(table) == count_column] <- "raw_counts"
     table[, intersect(c("gene_id", "raw_counts"), names(table)), drop = FALSE]
 }
@@ -647,7 +658,8 @@ encode_read_with_optional_package <- function(
         ))
     }
     if (length(diagnostics$warnings) > 0L) {
-        warning(paste(unique(diagnostics$warnings), collapse = "; "), call. = FALSE)
+        warning_message <- paste(unique(diagnostics$warnings), collapse = "; ")
+        warning(warning_message, call. = FALSE)
     }
     value
 }

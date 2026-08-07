@@ -158,8 +158,20 @@ encode_fetch_experiment_metadata_for_files <- function(experiment_paths, metadat
         if (is.list(result) && !is.null(result$error)) {
             return(result)
         }
-        list(data = encode_results(result), error = NA_character_)
+        list(
+            data = encode_results(result),
+            error = NA_character_,
+            request_history = encode_request_roles(
+                result$request_history,
+                "parent_metadata"
+            )
+        )
     })
+    request_history <- do.call(
+        c,
+        lapply(results, function(result) result$request_history %||% list())
+    )
+    request_history <- request_history %||% list()
     errors <- unique(vapply(results, `[[`, character(1L), "error"))
     errors <- errors[!is.na(errors) & nzchar(errors)]
     if (length(errors) > 0L) {
@@ -176,10 +188,12 @@ encode_fetch_experiment_metadata_for_files <- function(experiment_paths, metadat
     if (nrow(experiments) == 0L) {
         experiments <- encode_empty_results("Experiment")
         attr(experiments, "metadata_enrichment_error") <- errors
+        attr(experiments, "request_history") <- request_history
         return(experiments)
     }
     experiments <- experiments[!duplicated(experiments$accession), , drop = FALSE]
     attr(experiments, "metadata_enrichment_error") <- errors
+    attr(experiments, "request_history") <- request_history
     experiments
 }
 
@@ -193,6 +207,10 @@ encode_enrich_file_table_from_parent_experiments <- function(files, metadata = "
     experiment_paths <- encode_experiment_paths_from_file_table(files)
     experiments <- encode_fetch_experiment_metadata_for_files(experiment_paths, metadata = metadata)
     files <- encode_fill_file_experiment_metadata(files, experiments)
+    request_history <- attr(experiments, "request_history", exact = TRUE)
+    if (!is.null(request_history)) {
+        attr(files, "request_history") <- request_history
+    }
     errors <- attr(experiments, "metadata_enrichment_error", exact = TRUE)
     if (!is.null(errors) && length(errors) > 0L) {
         attr(files, "metadata_enrichment_error") <- errors

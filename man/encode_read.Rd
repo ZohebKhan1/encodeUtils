@@ -54,8 +54,10 @@ those matrices are needed, or \code{"all"} to build every supported matrix.}
 
 \item{simplify_quant}{Whether ENCODE gene-quantification tables should be
 normalized to common identifier and expression columns already present in
-the file. This does not query or use external annotation databases. Use
-\code{FALSE} to preserve the raw columns from the downloaded file.}
+the file. Automatic featureCounts simplification requires exactly one
+sample-count column; use \code{FALSE} to preserve every column in a multi-sample
+featureCounts table. This does not query or use external annotation
+databases.}
 
 \item{...}{Additional arguments passed to table readers where applicable.}
 }

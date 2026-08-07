@@ -18,7 +18,7 @@ ENCODE provides programmatic access to this information through a REST API. The
 API returns data in JSON format, which `encodeUtils` converts into R and
 Bioconductor objects.
 
-The package is not affiliatedd with or endorsed by the ENCODE Project.
+The package is not affiliated with or endorsed by the ENCODE Project.
 
 ## ENCODE API disclaimer
 
@@ -32,7 +32,7 @@ The following rate-limit disclaimer is reproduced directly from the
 
 ## Documentation
 
-See the [getting-started vignette](https://zohebkhan1.github.io/encodeUtils/articles/get-started.html) and [function reference](https://zohebkhan1.github.io/encodeUtils/reference/)
+See the [getting-started vignette](https://zohebkhan1.github.io/encodeUtils/articles/get-started.html) and [function reference](https://zohebkhan1.github.io/encodeUtils/reference/).
 
 ## Functions
 

@@ -139,8 +139,10 @@ test_that("biological search arguments compile to ENCODE query fields", {
 
 test_that("file searches preserve experiment and annotation dataset provenance", {
     local_encode_test_options()
+    observed_urls <- character()
     result <- httr2::with_mocked_responses(
         function(req) {
+            observed_urls <<- c(observed_urls, req$url)
             if (grepl("type=Experiment", req$url, fixed = TRUE)) {
                 return(fixture_json_response("search-embedded-experiments.json"))
             }
@@ -155,6 +157,15 @@ test_that("file searches preserve experiment and annotation dataset provenance",
     expect_equal(files$dataset_accession[[3L]], "ENCSRANN001")
     expect_true(is.na(files$experiment_accession[[3L]]))
     expect_equal(files$organism[[1L]], "Homo sapiens")
+    expect_equal(length(result$request_history), length(observed_urls))
+    expect_equal(
+        vapply(result$request_history, `[[`, character(1L), "role"),
+        c("search", "parent_metadata")
+    )
+    expect_equal(
+        vapply(result$request_history, `[[`, character(1L), "url"),
+        observed_urls
+    )
 })
 
 test_that("file listing validates scope and enriches parent experiment metadata", {
@@ -180,6 +191,15 @@ test_that("file listing validates scope and enriches parent experiment metadata"
     expect_true(any(grepl("dataset=%2Fexperiments%2FENCSRREAL01%2F", observed_urls, fixed = TRUE)))
     expect_true(any(grepl("type=Experiment", observed_urls, fixed = TRUE)))
     expect_equal(sum(grepl("type=Experiment", observed_urls, fixed = TRUE)), 1L)
+    expect_equal(length(encode_request_history(files)), length(observed_urls))
+    expect_equal(
+        vapply(encode_request_history(files), `[[`, character(1L), "role"),
+        c("search", "parent_metadata")
+    )
+    expect_equal(
+        vapply(encode_request_history(files), `[[`, character(1L), "url"),
+        observed_urls
+    )
 })
 
 test_that("file listing validates filters and logical controls", {

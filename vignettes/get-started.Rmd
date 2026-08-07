@@ -14,8 +14,6 @@ vignette: >
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
-
-options(width = 80)
 ```
 
 # Introduction
@@ -315,9 +313,9 @@ column_data[c(
 # References
 
 - ENCODE Project Consortium. An integrated encyclopedia of DNA elements in the
-  human genome. *Nature*. 2012;489:57-74.
+    human genome. *Nature*. 2012;489:57-74.
 - Kagda MS et al. Data navigation on the ENCODE portal. *Nature
-  Communications*. 2025;16:9592.
+    Communications*. 2025;16:9592.
 - [ENCODE REST API](https://www.encodeproject.org/help/rest-api/)
 - [ENCODE citation guidance](https://www.encodeproject.org/help/citing-encode/)
 

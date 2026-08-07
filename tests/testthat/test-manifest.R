@@ -15,6 +15,7 @@ test_that("manifests capture file provenance and round-trip to JSON", {
     expect_s3_class(manifest, "encode_manifest")
     expect_s3_class(manifest$attribution, "encode_attribution_table")
     expect_equal(manifest$attribution$file_accession, "ENCFF000AAA")
+    expect_true(is.na(manifest$attribution$retrieval_date))
     expect_match(manifest$attribution$dataset_url, "/annotations/ENCSRANN001/$")
     expect_match(manifest$attribution$experiment_url, "/experiments/ENCSR000AAA/$")
     expect_equal(manifest$retrieval$query_url, attr(files, "query_url"))
@@ -24,6 +25,116 @@ test_that("manifests capture file provenance and round-trip to JSON", {
     output <- capture_print(manifest)
     expect_true(any(grepl("created: [0-9]{4}-[0-9]{2}-[0-9]{2}T", output)))
     expect_false(any(grepl('"encodeUtils"', output, fixed = TRUE)))
+})
+
+test_that("attribution preserves dataset identity and known retrieval dates", {
+    retrieved_at <- as.POSIXct("2024-03-04 05:06:07", tz = "UTC")
+    files <- data.frame(
+        file_accession = "ENCFFATTR01",
+        experiment_accession = "ENCSRATTR01",
+        file_format = "tsv",
+        status = "released",
+        stringsAsFactors = FALSE
+    )
+    attr(files, "retrieved_at") <- retrieved_at
+
+    attribution <- encode_attribution(files, enrich = FALSE)
+
+    expect_equal(attribution$dataset_accession, "ENCSRATTR01")
+    expect_equal(attribution$dataset_type, "Experiment")
+    expect_match(attribution$dataset_url, "/experiments/ENCSRATTR01/$")
+    expect_equal(attribution$retrieval_date, "2024-03-04")
+
+    experiments <- data.frame(
+        accession = "ENCSRATTR02",
+        url = "https://encode.example/experiments/ENCSRATTR02/",
+        status = "released",
+        stringsAsFactors = FALSE
+    )
+    attr(experiments, "retrieved_at") <- retrieved_at
+    experiment_attribution <- encode_attribution(experiments)
+
+    expect_equal(experiment_attribution$dataset_type, "Experiment")
+    expect_equal(experiment_attribution$experiment_url, experiments$url)
+    expect_true(is.na(experiment_attribution$file_accession))
+    expect_equal(experiment_attribution$retrieval_date, "2024-03-04")
+})
+
+test_that("attribution enrichment is bounded and fills parent metadata", {
+    files <- data.frame(
+        file_accession = c("ENCFFATTR01", "ENCFFATTR02"),
+        experiment_accession = c("ENCSRATTR01", "ENCSRATTR02"),
+        stringsAsFactors = FALSE
+    )
+
+    expect_true(encode_should_enrich_file_attribution(files, TRUE, 1L, TRUE))
+    expect_false(encode_should_enrich_file_attribution(files, FALSE, 1L, TRUE))
+    expect_false(encode_should_enrich_file_attribution(files, "auto", 1L, TRUE))
+    expect_error(
+        encode_should_enrich_file_attribution(files, "sometimes", 1L, TRUE),
+        "must be.*auto"
+    )
+
+    experiments <- data.frame(
+        accession = c("ENCSRATTR01", "ENCSRATTR02"),
+        lab = c("Lab A", "Lab B"),
+        institution = c("Institute A", "Institute B"),
+        project = "ENCODE",
+        assay_title = "RNA-seq",
+        biosample_summary = c("heart", "brain"),
+        organism = "Mus musculus",
+        stringsAsFactors = FALSE
+    )
+    testthat::local_mocked_bindings(
+        encode_search = function(...) {
+            structure(
+                list(results = experiments),
+                class = c("encode_search_result", "list")
+            )
+        },
+        .package = "encodeUtils"
+    )
+
+    enriched <- encode_enrich_file_attribution(files)
+
+    expect_equal(enriched$lab, c("Lab A", "Lab B"))
+    expect_equal(enriched$biosample_summary, c("heart", "brain"))
+    expect_equal(enriched$organism, rep("Mus musculus", 2L))
+})
+
+test_that("character attribution accepts file and experiment accessions", {
+    files <- data.frame(
+        file_accession = "ENCFFATTR01",
+        experiment_accession = "ENCSRATTR01",
+        stringsAsFactors = FALSE
+    )
+    experiments <- data.frame(
+        accession = "ENCSRATTR01",
+        url = "https://encode.example/experiments/ENCSRATTR01/",
+        stringsAsFactors = FALSE
+    )
+    testthat::local_mocked_bindings(
+        encode_file_table_from_input = function(...) files,
+        encode_search = function(...) {
+            structure(
+                list(results = experiments),
+                class = c("encode_search_result", "list")
+            )
+        },
+        .package = "encodeUtils"
+    )
+
+    attribution <- encode_attribution(
+        c("ENCFFATTR01", "ENCSRATTR01"),
+        quiet = TRUE
+    )
+
+    expect_equal(nrow(attribution), 2L)
+    expect_setequal(
+        attribution$file_accession[!is.na(attribution$file_accession)],
+        "ENCFFATTR01"
+    )
+    expect_error(encode_attribution("ENCBS000AAA"), "supports ENCSR and ENCFF")
 })
 
 test_that("manifests keep request provenance for loaded collections", {

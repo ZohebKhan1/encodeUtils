@@ -331,7 +331,7 @@ encode_attribution_from_experiment_table <- function(experiments) {
 encode_attribution_retrieval_date <- function(x) {
     retrieved_at <- attr(x, "retrieved_at", exact = TRUE)
     if (is.null(retrieved_at) || length(retrieved_at) == 0L || all(is.na(retrieved_at))) {
-        return(as.character(Sys.Date()))
+        return(NA_character_)
     }
     as.character(as.Date(retrieved_at, tz = "UTC"))
 }
