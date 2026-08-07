@@ -88,10 +88,10 @@ discovery <- encode_search(
 experiment_table <- encode_results(discovery)
 
 print(
-    experiment_table[, c(
+    experiment_table[c(
         "accession", "assay_title", "organism", "biosample_summary",
         "life_stage_age", "sex", "status"
-    ), drop = FALSE],
+    )],
     row.names = FALSE
 )
 ```

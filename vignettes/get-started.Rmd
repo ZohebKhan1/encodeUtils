@@ -79,10 +79,10 @@ discovery <- encode_search(
 
 experiment_table <- encode_results(discovery)
 
-experiment_table[, c(
+experiment_table[c(
     "accession", "assay_title", "biosample_summary", "life_stage_age", "sex",
     "file_count", "status"
-), drop = FALSE]
+)]
 ```
 
 The search identifies a released microRNA-seq experiment from male 5xFAD/CAST
@@ -276,9 +276,9 @@ write it to a persistent, project-relative path.
 Inspect the file records stored in the manifest.
 
 ```{r inspect-manifest-files}
-manifest$files[, c(
+manifest$files[c(
     "file_accession", "md5sum", "observed_md5", "downloaded_at"
-), drop = FALSE]
+)]
 ```
 
 # Optional: create a SummarizedExperiment
@@ -304,9 +304,9 @@ replicate.
 ```{r inspect-column-data}
 column_data <- as.data.frame(SummarizedExperiment::colData(se))
 
-column_data[, c(
+column_data[c(
     "file_accession", "biological_replicates", "output_type", "assembly"
-), drop = FALSE]
+)]
 ```
 
 # References
