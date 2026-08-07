@@ -20,10 +20,10 @@ options(width = 80)
 
 # Introduction
 
-The ENCODE Portal is a public repository of experiment records, biosample
-descriptions, data files, and metadata from the ENCODE Project. ENCODE provides
-programmatic access to this information through a REST API. The API returns data
-in JSON format.
+The [ENCODE Portal](https://www.encodeproject.org/) is a public repository of
+experiment records, biosample descriptions, data files, and metadata from the
+ENCODE Project. ENCODE provides programmatic access to this information through
+a REST API. The API returns data in JSON format.
 
 `encodeUtils` provides an R interface for searching ENCODE metadata, selecting
 and verifying files, reading supported formats, and recording retrieval
@@ -34,12 +34,15 @@ This vignette shows how to retrieve replicate-level raw microRNA counts from
 male 5xFAD mouse heart tissue. It begins with biological search criteria, and
 each step derives its input from the output of the preceding step.
 
-# Warning
+# ENCODE API disclaimer
 
-Use of the programmatic API is limited to 10 GET requests/sec from any single
-user, group, company or lab.
+The following rate-limit disclaimer is reproduced directly from the
+[ENCODE REST API documentation](https://www.encodeproject.org/help/rest-api/):
 
-Abuse of this will result in denial of access by IP block
+> Use of the programmatic API is limited to 10 GET requests/sec from any single
+> user, group, company or lab.
+>
+> Abuse of this will result in denial of access by IP block
 
 # Installation
 

@@ -5,8 +5,9 @@
 [![test coverage](https://github.com/ZohebKhan1/encodeUtils/actions/workflows/test-coverage.yaml/badge.svg)](https://github.com/ZohebKhan1/encodeUtils/actions/workflows/test-coverage.yaml)
 [![R >= 4.6.0](https://img.shields.io/badge/R-%E2%89%A5%204.6.0-276DC3?logo=r)](https://www.r-project.org/)
 
-The ENCODE Portal is a public repository of experiment records, biosample
-descriptions, data files, and metadata from the ENCODE Project.
+The [ENCODE Portal](https://www.encodeproject.org/) is a public repository of
+experiment records, biosample descriptions, data files, and metadata from the
+ENCODE Project.
 
 `encodeUtils` provides an R interface for searching ENCODE metadata, selecting
 and verifying files, reading supported formats, and recording retrieval
@@ -19,12 +20,15 @@ Bioconductor objects.
 
 The package is not affiliatedd with or endorsed by the ENCODE Project.
 
-## Warning
+## ENCODE API disclaimer
 
-Use of the programmatic API is limited to 10 GET requests/sec from any single
-user, group, company or lab.
+The following rate-limit disclaimer is reproduced directly from the
+[ENCODE REST API documentation](https://www.encodeproject.org/help/rest-api/):
 
-Abuse of this will result in denial of access by IP block
+> Use of the programmatic API is limited to 10 GET requests/sec from any single
+> user, group, company or lab.
+>
+> Abuse of this will result in denial of access by IP block
 
 ## Documentation
 
