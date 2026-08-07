@@ -31,8 +31,7 @@ provenance. It converts JSON responses from the API into R and Bioconductor
 objects.
 
 This vignette shows how to retrieve replicate-level raw microRNA counts from
-male 5xFAD mouse heart tissue. It begins with biological search criteria, and
-each step derives its input from the output of the preceding step.
+male 5xFAD mouse heart tissue.
 
 # ENCODE API disclaimer
 
@@ -47,12 +46,14 @@ The following rate-limit disclaimer is reproduced directly from the
 # Installation
 
 ```{r installation, eval=FALSE}
+install.packages("BiocManager")
 BiocManager::install("encodeUtils")
 ```
 
 Install the development version with:
 
 ```{r development-installation, eval=FALSE}
+install.packages("pak")
 pak::pak("ZohebKhan1/encodeUtils")
 ```
 
@@ -87,37 +88,30 @@ experiment_table[, c(
 The search identifies a released microRNA-seq experiment from male 5xFAD/CAST
 mouse heart tissue. The current query returns one experiment. If a search
 returns several experiments, compare their assay, biosample, age, sex, and
-status fields, then refine the search arguments before continuing. The check
-below stops the workflow unless the live search returns exactly one experiment,
-preventing the code from selecting the first result without explanation.
-
-```{r choose-experiment}
-stopifnot(nrow(experiment_table) == 1L)
-
-experiment_accession <- experiment_table$accession[[1L]]
-experiment_accession
-```
+status fields, then refine the search arguments before continuing.
 
 # List the experiment's files
 
-Use the accession obtained above to retrieve metadata for every released file
-associated with the experiment. This step does not download file contents.
+Use the accession returned by the search to retrieve metadata for every
+released file associated with the experiment.
 
 ```{r list-files}
 files <- encode_list_files(
-    experiment_accession
+    experiment_table$accession[[1L]]
 )
 
 file_table <- encode_results(files)
 
-file_inventory <- data.frame(
-    accession = file_table$file_accession,
-    replicate = file_table$biological_replicates,
+file_inventory <- unique(data.frame(
     format = file_table$file_format,
     output = file_table$output_type,
-    assembly = file_table$assembly,
-    size = file_table$file_size_pretty
-)
+    assembly = file_table$assembly
+))
+file_inventory <- file_inventory[order(
+    file_inventory$format,
+    file_inventory$output
+), , drop = FALSE]
+row.names(file_inventory) <- NULL
 
 knitr::kable(file_inventory)
 ```
@@ -145,9 +139,6 @@ selected_table <- encode_results(selected)
 selected_display <- data.frame(
     accession = selected_table$file_accession,
     replicate = selected_table$biological_replicates,
-    format = selected_table$file_format,
-    output = selected_table$output_type,
-    assembly = selected_table$assembly,
     size = selected_table$file_size_pretty
 )
 
@@ -168,8 +159,7 @@ selected$criteria[c(
 
 Create a download plan before transferring either file. The plan determines the
 destination paths and compares the file sizes reported by ENCODE with the
-configured limits, but it does not download the files. The limits guard against
-an unexpectedly large transfer if ENCODE metadata changes.
+configured limits, but it does not download the files.
 
 Each selected file is about 60 KB, so the 100 KB per-file and 200 KB total
 limits provide modest headroom above the expected 120 KB transfer.
@@ -189,7 +179,16 @@ plan <- encode_download(
     dry_run = TRUE
 )
 
-plan
+plan_table <- encode_results(plan)
+
+plan_display <- data.frame(
+    accession = plan_table$file_accession,
+    status = plan_table$download_status,
+    size = plan_table$file_size_pretty,
+    file = basename(plan_table$local_path)
+)
+
+knitr::kable(plan_display)
 ```
 
 Confirm the file accessions, destination paths, and expected total size before
@@ -208,8 +207,6 @@ downloaded <- encode_download(
     max_file_size = "100KB",
     max_total_size = "200KB"
 )
-
-downloaded
 ```
 
 The following checks require every local file to have a verified size and
@@ -224,9 +221,14 @@ stopifnot(
     all(download_table$md5_verified %in% TRUE)
 )
 
-download_table[, c(
-    "file_accession", "download_status", "size_verified", "md5_verified"
-), drop = FALSE]
+download_display <- data.frame(
+    accession = download_table$file_accession,
+    status = download_table$download_status,
+    size_verified = download_table$size_verified,
+    md5_verified = download_table$md5_verified
+)
+
+knitr::kable(download_display)
 ```
 
 # Read the count tables

@@ -50,20 +50,21 @@ See the [getting-started vignette](https://zohebkhan1.github.io/encodeUtils/arti
 ## Installation
 
 ```r
+install.packages("BiocManager")
 BiocManager::install("encodeUtils")
 ```
 
 Install the development version with:
 
 ```r
+install.packages("pak")
 pak::pak("ZohebKhan1/encodeUtils")
 ```
 
 ## Example workflow
 
 This example shows how to retrieve replicate-level raw microRNA counts from
-male 5xFAD mouse heart tissue. Each step derives its input from the output of
-the preceding step.
+male 5xFAD mouse heart tissue.
 
 ### 1. Find the experiment
 
@@ -110,57 +111,41 @@ accession becomes the input to the file query. If a search returns several
 experiments, compare their assay, biosample, age, sex, and status fields, then
 refine the search arguments before continuing.
 
-The row-count check stops the workflow unless the live search returns exactly
-one experiment, preventing the code from selecting the first result without
-explanation.
-
-```r
-stopifnot(nrow(experiment_table) == 1L)
-
-experiment_accession <- experiment_table$accession[[1L]]
-experiment_accession
-```
-
 ### 2. List the experiment's files
 
-Use the accession obtained above to retrieve metadata for every released file
-associated with the experiment. This step does not download file contents.
+Use the accession returned by the search to retrieve metadata for every
+released file associated with the experiment.
 
 ```r
 files <- encode_list_files(
-    experiment_accession
+    experiment_table$accession[[1L]]
 )
 
 file_table <- encode_results(files)
 
-file_inventory <- data.frame(
-    accession = file_table$file_accession,
-    replicate = file_table$biological_replicates,
+file_inventory <- unique(data.frame(
     format = file_table$file_format,
     output = file_table$output_type,
-    assembly = file_table$assembly,
-    size = file_table$file_size_pretty
-)
+    assembly = file_table$assembly
+))
+file_inventory <- file_inventory[order(
+    file_inventory$format,
+    file_inventory$output
+), , drop = FALSE]
+row.names(file_inventory) <- NULL
 
 file_inventory
 ```
 
-| accession | replicate | format | output | assembly | size |
-|---|---:|---|---|---|---:|
-| ENCFF894LZS | 1 | bigWig | minus strand signal of all reads | mm10 | 14.94 MB |
-| ENCFF272MTQ | 2 | bigWig | minus strand signal of all reads | mm10 | 14.50 MB |
-| ENCFF568APO | 1 | fastq | reads | NA | 266.89 MB |
-| ENCFF859GWB | 1 | tsv | microRNA quantifications | mm10 | 59.54 KB |
-| ENCFF511JFU | 1 | bam | alignments | mm10 | 268.56 MB |
-| ENCFF838WBE | 2 | tsv | microRNA quantifications | mm10 | 59.57 KB |
-| ENCFF672YIA | 2 | bigWig | plus strand signal of unique reads | mm10 | 7.37 MB |
-| ENCFF330SVB | 2 | bigWig | plus strand signal of all reads | mm10 | 14.30 MB |
-| ENCFF186WHP | 2 | bam | alignments | mm10 | 343.95 MB |
-| ENCFF545SFH | 1 | bigWig | plus strand signal of unique reads | mm10 | 7.81 MB |
-| ENCFF888ILZ | 2 | bigWig | minus strand signal of unique reads | mm10 | 7.52 MB |
-| ENCFF520ASQ | 1 | bigWig | minus strand signal of unique reads | mm10 | 7.94 MB |
-| ENCFF873LHR | 1 | bigWig | plus strand signal of all reads | mm10 | 14.81 MB |
-| ENCFF975MFU | 2 | fastq | reads | NA | 344.88 MB |
+| format | output | assembly |
+|---|---|---|
+| bam | alignments | mm10 |
+| bigWig | minus strand signal of all reads | mm10 |
+| bigWig | minus strand signal of unique reads | mm10 |
+| bigWig | plus strand signal of all reads | mm10 |
+| bigWig | plus strand signal of unique reads | mm10 |
+| fastq | reads | NA |
+| tsv | microRNA quantifications | mm10 |
 
 ### 3. Select replicate-level files
 
@@ -185,9 +170,6 @@ selected_table <- encode_results(selected)
 selected_display <- data.frame(
     accession = selected_table$file_accession,
     replicate = selected_table$biological_replicates,
-    format = selected_table$file_format,
-    output = selected_table$output_type,
-    assembly = selected_table$assembly,
     size = selected_table$file_size_pretty
 )
 
@@ -197,18 +179,17 @@ selected_display
 The selection narrows the inventory to the two TSV files shown below. The
 remaining steps use these two accessions.
 
-| accession | replicate | format | output | assembly | size |
-|---|---:|---|---|---|---:|
-| ENCFF859GWB | 1 | tsv | microRNA quantifications | mm10 | 59.54 KB |
-| ENCFF838WBE | 2 | tsv | microRNA quantifications | mm10 | 59.57 KB |
+| accession | replicate | size |
+|---|---:|---:|
+| ENCFF859GWB | 1 | 59.54 KB |
+| ENCFF838WBE | 2 | 59.57 KB |
 
 ### 4. Preview the download
 
 Create a download plan before transferring data. The plan compares the file
 sizes reported by ENCODE with the configured limits but does not download the
 files. This example saves data in `encode-data` under the current working
-directory; change `download_directory` to use a different location. The limits
-guard against an unexpectedly large transfer if ENCODE metadata changes. Each
+directory; change `download_directory` to use a different location. Each
 selected file is about 60 KB, so the 100 KB per-file and 200 KB total limits
 provide modest headroom above the expected 120 KB transfer.
 
@@ -223,8 +204,22 @@ plan <- encode_download(
     dry_run = TRUE
 )
 
-plan
+plan_table <- encode_results(plan)
+
+plan_display <- data.frame(
+    accession = plan_table$file_accession,
+    status = plan_table$download_status,
+    size = plan_table$file_size_pretty,
+    file = basename(plan_table$local_path)
+)
+
+plan_display
 ```
+
+| accession | status | size | file |
+|---|---|---:|---|
+| ENCFF859GWB | planned | 59.54 KB | ENCFF859GWB.tsv |
+| ENCFF838WBE | planned | 59.57 KB | ENCFF838WBE.tsv |
 
 Confirm the file accessions, destination paths, and expected total size before
 continuing.
@@ -243,14 +238,22 @@ downloaded <- encode_download(
     max_total_size = "200KB"
 )
 
-downloaded
-
 download_table <- encode_results(downloaded)
 
-download_table[, c(
-    "file_accession", "download_status", "size_verified", "md5_verified"
-), drop = FALSE]
+download_display <- data.frame(
+    accession = download_table$file_accession,
+    status = download_table$download_status,
+    size_verified = download_table$size_verified,
+    md5_verified = download_table$md5_verified
+)
+
+download_display
 ```
+
+| accession | status | size_verified | md5_verified |
+|---|---|---|---|
+| ENCFF859GWB | downloaded | TRUE | TRUE |
+| ENCFF838WBE | downloaded | TRUE | TRUE |
 
 Both verification columns should be `TRUE`, confirming that the downloaded
 files match the sizes and checksums reported by ENCODE.
