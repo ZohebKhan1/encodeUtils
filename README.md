@@ -12,9 +12,9 @@ associated metadata produced by the ENCODE Project.
 datasets and files, reads supported file formats, and records retrieved ENCODE
 metadata to improve reproducibility and citation of relevant ENCODE datasets.
 
-The Portal exposes its records through an HTTP-based REST API that returns JSON,
-which enables an R package to query accessions and metadata programmatically and
-convert nested responses into R and Bioconductor objects.
+The Portal exposes its records through an HTTP-based REST API that returns JSON.
+This allows `encodeUtils` to query the Portal and convert its responses into R
+and Bioconductor objects.
 
 The package is not affiliatedd with or endorsed by the ENCODE Project.
 
@@ -56,7 +56,16 @@ pak::pak("ZohebKhan1/encodeUtils")
 
 ## Example workflow
 
-### 1. Find experiments
+This example retrieves replicate-level raw microRNA counts for male 5xFAD
+mouse heart tissue. Each step uses the result of the preceding step.
+
+### 1. Find the experiment
+
+Start with the biological criteria. The `search` argument matches `5xFAD` in
+the ENCODE record, while the other arguments restrict the assay, tissue, sex,
+and organism. For another question, change those five biological arguments.
+`limit` controls the maximum number of returned rows; it is not a biological
+filter.
 
 ```r
 library(encodeUtils)
@@ -65,70 +74,144 @@ discovery <- encode_search(
     organism = "mouse",
     assay = "microRNA-seq",
     organ = "heart",
+    sex = "male",
+    search = "5xFAD",
     limit = 5
 )
 
-encode_results(discovery)[, c(
-    "accession", "assay_title", "status"
-), drop = FALSE]
+experiment_table <- encode_results(discovery)
+
+print(
+    experiment_table[, c(
+        "accession", "assay_title", "organism", "biosample_summary",
+        "life_stage_age", "sex", "status"
+    ), drop = FALSE],
+    row.names = FALSE
+)
 ```
 
 ```text
-#> ENCODE experiments
-#> - experiments: 5
-#> Experiments:
-#>   experiment        assay   status
-#>  ENCSR523CTA microRNA-seq released
-#>  ENCSR794QRE microRNA-seq released
-#>  ENCSR576VFQ microRNA-seq released
-#>  ENCSR108XJW microRNA-seq released
-#>  ENCSR173OTH microRNA-seq released
+#>   accession  assay_title     organism
+#> ENCSR523CTA microRNA-seq Mus musculus
+#>                                                                 biosample_summary
+#> Mus musculus strain 5xFAD/CAST (...) heart tissue male adult (8-10 months)
+#>     life_stage_age  sex   status
+#> adult 8-10 months male released
 ```
 
-### 2. Select files
+The result is a released male mouse-heart microRNA-seq experiment whose
+biosample summary contains `5xFAD/CAST`. The query currently returns one
+experiment, so its accession becomes the input to the file query. If a search
+returns several rows, compare their assay, biosample, age, sex, and status
+fields, then refine the search arguments before continuing.
+
+The row-count check prevents the workflow from silently selecting the first
+experiment if the live search changes.
+
+```r
+stopifnot(nrow(experiment_table) == 1L)
+
+experiment_accession <- experiment_table$accession[[1L]]
+experiment_accession
+```
+
+### 2. List the experiment's files
+
+Use the returned experiment accession to list all of its released files. This
+call retrieves file metadata only.
 
 ```r
 files <- encode_list_files(
-    "ENCSR523CTA",
-    file_format = "tsv",
-    output_type = "microRNA quantifications",
-    assembly = "mm10"
+    experiment_accession
 )
 
+file_table <- encode_results(files)
+
+file_inventory <- data.frame(
+    accession = file_table$file_accession,
+    replicate = file_table$biological_replicates,
+    format = file_table$file_format,
+    output = file_table$output_type,
+    assembly = file_table$assembly,
+    size = file_table$file_size_pretty
+)
+
+file_inventory
+```
+
+| accession | replicate | format | output | assembly | size |
+|---|---:|---|---|---|---:|
+| ENCFF894LZS | 1 | bigWig | minus strand signal of all reads | mm10 | 14.94 MB |
+| ENCFF272MTQ | 2 | bigWig | minus strand signal of all reads | mm10 | 14.50 MB |
+| ENCFF568APO | 1 | fastq | reads | NA | 266.89 MB |
+| ENCFF859GWB | 1 | tsv | microRNA quantifications | mm10 | 59.54 KB |
+| ENCFF511JFU | 1 | bam | alignments | mm10 | 268.56 MB |
+| ENCFF838WBE | 2 | tsv | microRNA quantifications | mm10 | 59.57 KB |
+| ENCFF672YIA | 2 | bigWig | plus strand signal of unique reads | mm10 | 7.37 MB |
+| ENCFF330SVB | 2 | bigWig | plus strand signal of all reads | mm10 | 14.30 MB |
+| ENCFF186WHP | 2 | bam | alignments | mm10 | 343.95 MB |
+| ENCFF545SFH | 1 | bigWig | plus strand signal of unique reads | mm10 | 7.81 MB |
+| ENCFF888ILZ | 2 | bigWig | minus strand signal of unique reads | mm10 | 7.52 MB |
+| ENCFF520ASQ | 1 | bigWig | minus strand signal of unique reads | mm10 | 7.94 MB |
+| ENCFF873LHR | 1 | bigWig | plus strand signal of all reads | mm10 | 14.81 MB |
+| ENCFF975MFU | 2 | fastq | reads | NA | 344.88 MB |
+
+### 3. Select replicate-level files
+
+`file_format` describes how a file is encoded; `output_type` describes the data
+product it contains. The goal is a count matrix, so select the TSV rows whose
+output type is `microRNA quantifications`. `mm10` is the mouse assembly used for
+these processed files, and `replicate_level` keeps separate biological
+replicates. For another data product, inspect the inventory and change the
+relevant selection arguments.
+
+```r
 selected <- encode_select_files(
     files,
-    file_accession = c("ENCFF859GWB", "ENCFF838WBE"),
     file_format = "tsv",
     output_type = "microRNA quantifications",
     assembly = "mm10",
     replicate_policy = "replicate_level"
 )
 
-selected
-selected$excluded
+selected_table <- encode_results(selected)
+
+selected_display <- data.frame(
+    accession = selected_table$file_accession,
+    replicate = selected_table$biological_replicates,
+    format = selected_table$file_format,
+    output = selected_table$output_type,
+    assembly = selected_table$assembly,
+    size = selected_table$file_size_pretty
+)
+
+selected_display
 ```
 
-```text
-#> ENCODE selected files
-#> - selected: 2
-#> - excluded: 0
-#> Selected files:
-#>         file  experiment        assay     organism format
-#>  ENCFF859GWB ENCSR523CTA microRNA-seq Mus musculus    tsv
-#>  ENCFF838WBE ENCSR523CTA microRNA-seq Mus musculus    tsv
-#>                    output assembly file_size   status
-#>  microRNA quantifications     mm10  59.54 KB released
-#>  microRNA quantifications     mm10  59.57 KB released
-#> [1] file_accession       experiment_accession reason
-#> <0 rows> (or 0-length row.names)
-```
+The selection reduces the displayed inventory to the TSV rows below. These are
+the file accessions used in the remaining steps.
 
-### 3. Preview the download
+| accession | replicate | format | output | assembly | size |
+|---|---:|---|---|---|---:|
+| ENCFF859GWB | 1 | tsv | microRNA quantifications | mm10 | 59.54 KB |
+| ENCFF838WBE | 2 | tsv | microRNA quantifications | mm10 | 59.57 KB |
+
+### 4. Preview the download
+
+Create a download plan before transferring data. The plan compares the sizes
+reported by ENCODE with the configured limits; it does not inspect remote file
+contents. This example writes to `encode-data` in the current working directory.
+Change `download_directory` if the files should be stored elsewhere. The limits
+prevent an unexpected large transfer if the Portal records change. Each
+selected file is about 60 KB, so the 100 KB per-file and 200 KB total limits
+leave modest headroom above the expected 120 KB transfer.
 
 ```r
+download_directory <- "encode-data"
+
 plan <- encode_download(
     selected,
-    directory = "encode-data",
+    directory = download_directory,
     max_file_size = "100KB",
     max_total_size = "200KB",
     dry_run = TRUE
@@ -137,72 +220,75 @@ plan <- encode_download(
 plan
 ```
 
-```text
-#> ENCODE download
-#> - files: 2
-#> - experiments: 1
-#> - known total size: 119.11 KB
-#> Download records:
-#>         file format                   output file_size download
-#>  ENCFF859GWB    tsv microRNA quantifications  59.54 KB  planned
-#>  ENCFF838WBE    tsv microRNA quantifications  59.57 KB  planned
-#>                         path
-#>  encode-data/ENCFF859GWB.tsv
-#>  encode-data/ENCFF838WBE.tsv
-```
+Review the planned accessions, paths, and total size before continuing.
 
-### 4. Download and verify the files
+### 5. Download and verify the files
+
+Run the same request without `dry_run`. `encode_download()` verifies the
+reported file size and MD5 checksum before keeping each file.
 
 ```r
 downloaded <- encode_download(
     selected,
-    directory = "encode-data",
+    directory = download_directory,
     max_file_size = "100KB",
     max_total_size = "200KB"
 )
 
 downloaded
+
+download_table <- encode_results(downloaded)
+
+download_table[, c(
+    "file_accession", "download_status", "size_verified", "md5_verified"
+), drop = FALSE]
 ```
 
-```text
-#> ENCODE download
-#> - files: 2
-#> - experiments: 1
-#> - known total size: 119.11 KB
-#> Download records:
-#>         file format                   output file_size   download size_ok md5_ok
-#>  ENCFF859GWB    tsv microRNA quantifications  59.54 KB downloaded    TRUE   TRUE
-#>  ENCFF838WBE    tsv microRNA quantifications  59.57 KB downloaded    TRUE   TRUE
-#>                         path
-#>  encode-data/ENCFF859GWB.tsv
-#>  encode-data/ENCFF838WBE.tsv
-```
+Observed size and checksum verification occurs after each transfer. The two
+verification columns should both be `TRUE`.
 
-### 5. Read the count tables
+### 6. Read the count tables
+
+The selected microRNA quantification files are four-column HTSeq-style tables.
+`encodeUtils` maps the second count column to `raw_counts`. The tables share a
+complete, unique `gene_id` field, so it is used to align rows across files.
 
 ```r
-loaded <- encode_read(
+count_data <- encode_read(
     downloaded,
     values = "raw_counts",
     row_names = "gene_id"
 )
 
-loaded
+count_data
+count_data$matrices$raw_counts[seq_len(6L), , drop = FALSE]
 ```
 
-```text
-#> ENCODE loaded files
-#> - files: 2
-#> - file objects: 2
-#> - feature rows: 2202
-#> - matrices: 1
-#> Metadata:
-#>         file  experiment        assay     organism assembly file_size   status
-#>  ENCFF859GWB ENCSR523CTA microRNA-seq Mus musculus     mm10  59.54 KB released
-#>  ENCFF838WBE ENCSR523CTA microRNA-seq Mus musculus     mm10  59.57 KB released
+`count_data` contains the individual file tables, their metadata, feature
+metadata, and the aligned raw-count matrix.
+
+### 7. Write a manifest
+
+Record the file-listing request carried by `count_data`, selection criteria,
+downloaded files, checksums, matrix dimensions, and R session. The earlier
+experiment search remains in `discovery`; it is not included in this manifest.
+
+```r
+manifest <- encode_manifest(count_data, path = "encode-manifest.json")
+
+data.frame(
+    manifest = basename(attr(manifest, "path")),
+    files = nrow(manifest$files),
+    requests = length(manifest$requests),
+    matrices = nrow(manifest$matrices)
+)
 ```
 
-### 6. Create a SummarizedExperiment
+### Optional: create a SummarizedExperiment
+
+Instead of working with the list and matrix result, request the same verified
+local files as a `SummarizedExperiment`. Rows are features, columns are the two
+ENCODE file accessions, and `colData()` contains the file metadata.
 
 ```r
 se <- encode_read(
@@ -215,36 +301,6 @@ se <- encode_read(
 se
 ```
 
-```text
-#> class: SummarizedExperiment
-#> dim: 2202 2
-#> metadata(1): encodeUtils
-#> assays(1): raw_counts
-#> rownames(2202): ENSMUSG00000093015.1 ENSMUSG00000093970.1 ...
-#>   ENSMUSG00000098868.1 ENSMUSG00000099228.1
-#> rowData names(1): gene_id
-#> colnames(2): ENCFF859GWB ENCFF838WBE
-#> colData names(58): file_accession accession ... md5_verified failure_reason
-```
-
-### 7. Write a manifest
-
-```r
-manifest <- encode_manifest(loaded, path = "encode-manifest.json")
-
-data.frame(
-    manifest = basename(attr(manifest, "path")),
-    files = nrow(manifest$files),
-    requests = length(manifest$requests),
-    matrices = nrow(manifest$matrices)
-)
-```
-
-```text
-#>               manifest files requests matrices
-#> 1 encode-manifest.json     2        1        1
-```
-
 ## Other inputs and formats
 
 - Pass ENCSR accessions to `encode_list_files()`.
@@ -254,10 +310,6 @@ data.frame(
 BED, narrowPeak, and broadPeak files return `GenomicRanges::GRanges`. GFF,
 GTF, BigWig, and BigBed files use `rtracklayer` when installed; FASTA files use
 `Biostrings`.
-
-Before transfer, `encode_download()` checks ENCODE-reported sizes and refuses
-unknown-size files unless explicitly allowed. After transfer, it verifies the
-observed size and MD5 checksum before installing each file.
 
 ## References
 

@@ -21,15 +21,16 @@ options(width = 80)
 # Introduction
 
 The ENCODE Portal is a public database of experiments, biosamples, files, and
-associated metadata produced by the ENCODE Project.
+associated metadata produced by the ENCODE Project. The Portal provides an
+HTTP-based REST API that returns its records as JSON.
 
-`encodeUtils` searches ENCODE metadata, selects and verifies ENCODE-related
-datasets and files, reads supported file formats, and records retrieved ENCODE
-metadata to improve reproducibility and citation of relevant ENCODE datasets.
+`encodeUtils` uses this API to search ENCODE, select files from returned
+metadata, download and verify those files, read supported formats, and record
+retrieval provenance.
 
-The Portal exposes its records through an HTTP-based REST API that returns JSON,
-which enables an R package to query accessions and metadata programmatically and
-convert nested responses into R and Bioconductor objects.
+This vignette retrieves replicate-level raw microRNA counts for male 5xFAD
+mouse heart tissue. It starts with biological search terms, then uses each
+result as the input to the next step.
 
 # Warning
 
@@ -37,13 +38,6 @@ Use of the programmatic API is limited to 10 GET requests/sec from any single
 user, group, company or lab.
 
 Abuse of this will result in denial of access by IP block
-
-# Workflow
-
-This vignette retrieves two released microRNA count tables from ENCODE
-experiment `ENCSR523CTA`, verifies both files, reads their raw counts, creates a
-`SummarizedExperiment`, and writes a retrieval manifest. The initial discovery
-query is live; the download uses pinned accessions.
 
 # Installation
 
@@ -57,76 +51,128 @@ Install the development version with:
 pak::pak("ZohebKhan1/encodeUtils")
 ```
 
-# Find experiments
+# Find the experiment
 
-Search current mouse-heart microRNA-seq experiments.
+Start with the biological criteria. The `search` argument matches `5xFAD` in
+the ENCODE record. The remaining arguments restrict the results to male mouse
+heart microRNA-seq experiments. For another question, change `organism`,
+`assay`, `organ`, `sex`, and `search`. `limit` controls the maximum number of
+returned rows; it is not a biological filter.
 
-```{r discover}
+```{r find-experiment}
 library(encodeUtils)
 
 discovery <- encode_search(
     organism = "mouse",
     assay = "microRNA-seq",
     organ = "heart",
+    sex = "male",
+    search = "5xFAD",
     limit = 5
 )
 
-encode_results(discovery)
-```
+experiment_table <- encode_results(discovery)
 
-Use experiment `ENCSR523CTA` and its two released `mm10` replicate-level
-quantification files.
-
-```{r pinned-inputs}
-experiment_accession <- "ENCSR523CTA"
-
-file_accessions <- c("ENCFF859GWB", "ENCFF838WBE")
-```
-
-# Select files
-
-Retrieve file metadata without downloading file contents.
-
-```{r list-files}
-files <- encode_list_files(
-    experiment_accession,
-    file_format = "tsv",
-    output_type = "microRNA quantifications",
-    assembly = "mm10"
-)
-
-encode_results(files)[, c(
-    "file_accession", "biological_replicates", "file_size_pretty",
-    "preferred_default"
+experiment_table[, c(
+    "accession", "assay_title", "biosample_summary", "life_stage_age", "sex",
+    "file_count", "status"
 ), drop = FALSE]
 ```
 
-Select the two named files and require replicate-level output.
+The result is a released male mouse-heart microRNA-seq experiment whose
+biosample summary contains `5xFAD/CAST`. The current query returns one
+experiment. If a search returns several rows, compare their assay, biosample,
+age, sex, and status fields, then refine the search arguments before continuing.
+The check below prevents the workflow from silently taking the first row if the
+Portal results change.
+
+```{r choose-experiment}
+stopifnot(nrow(experiment_table) == 1L)
+
+experiment_accession <- experiment_table$accession[[1L]]
+experiment_accession
+```
+
+# List the experiment's files
+
+Use the returned experiment accession to list all of its released files. This
+call retrieves file metadata; it does not download file contents.
+
+```{r list-files}
+files <- encode_list_files(
+    experiment_accession
+)
+
+file_table <- encode_results(files)
+
+file_inventory <- data.frame(
+    accession = file_table$file_accession,
+    replicate = file_table$biological_replicates,
+    format = file_table$file_format,
+    output = file_table$output_type,
+    assembly = file_table$assembly,
+    size = file_table$file_size_pretty
+)
+
+knitr::kable(file_inventory)
+```
+
+# Select replicate-level files
+
+`file_format` describes how a file is encoded; `output_type` describes the data
+product it contains. The goal is a count matrix, so select the TSV rows whose
+output type is `microRNA quantifications`. `mm10` is the mouse assembly used for
+these processed files, and `replicate_level` keeps separate biological
+replicates. For another data product, inspect the inventory and change the
+relevant selection arguments.
 
 ```{r select-files}
 selected <- encode_select_files(
     files,
-    file_accession = file_accessions,
     file_format = "tsv",
     output_type = "microRNA quantifications",
     assembly = "mm10",
     replicate_policy = "replicate_level"
 )
 
-selected
-selected$excluded
+selected_table <- encode_results(selected)
+
+selected_display <- data.frame(
+    accession = selected_table$file_accession,
+    replicate = selected_table$biological_replicates,
+    format = selected_table$file_format,
+    output = selected_table$output_type,
+    assembly = selected_table$assembly,
+    size = selected_table$file_size_pretty
+)
+
+knitr::kable(selected_display)
 ```
 
-```{r selection-criteria}
+The selection reduces the `r nrow(file_table)`-file inventory to
+`r nrow(selected_table)` quantification files. These are the file accessions
+used in the remaining steps. The selection object also records the applied
+criteria.
+
+```{r inspect-selection}
 selected$criteria[c(
-    "file_accession", "file_format", "output_type", "assembly", "status",
-    "replicate_policy"
+    "file_format", "output_type", "assembly", "status", "replicate_policy"
 )]
 ```
 
-# Preview and download
+# Preview the download
 
-Check the ENCODE-reported sizes without transferring either file.
+Create a download plan before transferring either file. The plan resolves the
+local paths and compares ENCODE-reported sizes with the configured limits; it
+does not inspect remote file contents. The limits prevent an unexpected large
+transfer if the Portal records change.
+
+Each selected file is about 60 KB, so the 100 KB per-file and 200 KB total
+limits leave modest headroom above the expected 120 KB transfer.
+
+The vignette uses a temporary directory so package builds do not leave files in
+the project. Files under `tempdir()` are disposable. Use a persistent
+project-relative directory when retaining data for an analysis.
 
 ```{r plan-download}
 download_directory <- file.path(tempdir(), "encodeUtils-live-vignette")
@@ -142,7 +188,13 @@ plan <- encode_download(
 plan
 ```
 
-Download both files and verify their observed sizes and MD5 checksums.
+Review the planned accessions, paths, and total size before downloading.
+
+# Download and verify the files
+
+Run the same request without `dry_run`. `encode_download()` writes each
+transfer to a partial file, then checks its observed size and MD5 checksum
+before keeping it.
 
 ```{r download}
 downloaded <- encode_download(
@@ -155,7 +207,9 @@ downloaded <- encode_download(
 downloaded
 ```
 
-```{r verify-download, include=FALSE}
+The following check confirms that both rows represent verified local files.
+
+```{r verify-download}
 download_table <- as.data.frame(encode_results(downloaded))
 
 stopifnot(
@@ -163,37 +217,75 @@ stopifnot(
     all(download_table$size_verified %in% TRUE),
     all(download_table$md5_verified %in% TRUE)
 )
+
+download_table[, c(
+    "file_accession", "download_status", "size_verified", "md5_verified"
+), drop = FALSE]
 ```
 
-# Read raw counts
+# Read the count tables
 
-The files contain `gene_id` and raw counts, but not TPM values.
+The selected microRNA quantification files are four-column HTSeq-style tables.
+`encodeUtils` maps the second count column to `raw_counts`. The tables share a
+complete, unique `gene_id` field, so `encode_read()` uses it to align rows and
+creates one matrix whose columns are the file accessions shown earlier.
 
 ```{r read-files}
-loaded <- encode_read(
+count_data <- encode_read(
     downloaded,
     values = "raw_counts",
     row_names = "gene_id"
 )
 
-loaded
+count_data
 ```
 
-```{r inspect-loaded-files}
+`count_data` contains the individual file tables, their metadata, feature
+metadata, and the aligned raw-count matrix.
+
+Inspect the first six rows of the count matrix.
+
+```{r inspect-counts}
+count_data$matrices$raw_counts[seq_len(6L), , drop = FALSE]
+```
+
+# Write a manifest
+
+Write a JSON manifest for the completed file retrieval. The manifest records
+the file-listing request carried by `count_data`, filters, selection criteria,
+downloaded files, checksums, matrix dimensions, and R session. The earlier
+experiment search remains in `discovery`; it is not included in this manifest.
+
+```{r create-manifest}
+manifest_path <- file.path(tempdir(), "encodeUtils-live-manifest.json")
+
+manifest <- encode_manifest(count_data, path = manifest_path)
+
 data.frame(
-    file_accession = names(loaded$data),
-    replicate = loaded$metadata$biological_replicates,
-    rows = vapply(loaded$data, nrow, integer(1L)),
-    columns = vapply(loaded$data, ncol, integer(1L)),
-    row.names = NULL
+    manifest = basename(attr(manifest, "path")),
+    files = nrow(manifest$files),
+    requests = length(manifest$requests),
+    matrices = nrow(manifest$matrices)
 )
 ```
 
-```{r inspect-raw-counts}
-loaded$matrices$raw_counts[seq_len(6L), , drop = FALSE]
+The temporary manifest is used only for this package build. Use a persistent
+project-relative path when retaining the manifest with an analysis.
+
+Inspect the file records stored in the manifest.
+
+```{r inspect-manifest-files}
+manifest$files[, c(
+    "file_accession", "md5sum", "observed_md5", "downloaded_at"
+), drop = FALSE]
 ```
 
-# Create a SummarizedExperiment
+# Optional: create a SummarizedExperiment
+
+Instead of working with the list and matrix result, request the same verified
+local files as a `SummarizedExperiment`. The assay stores raw counts,
+`rowData()` stores feature identifiers, and `colData()` stores the ENCODE file
+metadata.
 
 ```{r summarized-experiment}
 se <- encode_read(
@@ -206,56 +298,23 @@ se <- encode_read(
 se
 ```
 
+The column metadata connects each matrix column to the file and biological
+replicate obtained from the file-listing step.
+
 ```{r inspect-column-data}
 column_data <- as.data.frame(SummarizedExperiment::colData(se))
-
-row.names(column_data) <- NULL
 
 column_data[, c(
     "file_accession", "biological_replicates", "output_type", "assembly"
 ), drop = FALSE]
 ```
 
-```{r inspect-se-provenance}
-se_provenance <- S4Vectors::metadata(se)$encodeUtils
-
-data.frame(
-    requests = length(se_provenance$requests),
-    filter_rows = nrow(se_provenance$filters),
-    selection_fields = length(se_provenance$selection_criteria)
-)
-```
-
-# Write a manifest
-
-```{r create-manifest}
-manifest_path <- file.path(tempdir(), "encodeUtils-live-manifest.json")
-
-manifest <- encode_manifest(loaded, path = manifest_path)
-
-data.frame(
-    manifest = basename(attr(manifest, "path")),
-    files = nrow(manifest$files),
-    requests = length(manifest$requests),
-    matrices = nrow(manifest$matrices)
-)
-```
-
-```{r inspect-manifest-files}
-manifest$files[, c(
-    "file_accession", "md5sum", "observed_md5", "downloaded_at"
-), drop = FALSE]
-```
-
-The live steps use finite timeouts and retries. A completed download is kept
-only after its size and MD5 checksum pass verification.
-
 # References
 
 - ENCODE Project Consortium. An integrated encyclopedia of DNA elements in the
-    human genome. *Nature*. 2012;489:57-74.
+  human genome. *Nature*. 2012;489:57-74.
 - Kagda MS et al. Data navigation on the ENCODE portal. *Nature
-    Communications*. 2025;16:9592.
+  Communications*. 2025;16:9592.
 - [ENCODE REST API](https://www.encodeproject.org/help/rest-api/)
 - [ENCODE citation guidance](https://www.encodeproject.org/help/citing-encode/)
 
