@@ -1,3 +1,10 @@
+# encodeUtils 0.99.13
+
+## Submission readiness
+
+- Disclose AI assistance used to develop the test suite and the maintainer's
+  review of and responsibility for all package code.
+
 # encodeUtils 0.99.12
 
 ## Submission readiness

@@ -129,14 +129,12 @@ the observed size and MD5 after transfer, and installs replacement files only
 after verification. With `directory = NULL`, files are stored in the package
 cache returned by `tools::R_user_dir("encodeUtils", "cache")`.
 
-## Related Bioconductor resources
+## Development provenance
 
-`ENCODExplorerData` provides ENCODE metadata snapshots through
-`AnnotationHub` and helpers for regenerating those tables. Its former companion
-software package, `ENCODExplorer`, was removed from Bioconductor in release
-3.15. `encodeUtils` instead queries the current Portal for each retrieval and
-carries explicit file choices through size planning, verified download,
-Bioconductor containers, and a provenance manifest.
+AI (Codex 5.6 Sol) was used to write code for the test suite. All other code
+was written primarily by a human. AI-generated code for the testing suite was
+manually reviewed, edited, and tested by the maintainer. The maintainer assumes
+responsibility for all package code and its ongoing maintenance.
 
 ## Documentation
 

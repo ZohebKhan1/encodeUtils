@@ -24,6 +24,14 @@ This package is not affiliated with or endorsed by the ENCODE Project.
 The package uses a conservative default request throttle below the ENCODE
 REST API limit for programmatic GET requests.
 }
+\section{Development provenance}{
+
+AI (Codex 5.6 Sol) was used to write code for the test suite. All other code
+was written primarily by a human. AI-generated code for the testing suite was
+manually reviewed, edited, and tested by the maintainer. The maintainer
+assumes responsibility for all package code and its ongoing maintenance.
+}
+
 \seealso{
 Useful links:
 \itemize{
