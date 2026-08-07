@@ -3,14 +3,10 @@
 ^pkgdown$
 ^docs$
 ^site$
-^\.gitignore$
-^\.github$
+^\.
 ^renv$
-^\.Rprofile$
 ^.*\.Rproj$
 ^tools$
 ^tmp$
 ^.*\.Rcheck$
 ^.*\.BiocCheck$
-^\.Rproj\.user$
-^\.r_codex_utils$
