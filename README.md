@@ -5,16 +5,12 @@
 [![test coverage](https://github.com/ZohebKhan1/encodeUtils/actions/workflows/test-coverage.yaml/badge.svg)](https://github.com/ZohebKhan1/encodeUtils/actions/workflows/test-coverage.yaml)
 [![R >= 4.6.0](https://img.shields.io/badge/R-%E2%89%A5%204.6.0-276DC3?logo=r)](https://www.r-project.org/)
 
-`encodeUtils` searches the ENCODE Portal, converts nested metadata into
-traceable experiment and file tables, selects files using explicit criteria,
-downloads verified files, reads supported formats, and records provenance for
-downstream Bioconductor analyses.
+`encodeUtils` searches ENCODE metadata, selects and verifies files, reads
+supported formats, and records retrieval provenance.
 
 The package is not affiliated with or endorsed by the ENCODE Project.
 
 ## Installation
-
-Install the released package through Bioconductor:
 
 ```r
 if (!requireNamespace("BiocManager", quietly = TRUE)) {
@@ -23,111 +19,218 @@ if (!requireNamespace("BiocManager", quietly = TRUE)) {
 BiocManager::install("encodeUtils")
 ```
 
-The development version is available with
+Install the development version with
 `pak::pak("ZohebKhan1/encodeUtils")`.
 
-## End-to-end retrieval
+## Example workflow
 
-In `encodeUtils`, an end-to-end workflow is a deliberate path from a biological
-query to local, inspectable R objects:
-
-1. Find candidate experiments.
-2. Review their metadata and choose an experiment accession.
-3. List its file records, then state the file-selection criteria.
-4. Inspect a no-transfer download plan before downloading.
-5. Verify the completed transfer, read compatible files, and record a manifest.
-
-This is a retrieval and provenance workflow, not a substitute for assessing
-biological comparability or designing a downstream analysis. The
-[getting-started vignette](https://zohebkhan1.github.io/encodeUtils/articles/get-started.html)
-walks through each decision and result object. The compact example below shows
-the same sequence.
+The output below was produced on August 7, 2026. The discovery query is live,
+so its rows may change.
 
 ```r
 library(encodeUtils)
+```
 
-# Discover current candidates. Search ordering can change as ENCODE evolves.
+### 1. Find experiments
+
+```r
 discovery <- encode_search(
     organism = "mouse",
     assay = "microRNA-seq",
     organ = "heart",
-    limit = 5
+    limit = 5,
+    quiet = TRUE
 )
-encode_results(discovery)
+encode_results(discovery)[, c(
+    "accession", "assay_title", "status"
+), drop = FALSE]
+```
 
-# Pin downstream work to one released experiment and two small files.
+```text
+#> ENCODE experiments
+#> - experiments: 5
+#> Experiments:
+#>   experiment        assay   status
+#>  ENCSR523CTA microRNA-seq released
+#>  ENCSR794QRE microRNA-seq released
+#>  ENCSR576VFQ microRNA-seq released
+#>  ENCSR108XJW microRNA-seq released
+#>  ENCSR173OTH microRNA-seq released
+```
+
+### 2. Select files
+
+```r
 files <- encode_list_files(
     "ENCSR523CTA",
     file_format = "tsv",
     output_type = "microRNA quantifications",
-    assembly = "mm10"
+    assembly = "mm10",
+    quiet = TRUE
 )
+
 selected <- encode_select_files(
     files,
     file_accession = c("ENCFF859GWB", "ENCFF838WBE"),
     file_format = "tsv",
     output_type = "microRNA quantifications",
     assembly = "mm10",
-    replicate_policy = "replicate_level"
+    replicate_policy = "replicate_level",
+    quiet = TRUE
 )
-encode_results(selected)
+selected
 selected$excluded
+```
 
-# Resolve paths and size limits without transferring bytes.
+```text
+#> ENCODE selected files
+#> - selected: 2
+#> - excluded: 0
+#> Selected files:
+#>         file  experiment        assay     organism format
+#>  ENCFF859GWB ENCSR523CTA microRNA-seq Mus musculus    tsv
+#>  ENCFF838WBE ENCSR523CTA microRNA-seq Mus musculus    tsv
+#>                    output assembly file_size   status
+#>  microRNA quantifications     mm10  59.54 KB released
+#>  microRNA quantifications     mm10  59.57 KB released
+#> [1] file_accession       experiment_accession reason
+#> <0 rows> (or 0-length row.names)
+```
+
+### 3. Preview the download
+
+```r
 plan <- encode_download(
     selected,
     directory = "encode-data",
     max_file_size = "100KB",
     max_total_size = "200KB",
-    dry_run = TRUE
+    dry_run = TRUE,
+    quiet = TRUE
 )
-encode_results(plan)
+plan
+```
 
-# After reviewing the selected files and plan:
+```text
+#> ENCODE download
+#> - files: 2
+#> - experiments: 1
+#> - known total size: 119.11 KB
+#> Download records:
+#>         file format                   output file_size download
+#>  ENCFF859GWB    tsv microRNA quantifications  59.54 KB  planned
+#>  ENCFF838WBE    tsv microRNA quantifications  59.57 KB  planned
+#>                         path
+#>  encode-data/ENCFF859GWB.tsv
+#>  encode-data/ENCFF838WBE.tsv
+```
+
+### 4. Download and verify the files
+
+```r
 downloaded <- encode_download(
     selected,
     directory = "encode-data",
     max_file_size = "100KB",
-    max_total_size = "200KB"
+    max_total_size = "200KB",
+    quiet = TRUE
 )
-loaded <- encode_read(downloaded, values = "raw_counts")
-manifest <- encode_manifest(loaded, path = "encode-manifest.json")
+downloaded
 ```
 
-`encode_results()` extracts the main data frame from each workflow result. For
-the loaded collection, `metadata` contains the input file table, `data`
-contains one native object per file, `row_data` describes matrix features, and
-`matrices` contains the requested numeric matrices. Matrices are created only
-when participating tables have compatible ENCODE metadata and the same
-complete, unique feature set; otherwise the original tables remain in
-`loaded$data` without inferred alignment.
+```text
+#> ENCODE download
+#> - files: 2
+#> - experiments: 1
+#> - known total size: 119.11 KB
+#> Download records:
+#>         file format                   output file_size   download size_ok md5_ok
+#>  ENCFF859GWB    tsv microRNA quantifications  59.54 KB downloaded    TRUE   TRUE
+#>  ENCFF838WBE    tsv microRNA quantifications  59.57 KB downloaded    TRUE   TRUE
+#>                         path
+#>  encode-data/ENCFF859GWB.tsv
+#>  encode-data/ENCFF838WBE.tsv
+```
 
-When compatible matrices are available, use
-`encode_read(downloaded, as = "SummarizedExperiment")` to pass the expression
-assays, feature metadata, and file metadata to Bioconductor methods in one
-standard container. The `metadata(se)$encodeUtils` entry retains the source
-query, request history, filters, and file-selection criteria.
+### 5. Read the count tables
 
-## Other entry points and formats
+```r
+loaded <- encode_read(
+    downloaded,
+    values = "raw_counts",
+    row_names = "gene_id"
+)
+loaded
+```
 
-You can start with the information already available:
+```text
+#> ENCODE loaded files
+#> - files: 2
+#> - file objects: 2
+#> - feature rows: 2202
+#> - matrices: 1
+#> Metadata:
+#>         file  experiment        assay     organism assembly file_size   status
+#>  ENCFF859GWB ENCSR523CTA microRNA-seq Mus musculus     mm10  59.54 KB released
+#>  ENCFF838WBE ENCSR523CTA microRNA-seq Mus musculus     mm10  59.57 KB released
+```
 
-- ENCSR experiment accessions: pass them to `encode_list_files()`.
-- ENCFF file accessions: pass them to `encode_download()`.
-- Local paths or completed download rows: pass them to `encode_read()`.
+### 6. Create a SummarizedExperiment
 
-BED, narrowPeak, and broadPeak files return `GenomicRanges::GRanges` by
-default. GFF, GTF, BigWig, and BigBed files use `rtracklayer` when installed,
-and FASTA files use `Biostrings`. FASTQ and alignment files remain local path
-objects for dedicated sequence-processing packages. Use
-`encode_read(path, as = "data.frame")` when a BED-like table is preferable to
-genomic ranges.
+```r
+se <- encode_read(
+    downloaded,
+    values = "raw_counts",
+    row_names = "gene_id",
+    as = "SummarizedExperiment"
+)
+se
+```
 
-`encode_download()` checks ENCODE-reported individual and total sizes before
-transfer, refuses unknown-size transfers unless explicitly allowed, verifies
-the observed size and MD5 after transfer, and installs replacement files only
-after verification. With `directory = NULL`, files are stored in the package
-cache returned by `tools::R_user_dir("encodeUtils", "cache")`.
+```text
+#> class: SummarizedExperiment
+#> dim: 2202 2
+#> metadata(1): encodeUtils
+#> assays(1): raw_counts
+#> rownames(2202): ENSMUSG00000093015.1 ENSMUSG00000093970.1 ...
+#>   ENSMUSG00000098868.1 ENSMUSG00000099228.1
+#> rowData names(1): gene_id
+#> colnames(2): ENCFF859GWB ENCFF838WBE
+#> colData names(58): file_accession accession ... md5_verified failure_reason
+```
+
+### 7. Write a manifest
+
+```r
+manifest <- encode_manifest(loaded, path = "encode-manifest.json")
+
+data.frame(
+    manifest = basename(attr(manifest, "path")),
+    files = nrow(manifest$files),
+    requests = length(manifest$requests),
+    matrices = nrow(manifest$matrices)
+)
+```
+
+```text
+#>               manifest files requests matrices
+#> 1 encode-manifest.json     2        1        1
+```
+
+## Other inputs and formats
+
+- Pass ENCSR accessions to `encode_list_files()`.
+- Pass ENCFF accessions to `encode_download()`.
+- Pass local paths or completed download rows to `encode_read()`.
+
+BED, narrowPeak, and broadPeak files return `GenomicRanges::GRanges`. GFF,
+GTF, BigWig, and BigBed files use `rtracklayer` when installed; FASTA files use
+`Biostrings`. FASTQ and alignment files remain path objects for dedicated
+sequence-processing packages.
+
+Before transfer, `encode_download()` checks ENCODE-reported sizes and refuses
+unknown-size files unless explicitly allowed. After transfer, it verifies the
+observed size and MD5 checksum before installing each file.
 
 ## Development provenance
 
@@ -140,8 +243,7 @@ responsibility for all package code and its ongoing maintenance.
 
 See the [getting-started
 vignette](https://zohebkhan1.github.io/encodeUtils/articles/get-started.html)
-and [function reference](https://zohebkhan1.github.io/encodeUtils/reference/)
-for the complete workflow and object contracts.
+and [function reference](https://zohebkhan1.github.io/encodeUtils/reference/).
 
 ## References
 

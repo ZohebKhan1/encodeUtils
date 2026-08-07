@@ -1,7 +1,7 @@
 ---
 title: "Retrieve ENCODE microRNA-seq quantifications"
 author: "Zoheb Khan"
-date: "2026-08-06"
+date: "2026-08-07"
 output:
   BiocStyle::html_document:
     toc: true
@@ -21,50 +21,14 @@ options(width = 80)
 library(encodeUtils)
 ```
 
-# Introduction
+# Workflow
 
-`encodeUtils` turns a biological question into an inspectable ENCODE
-retrieval. The workflow searches the live ENCODE Portal, applies explicit file
-criteria, verifies downloaded files, reads compatible quantification tables,
-and records the requests and local artifacts in a manifest. It does not decide
-whether experiments are biologically comparable or construct a downstream
-statistical design.
-
-The package belongs in Bioconductor because it connects the ENCODE Portal to
-standard `GRanges` and `SummarizedExperiment` objects while retaining the
-retrieval provenance needed for downstream analyses. It complements format
-import through `rtracklayer` and `Biostrings` and general resource catalogs such
-as `AnnotationHub`; its narrower role is ENCODE discovery, explicit file
-selection, size planning, verified transfer, and manifest creation.
-
-The closest ENCODE-specific Bioconductor resources are `ENCODExplorerData` and
-its former companion software package, `ENCODExplorer`, which was removed in
-Bioconductor 3.15. `ENCODExplorerData` provides ENCODE metadata snapshots
-through `AnnotationHub` and helpers for regenerating those tables. In contrast,
-`encodeUtils` queries the current Portal for each retrieval and carries explicit
-file choices through size planning, verification, standard Bioconductor
-containers, and a provenance manifest.
-
-This vignette executes the complete workflow against the public ENCODE service.
-The discovery search is deliberately dynamic because portal contents and search
-ordering change over time. Downstream steps use one named released experiment
-and two named files so that the transferred inputs are explicit. The files are
-mouse-heart microRNA count tables of approximately 61 KB each.
-
-| Step | Question | Object |
-|:--|:--|:--|
-| Discover | Which ENCODE experiments are currently relevant? | `discovery` |
-| List | Which files belong to the pinned experiment? | `files` |
-| Select | Which exact released files meet the stated criteria? | `selected` |
-| Download | Were planned and observed sizes verified? | `downloaded` |
-| Read | What tables, feature metadata, and matrix were loaded? | `loaded` |
-| Convert | Are rows and columns aligned in a Bioconductor container? | `se` |
-| Record | Which requests and files produced the result? | `manifest` |
+This vignette retrieves two released microRNA count tables from ENCODE
+experiment `ENCSR523CTA`, verifies both files, reads their raw counts, creates a
+`SummarizedExperiment`, and writes a retrieval manifest. The initial discovery
+query is live; the download uses pinned accessions.
 
 # Installation
-
-After the package is available through Bioconductor, install it with
-BiocManager.
 
 ```{r installation, eval=FALSE}
 if (!requireNamespace("BiocManager", quietly = TRUE)) {
@@ -73,11 +37,9 @@ if (!requireNamespace("BiocManager", quietly = TRUE)) {
 BiocManager::install("encodeUtils")
 ```
 
-# Discover current mouse-heart microRNA-seq experiments
+# Find experiments
 
-The first query is a real biological discovery search. Its result is a current
-view of the portal rather than a frozen claim about which experiment will sort
-first in the future.
+Search current mouse-heart microRNA-seq experiments.
 
 ```{r discover}
 discovery <- encode_search(
@@ -89,29 +51,20 @@ discovery <- encode_search(
     quiet = TRUE
 )
 
-discovery_table <- as.data.frame(encode_results(discovery))
-discovery_table[, c("accession", "assay_title", "status"), drop = FALSE]
+encode_results(discovery)
 ```
 
-The returned experiments all match the search, but they differ in strain, age,
-sex, and other biological characteristics. Inspect those characteristics before
-choosing experiments for an analysis. For this retrieval demonstration, the
-downstream inputs are pinned rather than inferred from the first search row.
-
-Experiment `ENCSR523CTA` contains two biological replicates from heart tissue
-of male, 8-to-10-month-old 5xFAD/CAST mice. The tutorial uses its two released
-`mm10` microRNA quantification files.
+Use experiment `ENCSR523CTA` and its two released `mm10` replicate-level
+quantification files.
 
 ```{r pinned-inputs}
 experiment_accession <- "ENCSR523CTA"
 file_accessions <- c("ENCFF859GWB", "ENCFF838WBE")
 ```
 
-# List and select the pinned files
+# Select files
 
-Listing retrieves current metadata for all released `mm10` microRNA
-quantification TSVs attached to the experiment. It does not transfer file
-contents.
+Retrieve file metadata without downloading file contents.
 
 ```{r list-files}
 files <- encode_list_files(
@@ -125,16 +78,13 @@ files <- encode_list_files(
     quiet = TRUE
 )
 
-file_table <- as.data.frame(encode_results(files))
-file_table[, c(
-    "file_accession", "biological_replicates", "file_size",
+encode_results(files)[, c(
+    "file_accession", "biological_replicates", "file_size_pretty",
     "preferred_default"
 ), drop = FALSE]
 ```
 
-The selection names both file accessions explicitly. Format, output type,
-assembly, released status, and replicate-level requirements remain independent
-checks rather than being implied by the accessions.
+Select the two named files and require replicate-level output.
 
 ```{r select-files}
 selected <- encode_select_files(
@@ -148,14 +98,9 @@ selected <- encode_select_files(
     quiet = TRUE
 )
 
-selected_table <- as.data.frame(encode_results(selected))
-selected_table[, c(
-    "file_accession", "biological_replicates", "file_size"
-), drop = FALSE]
+selected
+selected$excluded
 ```
-
-The effective criteria are retained with the selected files and later copied
-into the manifest.
 
 ```{r selection-criteria}
 selected$criteria[c(
@@ -164,13 +109,9 @@ selected$criteria[c(
 )]
 ```
 
-# Plan and perform a verified download
+# Preview and download
 
-The dry run confirms the filenames and ENCODE-reported sizes before any bytes
-are transferred. Both the per-file and total budgets are intentionally close to
-the expected transfer, so a substantial upstream file change fails instead of
-silently increasing build resources. These are planning limits based on Portal
-metadata; the observed size and MD5 are checked after transfer.
+Check the ENCODE-reported sizes without transferring either file.
 
 ```{r plan-download}
 download_directory <- file.path(tempdir(), "encodeUtils-live-vignette")
@@ -184,18 +125,10 @@ plan <- encode_download(
     quiet = TRUE
 )
 
-plan_table <- as.data.frame(encode_results(plan))
-data.frame(
-    file_accession = plan_table$file_accession,
-    size = plan_table$file_size_pretty,
-    status = plan_table$download_status,
-    local_file = basename(plan_table$local_path)
-)
+plan
 ```
 
-The evaluated transfer writes to the session temporary directory. Each file is
-installed at its destination only after its expected size and MD5 checksum have
-been verified.
+Download both files and verify their observed sizes and MD5 checksums.
 
 ```{r download}
 downloaded <- encode_download(
@@ -206,13 +139,11 @@ downloaded <- encode_download(
     quiet = TRUE
 )
 
-download_table <- as.data.frame(encode_results(downloaded))
-download_table[, c(
-    "file_accession", "downloaded_size", "size_verified", "md5_verified"
-), drop = FALSE]
+downloaded
 ```
 
 ```{r verify-download, include=FALSE}
+download_table <- as.data.frame(encode_results(downloaded))
 stopifnot(
     all(download_table$download_status %in% c("downloaded", "exists")),
     all(download_table$size_verified %in% TRUE),
@@ -220,16 +151,9 @@ stopifnot(
 )
 ```
 
-# Read and inspect the quantifications
+# Read raw counts
 
-The two TSV files contain source gene identifiers and raw counts. They do not
-contain TPM values, so this tutorial requests only `raw_counts`; it does not
-construct or imply a TPM matrix.
-
-`encode_read()` retains each simplified source table and constructs a matrix
-only because the tables have the same complete feature set and compatible
-ENCODE metadata. The files use `gene_id`, so that column is requested explicitly
-for row names.
+The files contain `gene_id` and raw counts, but not TPM values.
 
 ```{r read-files}
 loaded <- encode_read(
@@ -238,47 +162,17 @@ loaded <- encode_read(
     row_names = "gene_id"
 )
 
-names(loaded)
+loaded
 ```
 
-The `metadata` component retains the full ENCODE and download metadata. This
-compact view uses basenames so temporary build paths do not dominate the page.
-
-```{r inspect-loaded-metadata}
-loaded_file_summary <- data.frame(
-    file_accession = loaded$metadata$file_accession,
-    replicate = loaded$metadata$biological_replicates,
-    download_status = loaded$metadata$download_status,
-    local_file = basename(loaded$metadata$local_path)
-)
-loaded_file_summary
-```
-
-The `data` component retains one simplified source table per downloaded file.
-
-```{r inspect-loaded-data}
+```{r inspect-loaded-files}
 data.frame(
     file_accession = names(loaded$data),
+    replicate = loaded$metadata$biological_replicates,
     rows = vapply(loaded$data, nrow, integer(1L)),
     columns = vapply(loaded$data, ncol, integer(1L)),
     row.names = NULL
 )
-```
-
-The `row_data` component describes the features in the combined matrix. Only
-the first six rows are displayed.
-
-```{r inspect-row-data}
-data.frame(
-    gene_id = unname(loaded$row_data$gene_id[seq_len(6L)])
-)
-```
-
-The `matrices` component contains exactly the requested value type. Its columns
-are the two ENCODE file accessions.
-
-```{r inspect-matrices}
-names(loaded$matrices)
 ```
 
 ```{r inspect-raw-counts}
@@ -286,10 +180,6 @@ loaded$matrices$raw_counts[seq_len(6L), , drop = FALSE]
 ```
 
 # Create a SummarizedExperiment
-
-The same verified files can be returned in a standard Bioconductor container.
-File metadata are aligned to assay columns and feature metadata are aligned to
-assay rows.
 
 ```{r summarized-experiment}
 se <- encode_read(
@@ -302,8 +192,6 @@ se <- encode_read(
 se
 ```
 
-The displayed column metadata confirm which file produced each assay column.
-
 ```{r inspect-column-data}
 column_data <- as.data.frame(SummarizedExperiment::colData(se))
 row.names(column_data) <- NULL
@@ -311,10 +199,6 @@ column_data[, c(
     "file_accession", "biological_replicates", "output_type", "assembly"
 ), drop = FALSE]
 ```
-
-The package-level metadata retain the source query, every metadata request, and
-the effective file-selection criteria after conversion to the standard
-container.
 
 ```{r inspect-se-provenance}
 se_provenance <- S4Vectors::metadata(se)$encodeUtils
@@ -325,40 +209,18 @@ data.frame(
 )
 ```
 
-# Record the retrieval
-
-The manifest captures the ENCODE metadata-request history for the pinned file
-workflow, effective selection criteria, file accessions and URLs, expected and
-observed checksums, download times, matrix dimensions, package version, and R
-session information.
+# Write a manifest
 
 ```{r create-manifest}
 manifest_path <- file.path(tempdir(), "encodeUtils-live-manifest.json")
 manifest <- encode_manifest(loaded, path = manifest_path)
-```
 
-The retrieval summary records when the manifest and its source metadata were
-created. The complete query URL remains in `manifest$retrieval$query_url` and in
-the JSON file.
-
-```{r inspect-retrieval}
-manifest$retrieval[c("created_at", "retrieved_at")]
-```
-
-Each ENCODE metadata request is retained with its URL and query. This compact
-view confirms the request role, HTTP status, and retrieval time.
-
-```{r inspect-requests}
-manifest$requests[[1L]][c("role", "status_code", "retrieved_at")]
-```
-
-The manifest also records the matrix dimensions and both the expected and
-observed checksums.
-
-```{r inspect-manifest-matrix}
-matrix_summary <- manifest$matrices
-row.names(matrix_summary) <- NULL
-matrix_summary
+data.frame(
+    manifest = basename(attr(manifest, "path")),
+    files = nrow(manifest$files),
+    requests = length(manifest$requests),
+    matrices = nrow(manifest$matrices)
+)
 ```
 
 ```{r inspect-manifest-files}
@@ -367,19 +229,10 @@ manifest$files[, c(
 ), drop = FALSE]
 ```
 
-Finally, confirm that the JSON manifest was written.
+The live steps use finite timeouts and retries. A completed download is kept
+only after its size and MD5 checksum pass verification.
 
-```{r inspect-manifest-path}
-file.exists(manifest_path)
-```
-
-Stable accessions and checksums make the transferred inputs auditable, but a
-live service can still be unavailable or retire a record. `encodeUtils` uses
-bounded retries and timeouts and reports the failing URL. Keeping the manifest
-with downstream scripts records exactly what was available when the workflow
-ran.
-
-# Further reading
+# References
 
 - ENCODE Project Consortium. An integrated encyclopedia of DNA elements in the
     human genome. *Nature*. 2012;489:57-74.
@@ -387,10 +240,6 @@ ran.
     Communications*. 2025;16:9592.
 - [ENCODE REST API](https://www.encodeproject.org/help/rest-api/)
 - [ENCODE citation guidance](https://www.encodeproject.org/help/citing-encode/)
-- [ENCODExplorerData](https://bioconductor.org/packages/ENCODExplorerData/)
-- [Bioconductor removed
-    packages](https://bioconductor.org/about/removed-packages/)
-- [encodeUtils package website](https://zohebkhan1.github.io/encodeUtils/)
 
 # Session information
 

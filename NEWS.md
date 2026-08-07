@@ -1,3 +1,10 @@
+# encodeUtils 0.99.14
+
+## Documentation
+
+- Split the README workflow into short steps with representative console output
+  and streamline the introductory vignette.
+
 # encodeUtils 0.99.13
 
 ## Submission readiness
