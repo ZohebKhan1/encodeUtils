@@ -10,12 +10,30 @@ supported formats, and records retrieval provenance.
 
 The package is not affiliated with or endorsed by the ENCODE Project.
 
+## Documentation
+
+See the [getting-started vignette](https://zohebkhan1.github.io/encodeUtils/articles/get-started.html) and [function reference](https://zohebkhan1.github.io/encodeUtils/reference/).
+
+## Functions
+
+| Function | Purpose |
+|---|---|
+| [`encode_search()`](https://zohebkhan1.github.io/encodeUtils/reference/encode_search.html) | Search ENCODE experiments, biosamples, and files. |
+| [`encode_results()`](https://zohebkhan1.github.io/encodeUtils/reference/encode_results.html) | Extract the main result table. |
+| [`encode_list_files()`](https://zohebkhan1.github.io/encodeUtils/reference/encode_list_files.html) | List files for ENCODE experiments. |
+| [`encode_file_presets()`](https://zohebkhan1.github.io/encodeUtils/reference/encode_file_presets.html) | List reusable file-selection presets. |
+| [`encode_select_files()`](https://zohebkhan1.github.io/encodeUtils/reference/encode_select_files.html) | Select files using explicit criteria. |
+| [`encode_download()`](https://zohebkhan1.github.io/encodeUtils/reference/encode_download.html) | Plan, download, and verify files. |
+| [`encode_read()`](https://zohebkhan1.github.io/encodeUtils/reference/encode_read.html) | Read supported local ENCODE files. |
+| [`encode_manifest()`](https://zohebkhan1.github.io/encodeUtils/reference/encode_manifest.html) | Create a retrieval-provenance manifest. |
+
 ## Installation
 
 ```r
 if (!requireNamespace("BiocManager", quietly = TRUE)) {
     install.packages("BiocManager")
 }
+
 BiocManager::install("encodeUtils")
 ```
 
@@ -24,23 +42,18 @@ Install the development version with
 
 ## Example workflow
 
-The output below was produced on August 7, 2026. The discovery query is live,
-so its rows may change.
-
-```r
-library(encodeUtils)
-```
-
 ### 1. Find experiments
 
 ```r
+library(encodeUtils)
+
 discovery <- encode_search(
     organism = "mouse",
     assay = "microRNA-seq",
     organ = "heart",
-    limit = 5,
-    quiet = TRUE
+    limit = 5
 )
+
 encode_results(discovery)[, c(
     "accession", "assay_title", "status"
 ), drop = FALSE]
@@ -65,8 +78,7 @@ files <- encode_list_files(
     "ENCSR523CTA",
     file_format = "tsv",
     output_type = "microRNA quantifications",
-    assembly = "mm10",
-    quiet = TRUE
+    assembly = "mm10"
 )
 
 selected <- encode_select_files(
@@ -75,9 +87,9 @@ selected <- encode_select_files(
     file_format = "tsv",
     output_type = "microRNA quantifications",
     assembly = "mm10",
-    replicate_policy = "replicate_level",
-    quiet = TRUE
+    replicate_policy = "replicate_level"
 )
+
 selected
 selected$excluded
 ```
@@ -105,9 +117,9 @@ plan <- encode_download(
     directory = "encode-data",
     max_file_size = "100KB",
     max_total_size = "200KB",
-    dry_run = TRUE,
-    quiet = TRUE
+    dry_run = TRUE
 )
+
 plan
 ```
 
@@ -132,9 +144,9 @@ downloaded <- encode_download(
     selected,
     directory = "encode-data",
     max_file_size = "100KB",
-    max_total_size = "200KB",
-    quiet = TRUE
+    max_total_size = "200KB"
 )
+
 downloaded
 ```
 
@@ -160,6 +172,7 @@ loaded <- encode_read(
     values = "raw_counts",
     row_names = "gene_id"
 )
+
 loaded
 ```
 
@@ -184,6 +197,7 @@ se <- encode_read(
     row_names = "gene_id",
     as = "SummarizedExperiment"
 )
+
 se
 ```
 
@@ -231,19 +245,6 @@ sequence-processing packages.
 Before transfer, `encode_download()` checks ENCODE-reported sizes and refuses
 unknown-size files unless explicitly allowed. After transfer, it verifies the
 observed size and MD5 checksum before installing each file.
-
-## Development provenance
-
-AI (Codex 5.6 Sol) was used to write code for the test suite. All other code
-was written primarily by a human. AI-generated code for the testing suite was
-manually reviewed, edited, and tested by the maintainer. The maintainer assumes
-responsibility for all package code and its ongoing maintenance.
-
-## Documentation
-
-See the [getting-started
-vignette](https://zohebkhan1.github.io/encodeUtils/articles/get-started.html)
-and [function reference](https://zohebkhan1.github.io/encodeUtils/reference/).
 
 ## References
 

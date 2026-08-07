@@ -14,11 +14,8 @@ vignette: >
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
-options(width = 80)
-```
 
-```{r library}
-library(encodeUtils)
+options(width = 80)
 ```
 
 # Workflow
@@ -34,6 +31,7 @@ query is live; the download uses pinned accessions.
 if (!requireNamespace("BiocManager", quietly = TRUE)) {
     install.packages("BiocManager")
 }
+
 BiocManager::install("encodeUtils")
 ```
 
@@ -42,13 +40,13 @@ BiocManager::install("encodeUtils")
 Search current mouse-heart microRNA-seq experiments.
 
 ```{r discover}
+library(encodeUtils)
+
 discovery <- encode_search(
     organism = "mouse",
     assay = "microRNA-seq",
     organ = "heart",
-    limit = 5,
-    metadata = "full",
-    quiet = TRUE
+    limit = 5
 )
 
 encode_results(discovery)
@@ -59,6 +57,7 @@ quantification files.
 
 ```{r pinned-inputs}
 experiment_accession <- "ENCSR523CTA"
+
 file_accessions <- c("ENCFF859GWB", "ENCFF838WBE")
 ```
 
@@ -71,11 +70,7 @@ files <- encode_list_files(
     experiment_accession,
     file_format = "tsv",
     output_type = "microRNA quantifications",
-    assembly = "mm10",
-    status = "released",
-    limit = "all",
-    metadata = "full",
-    quiet = TRUE
+    assembly = "mm10"
 )
 
 encode_results(files)[, c(
@@ -93,9 +88,7 @@ selected <- encode_select_files(
     file_format = "tsv",
     output_type = "microRNA quantifications",
     assembly = "mm10",
-    status = "released",
-    replicate_policy = "replicate_level",
-    quiet = TRUE
+    replicate_policy = "replicate_level"
 )
 
 selected
@@ -121,8 +114,7 @@ plan <- encode_download(
     directory = download_directory,
     max_file_size = "100KB",
     max_total_size = "200KB",
-    dry_run = TRUE,
-    quiet = TRUE
+    dry_run = TRUE
 )
 
 plan
@@ -135,8 +127,7 @@ downloaded <- encode_download(
     selected,
     directory = download_directory,
     max_file_size = "100KB",
-    max_total_size = "200KB",
-    quiet = TRUE
+    max_total_size = "200KB"
 )
 
 downloaded
@@ -144,6 +135,7 @@ downloaded
 
 ```{r verify-download, include=FALSE}
 download_table <- as.data.frame(encode_results(downloaded))
+
 stopifnot(
     all(download_table$download_status %in% c("downloaded", "exists")),
     all(download_table$size_verified %in% TRUE),
@@ -194,7 +186,9 @@ se
 
 ```{r inspect-column-data}
 column_data <- as.data.frame(SummarizedExperiment::colData(se))
+
 row.names(column_data) <- NULL
+
 column_data[, c(
     "file_accession", "biological_replicates", "output_type", "assembly"
 ), drop = FALSE]
@@ -202,6 +196,7 @@ column_data[, c(
 
 ```{r inspect-se-provenance}
 se_provenance <- S4Vectors::metadata(se)$encodeUtils
+
 data.frame(
     requests = length(se_provenance$requests),
     filter_rows = nrow(se_provenance$filters),
@@ -213,6 +208,7 @@ data.frame(
 
 ```{r create-manifest}
 manifest_path <- file.path(tempdir(), "encodeUtils-live-manifest.json")
+
 manifest <- encode_manifest(loaded, path = manifest_path)
 
 data.frame(

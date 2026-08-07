@@ -1,3 +1,10 @@
+# encodeUtils 0.99.15
+
+## Documentation
+
+- Add a linked function overview, simplify examples, and apply consistent
+  spacing to the README and introductory vignette code chunks.
+
 # encodeUtils 0.99.14
 
 ## Documentation
